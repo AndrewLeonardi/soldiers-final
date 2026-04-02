@@ -4,16 +4,36 @@ This is the production build. Every line of code serves the game.
 
 ---
 
+## PHASE 1 SCOPE (build this first, nothing else)
+
+One level. Playable end to end. Fun or we don't move on.
+
+1. Project scaffolding (Vite + React 19 + R3F + Rapier + Zustand + TypeScript)
+2. One soldier model with idle/walk/fire/death + ragdoll physics
+3. One Sandbox level with terrain props + fixed placement slots
+4. Placement phase: drag soldiers from bottom tray to slots
+5. Battle phase: soldiers fight, Rapier physics, projectiles, sound
+6. Physics comedy: ragdolls, falling off edges, wall destruction
+7. Victory/defeat splash with stars + gold earned
+8. HUD: gold counter, compute counter, wave indicator
+9. Audio: Howler.js with initial SFX (gunfire, explosions, impacts, comedy)
+10. Runs at 60fps on mobile. Feels like a game, not a web app.
+
+**The only question that matters: "Is this fun?"**
+
+---
+
 ## WHAT THIS IS
 
-A mobile-first physics-comedy strategy game where you command toy soldiers
-with real neural networks. Train their brains, place them on the battlefield,
-and watch the chaos unfold. Think Angry Birds structure meets Toy Story humor
-meets real machine learning.
+A mobile-first physics-comedy strategy game. Command toy soldiers with
+real neural networks. Train their brains, place them on the battlefield,
+watch the chaos unfold.
 
-The battles happen on household surfaces -- kitchen tables, bedroom floors,
-sandboxes, workbenches. The soldiers are tiny. The world is huge. That
-contrast is the comedy.
+Angry Birds structure. Toy Story humor. Real machine learning.
+
+Battles happen on household surfaces -- kitchen tables, bedroom floors,
+sandboxes. The soldiers are tiny. The world is huge. That contrast is
+the comedy.
 
 ---
 
@@ -21,172 +41,174 @@ contrast is the comedy.
 
 ```
 MAP (pick a level)
-  --> PREP (choose soldiers + gear from roster)
-    --> PLACE (drag soldiers + defenses onto the battlefield)
-      --> BATTLE (watch it play out -- physics chaos)
-        --> RESULTS (gold earned, injuries, stars)
-          --> ROSTER (train soldiers with compute, heal with gold)
-            --> MAP (next level)
+  --> PLACE (drag soldiers + defenses onto the battlefield)
+    --> BATTLE (watch it play out -- physics chaos)
+      --> RESULTS (gold, stars, injuries)
+        --> ROSTER (train skills with compute, heal with gold)
+          --> MAP (next level)
 ```
 
-Each level is a pre-designed puzzle. You need the right soldiers with the
-right trained skills in the right positions. Brute force doesn't work past
-the early levels.
+Each level is a hand-crafted puzzle. Right soldiers, right skills,
+right positions. Brute force doesn't work past early levels.
 
 ---
 
-## ECONOMY
+## ECONOMY (summary -- see ECONOMY.md for full details)
 
 Two currencies. One makes money. One doesn't.
 
-### COMPUTE (revenue -- the entire business model)
+**COMPUTE (revenue):** The ONLY purchasable currency. Used to train
+soldiers in new weapon skills via real neuroevolution. Daily free drip
+of 100 Compute (~1 basic training/day). Purchasing compute is the
+entire business model.
 
-**What it is:** The premium currency. Used to train soldiers in new weapon
-skills via real neuroevolution. This is the ONLY source of revenue.
+**GOLD (free):** Earned by winning battles. Spent on recruiting soldiers,
+healing injuries, weapon blueprints. Cannot be purchased. Ever. Gold
+is plentiful. Compute is always the bottleneck.
 
-**Unit economics:**
-- 1 basic weapon training = 100 Compute
-- 1 advanced weapon training = 200 Compute
-- Daily free drip: 100 Compute/day (exactly 1 basic training)
-- 7-day login streak bonus: 20/20/30/30/40/40/150 Compute (330 total)
-- Streak is forgiving -- missing a day doesn't reset, it pauses
-
-**Why compute feels valuable:**
-- Training is visible and dramatic (watch the neural net evolve)
-- The skill difference is obvious (untrained = misses wildly, trained = snipes)
-- Graduation moment feels like a Matrix download ("SGT Rico learned ROCKET")
-- Skills are permanent -- once trained, yours forever
-- Mid-game levels are unbeatable without trained soldiers
-- Compute represents real AI computation -- not an arbitrary token
-
-**Purchase tiers (Stripe PWA -- we keep ~94% vs ~70% through app stores):**
-
-| Tier           | Compute | Price  | Per-unit | Bonus vs base |
-|----------------|---------|--------|----------|---------------|
-| Ammo Crate     | 100     | $0.99  | $0.0099  | --            |
-| Supply Drop    | 600     | $4.99  | $0.0083  | +17%          |
-| War Chest      | 1,400   | $9.99  | $0.0071  | +28%          |
-| Arsenal        | 3,200   | $19.99 | $0.0062  | +37%          |
-| Command Center | 8,000   | $49.99 | $0.0062  | +37%          |
-| Nuclear Option | 18,000  | $99.99 | $0.0056  | +44%          |
-
-**First-purchase bonus:** 2x compute on first buy at ANY tier. This is
-industry-standard and dramatically increases conversion.
-
-**Beyond compute packs:**
-
-| Offer              | Price  | What                                      | When shown            |
-|--------------------|--------|-------------------------------------------|-----------------------|
-| Starter Pack       | $2.99  | 300 Compute + 1 rare soldier + 500 Gold   | After completing tutorial (one-time) |
-| Battle Pass        | $4.99  | 30-day pass: daily 50 bonus Compute + exclusive soldier skins + gold multiplier | Always available |
-| Comeback Offer     | $1.99  | 250 Compute                               | After 3+ day absence  |
-| Post-Defeat Bundle | $2.99  | 400 Compute + heal all soldiers           | After losing a level 3x |
-
-Battle Pass alone drove a 145% revenue increase for Clash of Clans. It is
-the single highest-leverage secondary monetization.
-
-### GOLD (free, never purchasable)
-
-- Earned ONLY by winning battles (100-500 per level based on stars)
-- Spent on: recruiting soldiers (200), healing injuries (50-100),
-  unlocking weapon blueprints (300-500)
-- Plentiful enough that it never bottlenecks. Compute is always the gate.
-
-### THE PRESSURE LOOP
-
-```
-Levels 1-10: Beatable with free rifle soldiers
-Levels 11-20: Require 1-2 trained weapon skills (rocket or grenade)
-Levels 21-30: Require 3-4 trained skills across your squad
-Levels 31-40: Require advanced training + specific compositions
-Levels 41-50: Require mastery -- deep training investment
-```
-
-Patient players: ~1 skill/day free = all 50 levels in ~45 days.
-Paying players: can sprint through the campaign in a week.
-Both paths are valid. Neither feels punished.
-
-### REVENUE PROJECTIONS (benchmarks)
-
-- Only ~3.5% of players ever pay. The free economy must work for 96.5%.
-- Healthy indie ARPDAU: $0.05-$0.12
-- At 5,000 DAU with $0.08 ARPDAU = ~$12K/month
-- Top 1% of spenders average $108/month and generate ~29% of revenue
-- The ML/AI training angle is a genuine differentiator with no major
-  competitors doing this
+**Phase 1 economy:** A compute counter and a gold counter on the HUD.
+That's it. No shop, no purchases, no streak system. Just the numbers.
 
 ---
 
 ## SCREENS (5 total, zero dashboard energy)
 
 ### 1. MAP -- Level Select
-- Full-screen themed map with level nodes (toy flags, mini battlefields)
-- Stars on completed levels, padlocks on locked ones
-- Tap a node to preview enemy lineup + terrain
-- HUD: gold + compute counters at top
-- Star-gated world progression (need X total stars to unlock next world)
+- Full-screen themed map. Level nodes are physical objects (toy flags,
+  mini battlefields). Stars on completed. Padlocks on locked.
+- Tap a node for enemy preview. Star-gated world progression.
 
 ### 2. BATTLE -- Core Gameplay (80% of the game)
-- PLACEMENT PHASE: Battlefield fills screen. Soldiers in a bottom tray
-  (like a toy box drawer). Drag to place on FIXED PLACEMENT SLOTS
-  (sandbox crates, foxholes, elevated positions). "GO" button when ready.
-- COMBAT PHASE: Full-screen 3D. Minimal HUD (wave counter, health).
-  Physics comedy happens here. Camera follows action.
-- VICTORY/DEFEAT: Big splash, stars, gold earned, injuries. "CONTINUE."
+- **PLACEMENT:** Battlefield fills screen. Bottom tray holds soldiers
+  (like a toy box drawer). Drag to fixed slots. "GO" when ready.
+- **COMBAT:** Full-screen 3D. Minimal HUD. Physics comedy. Camera
+  follows action.
+- **RESULT:** Stars, gold, injuries. Single "CONTINUE" button.
 
 ### 3. ROSTER -- Bottom Sheet (not a page)
-- Slides up over current screen. 3D soldier figures in a row.
-- Tap to expand: skills, injuries, weapon, stats
-- "TRAIN" button per soldier (shows compute cost)
-- Swipe to scroll. Feels like opening a toy box.
+- Slides up over current screen with spring animation.
+- 3D soldier figures in a row. Tap to expand stats/skills.
+- "TRAIN" button per soldier. Swipe to scroll.
 
-### 4. TRAINING -- Camera Zoom
-- Camera flies into training arena (not a page route)
-- Watch YOUR soldier learn in real-time (neuroevolution viz)
-- Progress ring filling up. Milestone callouts.
-- "SKILL UNLOCKED" graduation moment. Soldier poses with new weapon.
-- Back arrow returns camera to previous context.
+### 4. TRAINING -- Camera Zoom (not a page)
+- Camera flies into training arena.
+- Watch neuroevolution in real-time. Progress ring. Milestones.
+- "SKILL UNLOCKED" graduation. Soldier poses with new weapon.
 
 ### 5. SHOP -- Bottom Sheet (not a page)
-- Compute packs: visual tiers (ammo crate to nuclear option)
-- Daily free compute claim with countdown
-- Battle Pass card
-- First-purchase 2x banner
-- Starter Pack / contextual offers when applicable
+- Compute packs. Daily free claim. That's it.
 
 ---
 
-## UX RULES
+## UX RULES (non-negotiable)
 
-These are non-negotiable.
+1. **No dashboards.** If you can screenshot it and mistake it for a
+   web app, it's wrong.
+2. **No emojis.** Ever. SVG icons or 3D assets only.
+3. **No web patterns.** No nav bars, sidebars, breadcrumbs, card grids,
+   white backgrounds, system fonts.
+4. **Full-bleed art.** Edge to edge. 3D world always visible, even
+   behind panels.
+5. **Thumb zone.** Bottom 40% = actions. Top = HUD. Middle = game world.
+6. **Transitions are animations.** Camera moves, panel slides, zooms.
+   Never a hard page swap.
+7. **Every surface is textured.** Wood, felt, dirt, plastic. No flat CSS.
+8. **Buttons have depth.** Beveled, 3D press states, spring animations.
+9. **Mobile-first, desktop-compatible.** Touch primary, mouse works.
+10. **Simple > clever.** A 10-year-old figures it out in 5 seconds.
 
-1. **No dashboards.** If you can screenshot it and mistake it for a web
-   app, it's wrong. Every pixel is the game.
+---
 
-2. **No emojis.** Ever. SVG icons or proper 3D assets only.
+## MOBILE UX SPEC
 
-3. **No nav bars, sidebars, breadcrumbs, card grids, or white
-   backgrounds.** These are web patterns, not game patterns.
+This game lives or dies on mobile feel. These are implementation
+requirements, not suggestions.
 
-4. **Full-bleed art on every screen.** Edge to edge. The 3D world is
-   always visible, even behind UI panels.
+### Orientation: Portrait
+- Battlefield fills top ~70% of screen
+- Unit tray sits in bottom ~20-25%
+- HUD strip across top ~48-56px
+- Matches the Clash Royale model: one-hand play, no rotation required
+- Desktop: centered viewport, same layout, mouse replaces touch
 
-5. **Thumb zone.** Bottom 40% = actions. Top = HUD info. Middle = game
-   world. All primary interactions are thumb-reachable.
+### Touch Interactions
+- **Placement:** Tap unit in tray, drag onto field. Ghost preview
+  appears offset 60px ABOVE touch point (so finger doesn't occlude it).
+  Valid slots glow green, invalid glow red. Lift finger to place.
+- **All touch targets:** Minimum 48px (Google Material guideline).
+  Space interactive elements 8px+ apart.
+- **Canvas:** `touch-action: none` to prevent browser scroll/zoom.
+  Use pointer events (not touch events) for cross-device compatibility.
+- **Expensive placements:** Two-step confirm (drag + confirm button)
+  to prevent mis-taps.
 
-6. **Transitions are animations, not routes.** Camera moves, panel
-   slides, zooms. Never a hard page swap.
+### Viewport & Safe Areas
+```css
+/* Always use small viewport height -- stable, no address bar jumps */
+height: 100svh;
 
-7. **Every surface is textured.** Wood, felt, dirt, plastic. No flat
-   CSS backgrounds.
+/* Handle notch/island on all edges */
+padding-top: env(safe-area-inset-top);
+padding-bottom: env(safe-area-inset-bottom);
+padding-left: env(safe-area-inset-left);
+padding-right: env(safe-area-inset-right);
+```
+```html
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+```
+The 3D canvas extends under the notch (looks better). HUD elements
+and interactive targets must stay inside safe areas.
 
-8. **Buttons have depth.** Beveled, 3D press states. Never flat.
+### Responsive Breakpoints
+| Breakpoint | Target             | Changes                              |
+|------------|--------------------|--------------------------------------|
+| < 380px    | iPhone SE, small   | Smallest HUD, single-row tray        |
+| 380-480px  | Standard phones    | Default mobile layout                |
+| 480-768px  | Large phones/small tablets | Slightly larger HUD, 2-row tray option |
+| 768-1024px | Tablets            | More battlefield visible, larger cards|
+| 1024px+    | Desktop            | Mouse, hover states, keyboard shortcuts|
 
-9. **Mobile-first, desktop-compatible.** Touch is primary input. Mouse/
-   keyboard works but isn't the design target.
+What scales: canvas, camera frustum, spacing.
+What stays fixed: touch targets (48px), font minimums (14px body),
+icon sizes (24-32px), HUD bar height (48-56px).
 
-10. **Simple > clever.** If a 10-year-old can't figure it out in 5
-    seconds, it's too complex.
+### 3D Performance on Mobile
+```tsx
+<Canvas
+  dpr={[1, 2]}
+  gl={{ antialias: false, powerPreference: 'high-performance' }}
+>
+```
+- Cap DPR at 2 (phones with DPR 3-4 render 9-16x more pixels otherwise)
+- Disable MSAA, use FXAA post-process if needed (cheaper)
+- Shadow maps: 512-1024 on mobile, 2048 on desktop
+- Max 50 draw calls on mobile (use instanced meshes for soldiers)
+- Use drei `<PerformanceMonitor>` to auto-downgrade DPR when FPS drops
+- ONE canvas only (iOS limits WebGL contexts per page)
+- Handle `webglcontextlost` event (iOS 17+ aggressively kills contexts
+  when tab is backgrounded)
+
+### Game Feel (cheap wins, massive impact)
+- **Screen shake on explosions:** Random camera offset decaying over
+  200ms. 3-5 diminishing offsets.
+- **Scale bounce on tap:** Press to 0.92 over 50ms, spring to 1.0 over
+  150ms. `cubic-bezier(0.34, 1.56, 0.64, 1)`.
+- **Number pop on resource change:** Tween displayed value over 300ms.
+  Flash counter 1.2x scale + color highlight for 200ms.
+- **Particle burst on death:** 8-12 small pieces, outward with gravity,
+  fade over 400ms.
+- **Spring easing on ALL panel animations:** Entry 300ms with overshoot.
+  Exit 200ms ease-out. Never linear. Never `transition: all`.
+- **Only animate `transform` and `opacity`** for 60fps panel animations.
+
+### Panel Design (game-feel, not web-feel)
+- No drag handles. No rounded corners. No frosted glass. These scream
+  "iOS bottom sheet."
+- Use opaque themed backgrounds (wood texture, metal plate, canvas).
+- Spring physics animation (overshoot/bounce), not ease-in-out.
+- Info panels: 60-70% screen height, game visible behind dark scrim.
+- During combat: persistent tray covers max 20% of screen.
+- Dismiss: swipe-down or explicit close button. Never tap-on-scrim.
 
 ---
 
@@ -198,11 +220,9 @@ Physics comedy is the personality of the game:
 - Tanks driving off ledges in slow-mo
 - Mines sending soldiers pinwheeling skyward
 - Walls collapsing and burying troops in rubble
-- Rockets overshooting and knocking over giant background objects
-  (coffee mugs, pencil cups, books)
+- Rockets knocking over giant background objects (coffee mugs, books)
 
-The scale contrast (tiny soldiers vs huge household objects) is inherently
-funny. Lean into it on every map.
+The scale contrast (tiny soldiers vs huge household objects) IS the tone.
 
 ---
 
@@ -210,82 +230,39 @@ funny. Lean into it on every map.
 
 ### Philosophy: Levels are puzzles, not grinds.
 
-Every level is hand-crafted. Each one is a specific challenge that rewards
-the right strategy, not just raw power. Inspired by Angry Birds' puzzle
-design and Kingdom Rush's placement strategy.
+Hand-crafted. Specific challenges. Right strategy beats raw power.
 
-### The Teach-Test-Twist Pattern
+### Design Patterns
+- **Fixed placement slots** per level (foxholes, crate tops, elevated
+  spots). NOT freeform. This makes each level a placement puzzle.
+- **Unit restriction per level** -- forces varied strategies, like
+  Angry Birds restricting which birds you get.
+- **Teach-test-twist** for new mechanics: introduce in isolation, mix
+  with existing threats, then combine unexpectedly.
+- **Sawtooth difficulty** -- spike, dip, rise, breather. Never linear.
+  Target 3.2 average attempts per level. Max 5-7 for any single level.
 
-For every new mechanic or enemy type:
-1. **TEACH:** Introduce it in isolation. Few enemies, easy to observe.
-2. **TEST:** Mix it with existing threats. Player applies what they learned.
-3. **TWIST:** Combine it unexpectedly. Previous strategy fails, must adapt.
+### MVP Enemy Types (3 only -- expand later)
 
-### Enemy Property Matrix
+| Type     | Behavior                | Countered by          |
+|----------|-------------------------|-----------------------|
+| Infantry | Walks, shoots, swarms   | Splash/area damage    |
+| Jeep     | Fast, flanks            | Blocking units, mines |
+| Tank     | Armored, heavy damage   | Rockets, heavy weapons|
 
-| Property    | What it does                  | Countered by              |
-|-------------|-------------------------------|---------------------------|
-| Fast        | Jeeps, rushes past defenses   | Blocking units, slow traps |
-| Armored     | Tanks, resists small arms     | Rockets, heavy weapons     |
-| Swarm       | Infantry rush, overwhelms     | Splash/area damage         |
-| Shielded    | Front cover, directional      | Flanking, area damage      |
-| Stealth     | Scouts, bypasses detection    | Recon units/abilities      |
-| Flying      | Helicopters (post-launch)     | Anti-air weapons           |
+Future (Phase 5): shielded, stealth, flying. NOT in MVP.
 
-Combination enemies create "aha moments": an armored swarm needs explosive
-area damage. A fast stealth unit needs detection AND blocking.
+### Three-Star System
 
-### Fixed Placement Slots
+| Star | Criteria                                      |
+|------|-----------------------------------------------|
+| 1    | Complete the level (survive)                  |
+| 2    | Complete with budget remaining (efficiency)   |
+| 3    | Level-specific bonus objective (mastery)      |
 
-Levels use FIXED placement positions (foxholes, crate tops, elevated spots)
-instead of freeform grid placement. This turns each level into a placement
-puzzle where every slot matters. Borrowed from Kingdom Rush -- the single
-biggest design decision that makes TD levels feel like puzzles.
+Star-gated world progression: need X total stars to unlock next world.
 
-### Unit Restriction Per Level
-
-Like Angry Birds restricts which birds you get, each level restricts which
-unit types are available. Forces players to solve with a specific toolkit
-instead of always using their favorite strategy.
-
-### Difficulty Curve (Sawtooth Pattern)
-
-Never linear. Spike on new mechanic, dip for practice, rise for test,
-breather before next spike.
-
-| Level Range | Role                      | First-attempt fail rate |
-|-------------|---------------------------|------------------------|
-| 1-5         | Tutorial, teach core loop | Near zero               |
-| 6-10        | First enemy variants      | ~15%                   |
-| 11-15       | First real challenge      | ~30%                   |
-| 16-20       | Combination challenges    | ~35%, breather at 18   |
-| 21-25       | Mid-game boss, new theme  | Boss at 25 with ~50%   |
-| 26-35       | New mechanic combos       | ~40%, sawtooth pattern |
-| 36-45       | Mastery levels            | ~50%                   |
-| 46-50       | Finale, combo enemies     | ~50-60%                |
-
-Target average: 3.2 attempts per level across the campaign.
-Never let any level require more than 5-7 attempts for an average player.
-75% of players abandon games due to unmanaged difficulty spikes.
-
-### Three-Star System (orthogonal criteria)
-
-| Star | Criteria                                  |
-|------|-------------------------------------------|
-| 1    | Complete the level (survive)              |
-| 2    | Complete with budget remaining (efficiency)|
-| 3    | Complete a level-specific bonus objective  |
-
-Bonus objective examples:
-- "No soldiers lost"
-- "Win without using [unit type]"
-- "Complete before wave X timer"
-- "Win using only 3 placement slots"
-
-Star-gated progression: need cumulative star count to unlock later worlds.
-
-### Level Config Format (JSON)
-
+### Level Config (JSON-driven, zero code changes for new levels)
 ```json
 {
   "id": "sandbox-03",
@@ -296,19 +273,11 @@ Star-gated progression: need cumulative star count to unlock later worlds.
     { "id": "slot-2", "pos": [4, 1.5, 1], "type": "elevated" }
   ],
   "waves": [
-    {
-      "delay": 0,
-      "enemies": [
-        { "type": "infantry", "count": 5, "spacing": 1.2, "path": "main" }
-      ]
-    },
-    {
-      "delay": 8,
-      "enemies": [
-        { "type": "infantry", "count": 3, "spacing": 1.0, "path": "main" },
-        { "type": "jeep", "count": 1, "spacing": 0, "path": "flank" }
-      ]
-    }
+    { "delay": 0, "enemies": [{ "type": "infantry", "count": 5, "path": "main" }] },
+    { "delay": 8, "enemies": [
+      { "type": "infantry", "count": 3, "path": "main" },
+      { "type": "jeep", "count": 1, "path": "flank" }
+    ]}
   ],
   "available_units": ["rifle_soldier", "sandbag"],
   "budget": 500,
@@ -316,38 +285,26 @@ Star-gated progression: need cumulative star count to unlock later worlds.
     "one": { "type": "survive" },
     "two": { "type": "budget_remaining", "threshold": 200 },
     "three": { "type": "objective", "desc": "No soldiers lost" }
-  },
-  "first_time_unlock": null
+  }
 }
 ```
-
-50 new levels = 50 JSON files. Zero code changes.
 
 ---
 
 ## MAP THEMES
 
-Each theme is a household surface with unique "terrain" made from
-everyday objects. Visual variety comes from palette swaps, lighting
-changes, and prop permutation -- not new geometry.
+| World | Theme         | Levels | Props                              |
+|-------|---------------|--------|------------------------------------|
+| 1     | THE SANDBOX   | 1-8    | Buckets, shovels, pebbles, sticks  |
+| 2     | KITCHEN TABLE | 9-16   | Salt shakers, napkins, spoons, mugs|
+| 3     | BEDROOM FLOOR | 17-25  | Books, toy blocks, shoes, rulers   |
 
-| World | Theme         | Levels | Surface          | Props                              |
-|-------|---------------|--------|------------------|------------------------------------|
-| 1     | THE SANDBOX   | 1-10   | Sand             | Buckets, shovels, pebbles, sticks  |
-| 2     | KITCHEN TABLE | 11-20  | Wood grain       | Salt shakers, napkins, spoons, mugs|
-| 3     | BEDROOM FLOOR | 21-30  | Carpet/hardwood  | Books, toy blocks, shoes, rulers   |
-| 4     | WORKBENCH     | 31-40  | Plywood          | Tools, paint cans, nails, sandpaper|
-| 5     | BACKYARD      | 41-50  | Dirt/grass       | Rocks, garden hose, flower pots    |
+**MVP: 25 levels across 3 themes.** Expand to 5 themes / 50 levels in
+Phase 5 once retention is validated.
 
-### Low-cost visual variety per world:
-- Color palette swap (warm sand vs cool workshop vs green backyard)
-- Time-of-day lighting (morning, noon, dusk, night)
-- Weather overlays (dust, rain, fog) as screen-space effects
-- 4-5 decorative props per world, placed in different arrangements
-- Camera angle variation (same terrain, different perspective)
-
-Asset budget for 50 levels: 5 ground textures, 5 background sets,
-~25 decorative prop models total. Tiny art investment.
+Visual variety per world: palette swap, time-of-day lighting, weather
+overlays (screen-space), prop permutation, camera angle variation.
+Minimal new geometry per world.
 
 ---
 
@@ -355,47 +312,39 @@ Asset budget for 50 levels: 5 ground textures, 5 background sets,
 
 | Layer     | Choice                    | Why                                     |
 |-----------|---------------------------|-----------------------------------------|
-| Language  | TypeScript                | Entire R3F/Rapier ecosystem is TS. Zero runtime cost. Refactoring safety for production. |
+| Language  | TypeScript                | Entire R3F/Rapier/Zustand ecosystem is TS. Zero runtime cost. |
 | Framework | React 19 + Vite           | Fast builds, modern React               |
-| 3D        | Three.js + R3F            | Proven, huge ecosystem                  |
+| 3D        | Three.js + R3F            | Proven, massive ecosystem               |
 | Physics   | @react-three/rapier       | Real rigid body physics = comedy        |
-| State     | Zustand                   | Lightweight, proven in prior versions   |
+| State     | Zustand                   | Lightweight, proven in prior builds     |
 | Backend   | Supabase                  | Auth, DB, storage, realtime for PVP     |
 | Styling   | CSS modules               | Scoped, no runtime cost                 |
 | Audio     | Howler.js                 | 7KB, spatial audio, sprites, mobile-ready|
 | Payments  | Stripe (PWA)              | Keep ~94% revenue vs ~70% app stores    |
-| Analytics | Defer to Phase 4          |                                         |
+
+### Visual Quality (port from ToySoldiers-two)
+- Plastic-sheen materials (MeshStandardMaterial, roughness 0.35, metalness 0)
+- Military color palette (army green, olive, khaki, sand brown)
+- Hierarchical skeletal soldier models (20+ mesh pieces, pose blending)
+- Three-point lighting + ambient + soft shadows (PCFSoftShadowMap)
+- Post-processing bloom (subtle, UnrealBloomPass at 0.3-0.4 strength)
+- ACESFilmic tone mapping
 
 ---
 
 ## AUDIO
 
-Sound is built into the engine from Phase 1, not bolted on later.
-Huge impact on game feel for minimal investment.
+Built in from Phase 1. Not bolted on later.
 
-### Library: Howler.js
-- 7KB gzipped, zero dependencies, MIT license
-- Audio sprites (pack all SFX into one file, named regions)
-- Spatial/3D audio (explosions louder when camera is near)
-- Handles iOS/Android autoplay restrictions
-- Concurrent playback (critical for battle scenes)
+**Library:** Howler.js (7KB, MIT, audio sprites, spatial, mobile-ready)
 
-### SFX Sources (all CC0 or royalty-free, no attribution required):
+**SFX sources (CC0 / royalty-free, no attribution):**
+Sonniss GDC (weapons, explosions, ambience), Kenney (impacts, UI),
+Mixkit (comedy physics), Freesound USC release (Wilhelm scream),
+Tallbeard Studios (music loops). CC0-only policy. Track sources in
+LICENSES.md.
 
-| Category       | Source              | Notes                                  |
-|----------------|---------------------|----------------------------------------|
-| Weapons        | Sonniss GDC bundles | Professional recordings, massive library|
-| Impacts        | Kenney Impact Sounds| 130 CC0 impact sounds                  |
-| UI             | Kenney UI Audio     | 50 CC0 purpose-built game UI sounds    |
-| Comedy physics | Mixkit cartoon      | Boings, splats, slide whistles         |
-| Wilhelm scream | Freesound (USC CC0) | The classic, legally safe CC0 version  |
-| Explosions     | Sonniss + Kenney    | Layer both for variety                 |
-| Ambient        | Sonniss GDC         | Wind, distant sounds, atmosphere       |
-| Music          | Tallbeard Studios   | 200+ CC0 seamless loops                |
-
-### Licensing rule: CC0 or Sonniss GDC license only. No CC-BY (attribution
-maintenance burden). No CC-BY-NC (kills commercial use). Track every
-sound file's source in a LICENSES.md from day one.
+See full details in audio/ directory once implemented.
 
 ---
 
@@ -424,105 +373,80 @@ src/
   assets/         -- SVG icons, fonts, audio sprite files
 ```
 
-### KEY ARCHITECTURE DECISIONS
-
-**Levels are data, not code.** Each level is a JSON config defining enemy
-types, positions, terrain objects, and win conditions. 50 new levels =
-50 new JSON files, zero code changes.
-
-**Training scenarios are pluggable.** Each weapon type has a scenario
-module. New weapon = new scenario file + config entry. The ML pipeline
-(neural net + genetic algorithm) is shared.
-
-**Engine has zero rendering deps.** Battle simulation runs headless.
-This means: deterministic replays, server-side validation (for PVP),
-and testability without a browser.
-
-**3D models are procedural.** No GLTF/GLB files. All geometry built
-from Three.js primitives. Keeps bundle tiny, loads instant, infinitely
-tweakable.
-
-**Audio from day one.** Howler.js sprite system integrated in Phase 1.
-Every physics collision, every shot fired, every UI tap has sound.
+**Key decisions:**
+- Levels are data (JSON), not code
+- Training scenarios are pluggable (new weapon = new scenario file)
+- Engine has zero rendering deps (enables headless replay + PVP validation)
+- 3D models are procedural (no GLTF/GLB, tiny bundle, instant load)
+- Audio from day one (every collision, shot, and tap has sound)
 
 ---
 
-## MVP DELIVERABLES (phased)
+## MVP DELIVERABLES
 
 ### PHASE 1 -- The Vertical Slice
-One complete level, playable end to end with sound.
-- [ ] Project scaffolding (Vite + React 19 + R3F + Rapier + Zustand + TS)
-- [ ] Howler.js audio system with initial SFX sprites
-- [ ] One soldier model with idle/walk/fire/death animations + ragdoll
-- [ ] One map theme (Sandbox) with terrain objects + placement slots
-- [ ] Placement phase (drag soldiers from tray to fixed slots)
-- [ ] Battle phase (soldiers fight, Rapier physics, projectiles)
-- [ ] Physics comedy (ragdolls, falling off edges, destruction + sounds)
-- [ ] Victory/defeat screen with gold reward + stars
-- [ ] Basic HUD (gold, compute, wave counter)
-- **Goal: "Is this fun?" If no, iterate before building more.**
+(See "Phase 1 Scope" at top of this document)
+**Gate: "Is this fun?"**
 
 ### PHASE 2 -- The Training Loop
-- [ ] Roster system (bottom sheet, 3D soldier figures, swipe)
-- [ ] Training arena with neuroevolution (port from solder-four)
-- [ ] Weapon skill graduation flow
-- [ ] Compute currency (100/day free drip, 7-day streak bonus)
-- [ ] Gold spending (recruit 200g, heal 50-100g, blueprints 300-500g)
-- [ ] 3-5 Sandbox levels requiring trained skills to beat
-- [ ] Shop bottom sheet (compute packs, daily claim, first-purchase 2x)
-- **Goal: "Does the compute economy create desire?" If no, rebalance.**
+- Roster bottom sheet (3D figures, swipe, tap to expand)
+- Training arena with neuroevolution (port from solder-four)
+- Weapon skill graduation flow
+- Compute: daily free claim, spend on training
+- Gold: earn from battles, spend on recruit/heal/blueprints
+- Shop bottom sheet (compute packs, daily claim)
+- 3-5 more Sandbox levels requiring trained skills
+- **Gate: "Does compute create desire?"**
 
 ### PHASE 3 -- The Campaign
-- [ ] Map screen with level nodes + star gating
-- [ ] 5 map themes, 10 levels each (50 levels total)
-- [ ] Enemy variety (infantry, jeep, tank, armored, stealth, swarm)
-- [ ] 4+ weapon types trainable (rifle, rocket, grenade, MG)
-- [ ] Difficulty curve tuning (sawtooth, 3.2 avg attempts)
-- [ ] Three-star system (survive / efficiency / bonus objective)
-- [ ] Unit restriction per level
-- **Goal: "Do players come back daily?" If no, adjust economy + content.**
+- Map screen with level nodes + star gating
+- 3 themes, 25 levels total
+- Difficulty curve tuning (sawtooth)
+- Unit restriction per level
+- **Gate: "Do players come back daily?"**
 
 ### PHASE 4 -- Production Polish
-- [ ] Supabase auth + cloud save
-- [ ] Stripe compute purchases (PWA, first-purchase 2x, starter pack)
-- [ ] Battle Pass ($4.99/mo, daily bonus compute + skins + gold multiplier)
-- [ ] Analytics pipeline (level completion, compute spend, retention)
-- [ ] Full audio pass (all SFX, music loops, spatial audio)
-- [ ] Performance optimization (60fps mobile, <3s load, <2MB bundle)
-- [ ] Onboarding (first 3 levels teach everything, no tutorial text)
-- [ ] Contextual offers (comeback, post-defeat bundles)
-- **Goal: Soft launch ready.**
+- Supabase auth + cloud save
+- Stripe purchases + Battle Pass + contextual offers
+- Analytics (retention, compute spend, level completion)
+- Full audio pass (spatial, music, all SFX)
+- Performance optimization (60fps mobile)
+- Onboarding (first 3 levels teach everything through play)
+- **Gate: Soft launch ready.**
 
-### PHASE 5 -- Growth (post-launch)
-- [ ] PVP async raids
-- [ ] New map themes + levels
-- [ ] New weapon types + soldier classes (bomber, sniper, medic)
-- [ ] Flying enemies (helicopters) + anti-air weapons
-- [ ] Social features (friends, replays)
-- [ ] Seasonal content + limited-time events
+### PHASE 5 -- Growth
+- PVP async raids
+- 2 more map themes (Workbench, Backyard) + 25 more levels
+- New weapons + soldier classes + enemy types (shielded, stealth, flying)
+- Social: friends, replays, sharing ("friend slop" viral version)
+- Seasonal content + events
 
 ---
 
 ## WHAT WE ARE NOT BUILDING
 
 - Base building (too confusing, proven across 3 versions)
-- Real-time PVP in MVP (async only, later)
-- Complex tutorial systems (the game teaches through play)
-- Account settings pages
+- Real-time PVP in MVP
+- Tutorial systems (the game teaches through play)
+- Settings/account pages
 - Any screen that looks like a web app
-- Native app wrappers (PWA first, native if metrics justify)
-- Freeform placement grids (fixed slots only -- makes levels puzzles)
+- Freeform placement (fixed slots only)
+- Native app wrappers (PWA first)
+- More than 3 enemy types in MVP
+- More than 3 map themes in MVP
 
 ---
 
 ## PERFORMANCE TARGETS
 
-- 60fps on mid-tier mobile (iPhone 12 / Pixel 6 class)
+- 60fps on mid-tier mobile (iPhone 12 / Pixel 6)
 - <3 second initial load
-- <100ms input latency on placement/tap
-- Max 50 physics bodies per battle scene
-- Max 30 soldiers on screen simultaneously
-- Bundle size <2MB (no GLTF, no heavy deps)
+- <100ms input latency
+- Max 50 Rapier physics bodies per scene
+- Max 30 soldiers on screen
+- Max 50 draw calls on mobile (instanced meshes)
+- Bundle size <2MB
+- DPR capped at 2
 
 ---
 
