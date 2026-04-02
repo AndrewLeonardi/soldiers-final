@@ -145,11 +145,15 @@ function CameraController() {
   return null
 }
 
-export function BattleScene() {
+interface BattleSceneProps {
+  selectedUnit: string | null
+  onSlotClick: (slotId: string, pos: [number, number, number]) => void
+}
+
+export function BattleScene({ selectedUnit, onSlotClick }: BattleSceneProps) {
   const slots = useGameStore((s) => s.slots)
   const playerUnits = useGameStore((s) => s.playerUnits)
   const phase = useGameStore((s) => s.phase)
-
 
   return (
     <>
@@ -165,7 +169,16 @@ export function BattleScene() {
 
       {/* Placement slots */}
       {phase === 'placement' && slots.map((slot) => (
-        <SlotMarker key={slot.id} slot={slot} />
+        <SlotMarker
+          key={slot.id}
+          slot={slot}
+          isTarget={!!selectedUnit && !slot.occupied}
+          onPointerDown={() => {
+            if (selectedUnit && !slot.occupied) {
+              onSlotClick(slot.id, slot.pos)
+            }
+          }}
+        />
       ))}
 
       {/* Player soldiers */}

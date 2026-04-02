@@ -1,0 +1,215 @@
+/* ── HUD (top bar) ──────────────────────────────────────── */
+
+.hud {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  padding-top: env(safe-area-inset-top);
+  z-index: 10;
+  pointer-events: none;
+}
+
+.hud-resource {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 6px 14px;
+  pointer-events: auto;
+}
+
+.hud-resource-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+}
+
+.hud-resource-icon.gold {
+  background: radial-gradient(circle at 35% 35%, #FFD700, #B8860B);
+  box-shadow: 0 0 6px rgba(255, 215, 0, 0.4);
+}
+
+.hud-resource-icon.compute {
+  background: radial-gradient(circle at 35% 35%, #4ADE80, #22863a);
+  box-shadow: 0 0 6px rgba(74, 222, 128, 0.4);
+}
+
+.hud-resource-value {
+  font-family: var(--font-display);
+  font-size: 15px;
+  color: var(--text-white);
+  min-width: 40px;
+}
+
+.hud-phase {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--gold-text);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(212, 170, 64, 0.3);
+  border-radius: 4px;
+  padding: 4px 12px;
+}
+
+/* ── Placement Tray ─────────────────────────────────────── */
+
+.placement-tray {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 12px 12px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  z-index: 10;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.placement-tray::-webkit-scrollbar {
+  display: none;
+}
+
+.placement-tray-bg {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 120px;
+  background: linear-gradient(to top, rgba(26, 42, 20, 0.95), rgba(26, 42, 20, 0.7), transparent);
+  z-index: 9;
+  pointer-events: none;
+}
+
+/* ── Unit Card ──────────────────────────────────────────── */
+
+.unit-card {
+  flex-shrink: 0;
+  width: 80px;
+  background: rgba(30, 46, 24, 0.9);
+  border: 2px solid rgba(74, 222, 128, 0.3);
+  border-radius: 8px;
+  padding: 8px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-spring),
+              border-color var(--dur-fast);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.unit-card:active {
+  transform: scale(0.92);
+}
+
+.unit-card.selected {
+  border-color: #4ADE80;
+  background: rgba(74, 222, 128, 0.15);
+  box-shadow: 0 0 12px rgba(74, 222, 128, 0.3);
+}
+
+.unit-card.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.unit-card-icon {
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.unit-card-icon svg {
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+}
+
+.unit-card-name {
+  font-family: var(--font-display);
+  font-size: 9px;
+  color: var(--text-white);
+  text-align: center;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.unit-card-cost {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--gold-text);
+}
+
+.unit-card-cost-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #FFD700, #B8860B);
+}
+
+/* ── GO Button ──────────────────────────────────────────── */
+
+.go-button {
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+  border: none;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #ef4444, #b91c1c);
+  box-shadow: 0 4px 12px rgba(185, 28, 28, 0.5),
+              0 0 20px rgba(239, 68, 68, 0.3),
+              inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  color: white;
+  font-family: var(--font-display);
+  font-size: 18px;
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-spring),
+              box-shadow var(--dur-fast);
+  touch-action: none;
+}
+
+.go-button:active {
+  transform: scale(0.9);
+  box-shadow: 0 2px 6px rgba(185, 28, 28, 0.4);
+}
+
+.go-button:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* ── Tray enter/exit animation ──────────────────────────── */
+
+.placement-tray.hidden {
+  transform: translateY(100%);
+  transition: transform 0.3s var(--ease-out);
+}
+
+.placement-tray.visible {
+  transform: translateY(0);
+  transition: transform 0.3s var(--ease-spring);
+}
