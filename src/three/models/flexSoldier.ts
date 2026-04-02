@@ -644,3 +644,43 @@ export function poseTurretOperator(p: SoldierParts, t: number): void {
   const elbowX = -0.5
   p.rifleGrp.rotation.x = -(spineX + armX + elbowX)
 }
+
+/** Unified animation dispatcher -- maps UnitStatus to pose functions */
+export function animateFlexSoldier(
+  soldier: FlexSoldierResult,
+  status: string,
+  elapsed: number,
+  _dt: number,
+): void {
+  const p = soldier.parts
+  switch (status) {
+    case 'idle':
+      poseIdle(p, elapsed)
+      break
+    case 'walking':
+      poseWalk(p, elapsed)
+      break
+    case 'firing': {
+      const cycle = (elapsed % 1.2) / 1.2
+      if (cycle < 0.3) {
+        poseShoot(p, cycle / 0.3)
+      } else {
+        poseAim(p, elapsed)
+      }
+      if (p.muzzleFlash) {
+        p.muzzleFlash.visible = cycle > 0.1 && cycle < 0.2
+      }
+      break
+    }
+    case 'hit':
+      poseHit(p, elapsed % 0.5)
+      break
+    case 'dead': {
+      const deathProgress = Math.min(1, (elapsed % 3) / 1.5)
+      poseDeath(p, deathProgress)
+      break
+    }
+    default:
+      poseIdle(p, elapsed)
+  }
+}

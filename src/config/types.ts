@@ -1,0 +1,79 @@
+export type WeaponType = 'rifle' | 'rocketLauncher' | 'grenade' | 'machineGun'
+
+export type EnemyType = 'infantry' | 'jeep' | 'tank'
+
+export type SlotType = 'ground' | 'elevated'
+
+export type GamePhase = 'placement' | 'battle' | 'result'
+
+export type Team = 'green' | 'tan'
+
+export type UnitStatus = 'idle' | 'walking' | 'firing' | 'hit' | 'dead'
+
+export interface PlacementSlot {
+  id: string
+  pos: [number, number, number]
+  type: SlotType
+  occupied: boolean
+}
+
+export interface WaveEnemy {
+  type: EnemyType
+  count: number
+  spacing?: number
+  path: string
+}
+
+export interface Wave {
+  delay: number
+  enemies: WaveEnemy[]
+}
+
+export interface StarCriteria {
+  type: 'survive' | 'budget_remaining' | 'objective'
+  threshold?: number
+  desc?: string
+}
+
+export interface LevelConfig {
+  id: string
+  theme: string
+  name: string
+  placement_slots: { id: string; pos: [number, number, number]; type: SlotType }[]
+  waves: Wave[]
+  available_units: string[]
+  budget: number
+  stars: {
+    one: StarCriteria
+    two: StarCriteria
+    three: StarCriteria
+  }
+}
+
+export interface GameUnit {
+  id: string
+  type: 'soldier' | 'wall' | 'sandbag'
+  team: Team
+  position: [number, number, number]
+  rotation: number
+  health: number
+  maxHealth: number
+  status: UnitStatus
+  weapon: WeaponType
+  lastFireTime: number
+  fireRate: number
+  range: number
+  damage: number
+  speed: number
+}
+
+export interface Projectile {
+  id: string
+  position: [number, number, number]
+  velocity: [number, number, number]
+  type: 'bullet' | 'rocket'
+  damage: number
+  ownerId: string
+  team: Team
+  age: number
+}
