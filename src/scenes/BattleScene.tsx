@@ -1,47 +1,65 @@
 import { useRef, useMemo } from 'react'
-import { useFrame, useThree } from '@react-three/fiber'
+import { useFrame } from '@react-three/fiber'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import * as THREE from 'three'
 import { useGameStore } from '@stores/gameStore'
 import { SoldierUnit } from '@three/models/SoldierUnit'
-import { SlotMarker } from '@three/physics/SlotMarker'
+import { BattlefieldProps } from '@three/models/sandboxProps'
+import { CameraRig } from '@three/camera/CameraRig'
+import type { GameUnit } from '@config/types'
+import { WEAPON_STATS, PLACEMENT_COSTS } from '@config/units'
+
+let unitIdCounter = 0
+function nextUnitId() { return `u-${++unitIdCounter}` }
+
+// ── Lighting ────────────────────────────────────────────
 
 function Lights() {
   return (
     <>
-      <ambientLight color={0x998866} intensity={1.2} />
+      <ambientLight color={0xb8a888} intensity={1.5} />
       <directionalLight
         color={0xfff5e0}
-        intensity={3.0}
-        position={[5, 10, 5]}
+        intensity={3.5}
+        position={[6, 12, 6]}
         castShadow
         shadow-mapSize-width={1024}
         shadow-mapSize-height={1024}
         shadow-camera-near={0.5}
-        shadow-camera-far={30}
-        shadow-camera-left={-12}
-        shadow-camera-right={12}
-        shadow-camera-top={8}
-        shadow-camera-bottom={-8}
+        shadow-camera-far={35}
+        shadow-camera-left={-14}
+        shadow-camera-right={14}
+        shadow-camera-top={10}
+        shadow-camera-bottom={-10}
       />
       <directionalLight
         color={0x88aacc}
-        intensity={0.6}
-        position={[-5, 6, 3]}
+        intensity={0.8}
+        position={[-6, 8, 3]}
       />
-      <pointLight color={0xd4aa40} intensity={1.5} position={[-4, 4, -6]} distance={15} />
+      <pointLight color={0xd4aa40} intensity={2.0} position={[-5, 5, -8]} distance={20} />
     </>
   )
 }
 
-function SandboxGround() {
-  const meshRef = useRef<THREE.Mesh>(null)
+// ── Ground ──────────────────────────────────────────────
 
+function SandboxGround() {
   const geometry = useMemo(() => {
     const geo = new THREE.PlaneGeometry(20, 14, 60, 40)
     const pos = geo.attributes.position as THREE.BufferAttribute
     for (let i = 0; i < pos.count; i++) {
-      pos.setZ(i, pos.getZ(i) + (Math.random() - 0.5) * 0.06)
+      // Create some sand dune hills
+      const x = pos.getX(i)
+      const y = pos.getY(i)
+      let height = (Math.random() - 0.5) * 0.06
+      // Dune near player side
+      height += 0.2 * Math.exp(-((x + 4) ** 2 + (y - 1) ** 2) / 3)
+      // Dune near center
+      height += 0.15 * Math.exp(-((x - 1) ** 2 + (y + 2) ** 2) / 4)
+      // Subtle hill on enemy side
+      height += 0.12 * Math.exp(-((x - 6) ** 2 + y ** 2) / 5)
+      pos.setZ(i, pos.getZ(i) + height)
     }
     geo.computeVertexNormals()
     return geo
@@ -51,7 +69,6 @@ function SandboxGround() {
     <>
       {/* Visual ground */}
       <mesh
-        ref={meshRef}
         geometry={geometry}
         rotation-x={-Math.PI / 2}
         receiveShadow
@@ -63,123 +80,123 @@ function SandboxGround() {
         />
       </mesh>
 
-      {/* Physics floor -- thin box collider */}
+      {/* Physics floor */}
       <RigidBody type="fixed" position={[0, -0.05, 0]}>
         <CuboidCollider args={[10, 0.05, 7]} />
       </RigidBody>
-
-      {/* Table edges -- invisible walls that let things fall off */}
-      {/* Left edge */}
-      <RigidBody type="fixed" position={[-10.5, 0.5, 0]}>
-        <CuboidCollider args={[0.5, 1, 7]} />
-      </RigidBody>
-      {/* Back edge */}
-      <RigidBody type="fixed" position={[0, 0.5, -7.5]}>
-        <CuboidCollider args={[10, 1, 0.5]} />
-      </RigidBody>
-
-      {/* NO right or front edge -- soldiers can fall off! */}
     </>
   )
 }
 
-function SandboxProps() {
+// ── Player Zone Indicator ───────────────────────────────
+
+function PlayerZone({ visible }: { visible: boolean }) {
+  if (!visible) return null
   return (
-    <>
-      {/* Bucket */}
-      <RigidBody type="fixed" position={[-5, 0, 3]}>
-        <mesh castShadow position={[0, 0.4, 0]}>
-          <cylinderGeometry args={[0.5, 0.4, 0.8, 12]} />
-          <meshStandardMaterial color={0x3d6b4f} roughness={0.35} metalness={0} />
-        </mesh>
-        <CuboidCollider args={[0.5, 0.4, 0.5]} position={[0, 0.4, 0]} />
-      </RigidBody>
-
-      {/* Shovel */}
-      <RigidBody type="fixed" position={[2, 0, -3]} rotation={[0, 0.4, 0]}>
-        <group>
-          {/* Handle */}
-          <mesh castShadow position={[0, 0.3, 0]} rotation={[0, 0, 0.3]}>
-            <cylinderGeometry args={[0.04, 0.04, 1.5, 6]} />
-            <meshStandardMaterial color={0x6b4226} roughness={0.6} />
-          </mesh>
-          {/* Blade */}
-          <mesh castShadow position={[-0.5, 0.05, 0]}>
-            <boxGeometry args={[0.4, 0.05, 0.35]} />
-            <meshStandardMaterial color={0x888888} roughness={0.3} metalness={0.4} />
-          </mesh>
-        </group>
-        <CuboidCollider args={[0.5, 0.3, 0.3]} position={[0, 0.3, 0]} />
-      </RigidBody>
-
-      {/* Pebbles */}
-      {[[-2, 0.08, 4], [4, 0.06, 2], [-6, 0.07, -1]].map((pos, i) => (
-        <mesh key={i} castShadow position={pos as [number, number, number]}>
-          <sphereGeometry args={[0.08 + i * 0.03, 6, 4]} />
-          <meshStandardMaterial
-            color={i % 2 === 0 ? 0x999988 : 0x887766}
-            roughness={0.8}
-          />
-        </mesh>
-      ))}
-    </>
+    <mesh rotation-x={-Math.PI / 2} position={[-5, 0.02, 0]}>
+      <planeGeometry args={[10, 14]} />
+      <meshStandardMaterial
+        color={0x4ADE80}
+        transparent
+        opacity={0.04}
+        depthWrite={false}
+        side={THREE.DoubleSide}
+      />
+    </mesh>
   )
 }
 
-function CameraController() {
-  const { camera } = useThree()
+// ── Placement Click Handler ─────────────────────────────
+
+function PlacementGround({
+  orbitingRef,
+  selectedUnit,
+}: {
+  orbitingRef: React.MutableRefObject<boolean>
+  selectedUnit: string | null
+}) {
+  const addPlayerUnit = useGameStore((s) => s.addPlayerUnit)
+  const spendGold = useGameStore((s) => s.spendGold)
   const phase = useGameStore((s) => s.phase)
 
-  useFrame(() => {
-    if (phase === 'placement') {
-      // Overhead view for placement
-      camera.position.lerp(new THREE.Vector3(0, 12, 8), 0.02)
-      camera.lookAt(0, 0, 0)
-    } else if (phase === 'battle') {
-      // Slightly closer during battle
-      camera.position.lerp(new THREE.Vector3(0, 9, 7), 0.02)
-      camera.lookAt(0, 0, 0)
-    }
-  })
+  if (phase !== 'placement' || !selectedUnit) return null
 
-  return null
+  return (
+    <mesh
+      rotation-x={-Math.PI / 2}
+      position={[0, 0.01, 0]}
+      onPointerUp={(e) => {
+        if (orbitingRef.current) return
+        e.stopPropagation()
+
+        const point = e.point
+        // Snap to 0.5 grid
+        const x = Math.round(point.x * 2) / 2
+        const z = Math.round(point.z * 2) / 2
+
+        // Player side only (x <= 0)
+        if (x > 0.5) return
+
+        const cost = PLACEMENT_COSTS[selectedUnit] ?? 100
+        if (!spendGold(cost)) return
+
+        const isSoldier = selectedUnit.includes('soldier')
+        const weaponKey = selectedUnit === 'rocket_soldier' ? 'rocketLauncher' as const : 'rifle' as const
+        const stats = isSoldier ? WEAPON_STATS[weaponKey] : { health: 150, speed: 0, range: 0, damage: 0, fireRate: 0 }
+
+        const unit: GameUnit = {
+          id: nextUnitId(),
+          type: isSoldier ? 'soldier' : selectedUnit === 'sandbag' ? 'sandbag' : 'wall',
+          team: 'green',
+          position: [x, 0, z],
+          rotation: Math.PI / 2,
+          health: stats.health,
+          maxHealth: stats.health,
+          status: 'idle',
+          weapon: weaponKey,
+          lastFireTime: 0,
+          fireRate: stats.fireRate,
+          range: stats.range,
+          damage: stats.damage,
+          speed: stats.speed,
+        }
+
+        addPlayerUnit(unit)
+      }}
+    >
+      <planeGeometry args={[20, 14]} />
+      <meshBasicMaterial transparent opacity={0} />
+    </mesh>
+  )
 }
+
+// ── Main Scene ──────────────────────────────────────────
 
 interface BattleSceneProps {
   selectedUnit: string | null
-  onSlotClick: (slotId: string, pos: [number, number, number]) => void
+  orbitingRef: React.MutableRefObject<boolean>
 }
 
-export function BattleScene({ selectedUnit, onSlotClick }: BattleSceneProps) {
-  const slots = useGameStore((s) => s.slots)
+export function BattleScene({ selectedUnit, orbitingRef }: BattleSceneProps) {
   const playerUnits = useGameStore((s) => s.playerUnits)
   const phase = useGameStore((s) => s.phase)
 
   return (
     <>
       <Lights />
-      <CameraController />
+      <CameraRig orbitingRef={orbitingRef} />
       <SandboxGround />
-      <SandboxProps />
+      <BattlefieldProps />
 
-      {/* Sky color */}
-      <color attach="background" args={[0x87CEEB]} />
-      {/* Subtle distance fog */}
-      <fog attach="fog" args={[0xc2b280, 20, 40]} />
+      {/* Warm sky gradient */}
+      <color attach="background" args={[0x88bbdd]} />
+      <fog attach="fog" args={[0xd4c8a0, 18, 40]} />
 
-      {/* Placement slots */}
-      {phase === 'placement' && slots.map((slot) => (
-        <SlotMarker
-          key={slot.id}
-          slot={slot}
-          isTarget={!!selectedUnit && !slot.occupied}
-          onPointerDown={() => {
-            if (selectedUnit && !slot.occupied) {
-              onSlotClick(slot.id, slot.pos)
-            }
-          }}
-        />
-      ))}
+      {/* Player zone indicator during placement */}
+      <PlayerZone visible={phase === 'placement' && !!selectedUnit} />
+
+      {/* Invisible click plane for freeform placement */}
+      <PlacementGround orbitingRef={orbitingRef} selectedUnit={selectedUnit} />
 
       {/* Player soldiers */}
       {playerUnits.map((unit) => (

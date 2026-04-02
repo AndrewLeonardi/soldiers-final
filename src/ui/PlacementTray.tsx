@@ -1,20 +1,20 @@
-import { useState } from 'react'
 import { useGameStore } from '@stores/gameStore'
 import { PLACEMENT_COSTS } from '@config/units'
+import { SoldierIcon, RocketLauncherIcon, SandbagIcon, WallIcon, GoldCoinIcon } from './ToyIcons'
 import '@styles/game-ui.css'
 
 interface UnitOption {
   id: string
   name: string
   cost: number
-  icon: string
+  Icon: React.FC<{ size?: number; color?: string }>
 }
 
 const UNIT_OPTIONS: UnitOption[] = [
-  { id: 'rifle_soldier', name: 'RIFLE', cost: PLACEMENT_COSTS.rifle_soldier, icon: 'R' },
-  { id: 'rocket_soldier', name: 'ROCKET', cost: PLACEMENT_COSTS.rocket_soldier, icon: 'K' },
-  { id: 'sandbag', name: 'SANDBAG', cost: PLACEMENT_COSTS.sandbag, icon: 'S' },
-  { id: 'wall', name: 'WALL', cost: PLACEMENT_COSTS.wall, icon: 'W' },
+  { id: 'rifle_soldier', name: 'RIFLE', cost: PLACEMENT_COSTS.rifle_soldier, Icon: SoldierIcon },
+  { id: 'rocket_soldier', name: 'ROCKET', cost: PLACEMENT_COSTS.rocket_soldier, Icon: RocketLauncherIcon },
+  { id: 'sandbag', name: 'SANDBAG', cost: PLACEMENT_COSTS.sandbag, Icon: SandbagIcon },
+  { id: 'wall', name: 'WALL', cost: PLACEMENT_COSTS.wall, Icon: WallIcon },
 ]
 
 interface PlacementTrayProps {
@@ -39,6 +39,7 @@ export function PlacementTray({ onSelect, selectedUnit }: PlacementTrayProps) {
         {UNIT_OPTIONS.map((unit) => {
           const canAfford = gold >= unit.cost
           const isSelected = selectedUnit === unit.id
+          const iconColor = isSelected ? '#4ADE80' : '#ddeedd'
 
           return (
             <div
@@ -50,22 +51,11 @@ export function PlacementTray({ onSelect, selectedUnit }: PlacementTrayProps) {
               }}
             >
               <div className="unit-card-icon">
-                <svg viewBox="0 0 24 24" style={{ color: isSelected ? '#4ADE80' : '#ddeedd' }}>
-                  {unit.id.includes('soldier') ? (
-                    // Soldier silhouette
-                    <path d="M12 2a3 3 0 100 6 3 3 0 000-6zM9 10a3 3 0 00-3 3v1h2l1 8h6l1-8h2v-1a3 3 0 00-3-3H9z" />
-                  ) : unit.id === 'sandbag' ? (
-                    // Sandbag
-                    <path d="M4 16h16v3H4v-3zm2-5h12v4H6v-4zm3-5h6v4H9V6z" />
-                  ) : (
-                    // Wall
-                    <path d="M3 8h7v4H3V8zm11 0h7v4h-7V8zM3 14h5v4H3v-4zm7 0h4v4h-4v-4zm6 0h5v4h-5v-4z" />
-                  )}
-                </svg>
+                <unit.Icon size={28} color={iconColor} />
               </div>
               <span className="unit-card-name">{unit.name}</span>
               <span className="unit-card-cost">
-                <span className="unit-card-cost-dot" />
+                <GoldCoinIcon size={12} />
                 {unit.cost}
               </span>
             </div>

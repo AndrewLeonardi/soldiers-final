@@ -17,11 +17,16 @@ interface GameState {
   waveTimer: number
   result: 'victory' | 'defeat' | null
   starsEarned: number
+  battleStartTime: number
 
   // Actions
   loadLevel: (config: LevelConfig) => void
   setPhase: (phase: GamePhase) => void
   addPlayerUnit: (unit: GameUnit) => void
+  addEnemyUnit: (unit: GameUnit) => void
+  updateUnit: (id: string, updates: Partial<GameUnit>) => void
+  addProjectile: (proj: Projectile) => void
+  removeProjectile: (id: string) => void
   occupySlot: (slotId: string) => void
   freeSlot: (slotId: string) => void
   spendGold: (amount: number) => boolean
@@ -47,6 +52,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   waveTimer: 0,
   result: null,
   starsEarned: 0,
+  battleStartTime: 0,
 
   loadLevel: (config) => set({
     level: config,
@@ -59,6 +65,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     waveTimer: 0,
     result: null,
     starsEarned: 0,
+    battleStartTime: 0,
     phase: 'placement',
   }),
 
@@ -66,6 +73,27 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   addPlayerUnit: (unit) => set((s) => ({
     playerUnits: [...s.playerUnits, unit],
+  })),
+
+  addEnemyUnit: (unit) => set((s) => ({
+    enemyUnits: [...s.enemyUnits, unit],
+  })),
+
+  updateUnit: (id, updates) => set((s) => ({
+    playerUnits: s.playerUnits.map((u) =>
+      u.id === id ? { ...u, ...updates } : u
+    ),
+    enemyUnits: s.enemyUnits.map((u) =>
+      u.id === id ? { ...u, ...updates } : u
+    ),
+  })),
+
+  addProjectile: (proj) => set((s) => ({
+    projectiles: [...s.projectiles, proj],
+  })),
+
+  removeProjectile: (id) => set((s) => ({
+    projectiles: s.projectiles.filter((p) => p.id !== id),
   })),
 
   occupySlot: (slotId) => set((s) => ({
@@ -91,7 +119,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   setResult: (result, stars) => set({ result, starsEarned: stars, phase: 'result' }),
 
-  startBattle: () => set({ phase: 'battle', currentWave: 0, waveTimer: 0 }),
+  startBattle: () => set({ phase: 'battle', currentWave: 0, waveTimer: 0, battleStartTime: 0 }),
 
   resetLevel: () => {
     const { level } = get()
