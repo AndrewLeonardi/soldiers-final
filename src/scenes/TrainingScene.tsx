@@ -22,7 +22,7 @@ import {
   poseThrow,
 } from '@three/models/flexSoldier'
 import type { SoldierParts } from '@three/models/flexSoldier'
-import { applyWeaponToSoldier } from '@three/models/weaponMeshes'
+import { createWeaponMesh, applyWeaponToSoldier } from '@three/models/weaponMeshes'
 import { getPlasticMat, TOY } from '@three/models/materials'
 import type { TankSimState } from '@engine/ml/scenarios/tankScenario'
 
@@ -118,7 +118,16 @@ function TrainingSoldier() {
     partsRef.current = result.parts
     soldierRef.current.add(result.group)
 
-    if (weapon && weapon !== 'rifle') {
+    if (weapon === 'rocketLauncher') {
+      // For rocket: clear rifle children, add launcher INTO rifleGrp
+      // so the kneeling pose rotates the weapon correctly on the shoulder
+      const rifleGrp = result.parts.rifleGrp
+      while (rifleGrp.children.length) rifleGrp.remove(rifleGrp.children[0])
+      const launcher = createWeaponMesh('rocketLauncher')
+      launcher.scale.setScalar(1.5)
+      launcher.position.set(0, 0, 0.1)
+      rifleGrp.add(launcher)
+    } else if (weapon && weapon !== 'rifle' && weapon !== 'tank') {
       applyWeaponToSoldier(result.parts, weapon, null)
     }
   }, [weapon])
