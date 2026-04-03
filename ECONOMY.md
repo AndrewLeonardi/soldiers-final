@@ -11,8 +11,9 @@ Reference this when implementing economy features in Phase 2+.
 skills via real neuroevolution. This is the ONLY source of revenue.
 
 **Unit economics:**
-- 1 basic weapon training = 100 Compute
-- 1 advanced weapon training = 200 Compute
+- 1 basic weapon training = 100 Compute (rocket, grenade)
+- 1 advanced weapon training = 200 Compute (machine gun)
+- 1 vehicle training = 300 Compute (tank)
 - Daily free drip: 100 Compute/day (exactly 1 basic training)
 - 7-day login streak bonus: 20/20/30/30/40/40/150 Compute (330 total/week)
 - Streak is forgiving -- missing a day doesn't reset, it pauses
@@ -103,4 +104,4 @@ Both paths are valid. Neither feels punished.
 
 ---
 
-*Last updated: 2026-04-02*
+*Last updated: 2026-04-03*

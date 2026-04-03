@@ -39,8 +39,8 @@ interface GameState {
 
 export const useGameStore = create<GameState>((set, get) => ({
   phase: 'placement',
-  gold: 500,
-  compute: 100,
+  gold: 10000,
+  compute: 10000,
   round: 1,
 
   level: null,

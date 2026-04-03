@@ -21,25 +21,38 @@ This is the production build. Every line of code serves the game.
 - [x] **3D Barracks hub** -- real flexSoldier models standing on a surface,
       tap to configure, recruit button, deploy button, hover effects
 - [x] **Soldier detail screen** -- 3D soldier preview (rotatable, drag-to-spin),
-      weapon cards with equipped/trained/locked states, training CTA overlay
-- [x] **Weapon system** -- shared weapon mesh factory (rifle, rocket, grenade, MG),
-      display-size weapons for detail view, weapon swap on soldier model
+      5 weapon cards (rifle, rocket, grenade, MG, tank) with states
+- [x] **Weapon system** -- shared weapon mesh factory (rifle, rocket, grenade,
+      MG), display-size weapons, weapon swap on soldier model
 - [x] **Mission briefing modal** -- game-style pre-battle screen showing
       level name, squad roster, BEGIN button
 - [x] **Roster-connected placement** -- placement tray shows YOUR soldiers
       by name (SGT RICO, PVT ACE) with equipped weapon type
 - [x] **Battlefield placement** -- placed soldiers spawn as flexSoldier models
       with correct weapon, connected to roster weapon stats
-- [x] Scene routing: barracks 3D scene vs battlefield scene based on phase
-
-### IN PROGRESS
-- [ ] Soldier detail weapon display -- 3D weapon models visible in cards
-      (display weapons built but layout needs polish)
-- [ ] Training visibility -- CTA overlay exists but training arena not built
+- [x] Scene routing: barracks, battlefield, training scenes based on phase
+- [x] **Visual overhaul** -- mobile game UI with chunky beveled buttons,
+      navy-blue gradient panels, gold borders, warm depth
+- [x] **ML Training System** -- full NERO hybrid neuroevolution:
+      - NeuralNet (6->12->4 feedforward, tanh, 136 weights)
+      - GeneticAlgorithm (pop=30, tournament selection, adaptive mutation)
+      - 5 weapon scenarios (rocket, grenade, MG, tank + rifle default)
+      - Hybrid approach: scripted physics + NN learns corrections
+      - Training store (Zustand) bridges engine to UI
+      - 3D Training Arena with soldier/tank, soda-can targets, explosions
+      - Weapon-specific poses (rocket kneeling, grenade throw, MG burst)
+      - Weapon-specific projectiles (rocket mesh+exhaust, grenade sphere,
+        MG bullets, tank shells) with impact explosions
+      - Procedural toy tank model (hull, tracks, rotating turret+barrel)
+      - TrainingHUD: generation counter, fitness %, sparkline, speed
+        controls (1x-50x), progress bar to graduation
+      - NeuralNetViz: SVG overlay showing live NN nodes + weighted
+        connections (green/red), weapon-specific labels
+      - GraduationBanner: "SKILL LEARNED!" celebration with stars
+      - Brain weights persist on SoldierProfile
+      - Training launched from soldier detail via "BEGIN TRAINING" CTA
 
 ### NOT STARTED (next priorities)
-- [ ] **ML/TRAINING SYSTEM** -- port NeuralNet + GeneticAlgorithm from V5,
-      build training arena with real-time neuroevolution visualization
 - [ ] **Battle simulation** -- wire BattleLoop, enemy spawning, combat AI,
       projectiles, damage, win/lose conditions
 - [ ] Store/shop screen (browse and buy soldiers, vehicles, items)
@@ -48,6 +61,7 @@ This is the production build. Every line of code serves the game.
 - [ ] Map/level select screen
 - [ ] Audio system (Howler.js + SFX)
 - [ ] Post-processing (bloom, vignette)
+- [ ] Roster persistence (localStorage/IndexedDB)
 
 ---
 
@@ -93,36 +107,47 @@ spent. Training is the entire business model.
 - Recruit [+] button (costs gold)
 - DEPLOY button transitions to placement
 - Adaptive camera: adjusts for soldier count and screen aspect ratio
+- Resource pills: gold + compute displayed in chunky bordered pills
 
-### 2. SOLDIER DETAIL -- BUILT (needs weapon display polish)
+### 2. SOLDIER DETAIL -- BUILT
 - 3D soldier preview (rotatable, drag-to-spin, idle animation)
-- Weapon cards: equipped (green), trained (gold), locked (dimmed + lock)
-- Tapping locked weapon shows TRAINING REQUIRED overlay
-- Training CTA: pulsing button with compute cost
+- 5 weapon cards: rifle, rocket, grenade, machine gun, tank
+- States: equipped (green), unlocked (check), locked (dimmed + lock + cost)
+- Tapping locked weapon shows TRAINING REQUIRED overlay with compute cost
+- "BEGIN TRAINING" button launches real ML training arena
 - Back button returns to barracks
 
-### 3. MISSION BRIEFING -- BUILT
+### 3. TRAINING ARENA -- BUILT
+- 3D arena: soldier/tank + red soda-can targets on sandy ground
+- Weapon-specific rendering:
+  - Rocket: soldier kneels with launcher on shoulder, fires rocket meshes
+  - Grenade: soldier throws, grenade arcs with splash
+  - Machine Gun: soldier aims, rapid bullet trails
+  - Tank: procedural tank drives, turret auto-tracks, shells fire
+- Impact explosions (expanding orange fireball on rocket/grenade/shell hit)
+- TrainingHUD overlay: GEN counter, fitness %, sparkline, speed (1x-50x),
+  progress bar, pause/stop buttons
+- NeuralNetViz: SVG showing 6 input -> 12 hidden -> 4 output nodes
+  with weighted connections (green=positive, red=negative)
+- GraduationBanner: "SKILL LEARNED!" with 3 gold stars, fitness stats,
+  "Save & Continue" button
+- Brain weights saved to SoldierProfile on graduation
+
+### 4. MISSION BRIEFING -- BUILT
 - Full-screen modal over battlefield
 - Shows level name, your squad roster with weapons + stars
 - BEGIN button dismisses and reveals placement tray
 
-### 4. PLACEMENT -- BUILT
-- Bottom tray shows YOUR soldiers by name + weapon type + gold cost
+### 5. PLACEMENT -- BUILT
+- Bottom tray panel with YOUR soldiers by name + weapon type + gold cost
 - Tap soldier, tap battlefield to place
 - GO button starts battle
 
-### 5. BATTLE -- PARTIAL (visuals only, no simulation)
+### 6. BATTLE -- PARTIAL (visuals only, no simulation)
 - Placed soldiers appear with correct weapons
 - Battlefield with props visible
 - Camera orbit works
 - No enemy spawning, no combat, no win/lose yet
-
-### 6. TRAINING ARENA -- NOT BUILT
-- Will be launched from soldier detail when tapping TRAIN
-- Real-time neuroevolution visualization
-- NERO hybrid: scripted physics + neural net corrections
-- GA: 20-30 population, tournament selection
-- Speed controls, fitness progress, milestone notifications
 
 ### 7. MAP / LEVEL SELECT -- NOT BUILT
 ### 8. SHOP / STORE -- NOT BUILT
@@ -133,24 +158,30 @@ spent. Training is the entire business model.
 
 Training is where compute gets spent. It must be visually spectacular.
 
-**Architecture (from V5 soldier-test):**
-- NERO-inspired hybrid: script the ballistics physics, neural net learns
-  aim corrections + fire timing
-- Small GA: 20-30 population, 12 hidden neurons, 136 weights
-- Trains fast in-browser (client-side)
-- Fitness function: hits (200pts), near-misses (32pts), accuracy bonus
+**Architecture (BUILT):**
+- NERO-inspired hybrid: scripted physics (ballistic arcs, auto-targeting,
+  gravity) + neural net learns corrections (aim, elevation, fire timing)
+- NeuralNet: 6 inputs -> 12 hidden (tanh) -> 4 outputs (tanh) = 136 weights
+- GeneticAlgorithm: pop=30, 6 elites, tournament selection (k=3),
+  uniform crossover, Gaussian mutation with adaptive decay (0.98^gen)
+- Weapon scenarios:
+  - Rocket: scripted ballistics + NN aim/elevation corrections + fire trigger
+  - Grenade: scripted arc + NN throw timing/angle + splash optimization
+  - Machine Gun: scripted aim + NN sweep/burst timing
+  - Tank: scripted turret tracking + NN steering/throttle/fire decisions
+- Fitness functions per weapon: hits (200pts), near-misses, accuracy bonus
+- Training store (Zustand): generation, population, fitness, speed, graduation
+- Graduation: bestFitness >= threshold AND generation >= 5
+- Brain weights persist on SoldierProfile as number[] (136 values)
 
-**UX flow:**
+**UX flow (BUILT):**
 1. Tap locked weapon in soldier detail
-2. "TRAINING REQUIRED" overlay appears
-3. Tap TRAIN (costs compute)
-4. Training arena: watch soldiers evolve in real-time
-5. Graduation: "SKILL UNLOCKED" moment
-6. Return to soldier detail with weapon now available
-
-**Status:** ML engine not ported yet. Training CTA overlay exists as
-visual placeholder. NeuralNet + GeneticAlgorithm code exists in V5
-(soldier-test repo) ready to port.
+2. "TRAINING REQUIRED" overlay appears with gold-bordered panel
+3. Tap "BEGIN TRAINING" (costs compute)
+4. Training arena: watch soldier/tank evolve in real-time
+5. Speed controls: 1x to 50x
+6. Graduation: "SKILL LEARNED!" celebration with 3 gold stars
+7. "Save & Continue" returns to barracks with weapon unlocked
 
 ---
 
@@ -164,6 +195,13 @@ of 100 Compute (~1 basic training/day).
 
 **GOLD (free):** Earned by winning battles. Spent on recruiting soldiers,
 healing injuries, weapon blueprints. Cannot be purchased. Ever.
+
+**Weapon training costs:**
+- Rocket Launcher: 100 Compute
+- Grenade: 100 Compute
+- Machine Gun: 200 Compute
+- Tank: 300 Compute
+- Rifle: Free (default, no training needed)
 
 ---
 
@@ -189,32 +227,33 @@ healing injuries, weapon blueprints. Cannot be purchased. Ever.
 ```
 src/
   engine/         -- Pure game logic. Zero rendering imports.
-    ml/           -- Neural net, genetic algorithm (NOT YET PORTED)
+    ml/           -- NeuralNet, GeneticAlgorithm, simulationRunner
+      scenarios/  -- rocketScenario, grenadeScenario, machineGunScenario, tankScenario
     sim/          -- BattleManager (built, not wired)
-    economy/      -- (not started)
-    levels/       -- (not started)
 
   three/          -- All 3D rendering.
-    models/       -- flexSoldier, SoldierUnit, SoldierPreview, BarracksScene,
-                     weaponMeshes, jeep, plasticWall, materials, sandboxProps
-    effects/      -- (not started)
+    models/       -- flexSoldier (18 poses + rocket poses), SoldierUnit,
+                     SoldierPreview, BarracksScene, weaponMeshes, jeep,
+                     plasticWall, materials, sandboxProps
     camera/       -- CameraRig (orbit controls)
     physics/      -- SlotMarker
 
-  scenes/         -- Game.tsx (scene router), BattleScene.tsx
+  scenes/         -- Game.tsx (scene router), BattleScene.tsx, TrainingScene.tsx
   ui/             -- BarracksScreen, SoldierDetail, MissionBriefing,
-                     PlacementTray, HUD, ToyIcons
-  stores/         -- gameStore, rosterStore
+                     PlacementTray, HUD, TrainingHUD, GraduationBanner,
+                     NeuralNetViz, ToyIcons
+  stores/         -- gameStore, rosterStore, trainingStore
   config/         -- types, units, roster, levels/sandbox-01.json
   pages/          -- HomePage
-  styles/         -- barracks.css, loadout.css, briefing.css, game-ui.css
+  styles/         -- barracks.css, loadout.css, briefing.css, game-ui.css,
+                     training.css, homepage.css, global.css
 ```
 
 ---
 
 ## BUILD SEQUENCE
 
-### DONE: Visual Foundation
+### DONE: Visual Foundation + Training
 1. ~~Project scaffolding~~
 2. ~~Homepage~~
 3. ~~3D models + materials~~
@@ -223,14 +262,12 @@ src/
 6. ~~Soldier detail with weapon system~~
 7. ~~Mission briefing modal~~
 8. ~~Roster-connected placement~~
+9. ~~Visual overhaul (mobile game UI)~~
+10. ~~ML Training System (NeuralNet + GA + training arena + graduation)~~
+11. ~~Tank weapon type + tank training scenario~~
+12. ~~Neural network visualization~~
 
-### NEXT: Training System
-9. Port NeuralNet + GeneticAlgorithm from soldier-test
-10. Build training arena (3D visualization, speed controls, milestones)
-11. Wire TRAIN button to launch arena from soldier detail
-12. Graduation flow (skill unlocked, return to detail)
-
-### THEN: Battle Phase
+### NEXT: Battle Phase
 13. Wire BattleLoop into scene
 14. Enemy spawning + rendering
 15. Combat AI + projectiles + damage
@@ -242,6 +279,7 @@ src/
 19. Game feel (screen shake, particles, spring animations)
 20. Map/level select screen
 21. Store/shop screen
+22. Roster persistence (localStorage)
 
 ---
 
@@ -266,6 +304,7 @@ src/
 - <100ms input latency
 - Max 50 Rapier physics bodies per scene
 - DPR capped at 2
+- Training: 50 headless ticks/frame at 50x speed < 1ms
 
 ---
 
