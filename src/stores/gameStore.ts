@@ -1,5 +1,10 @@
 import { create } from 'zustand'
 import type { GamePhase, GameUnit, PlacementSlot, Projectile, LevelConfig } from '@config/types'
+import { useRosterStore } from './rosterStore'
+import { WEAPON_STATS } from '@config/units'
+
+let _unitId = 0
+function nextUnitId() { return `u-${++_unitId}` }
 
 interface GameState {
   phase: GamePhase
@@ -19,6 +24,11 @@ interface GameState {
   starsEarned: number
   battleStartTime: number
 
+  // Placement state
+  selectedPlacement: string | null // soldier ID like "s1" or defense type like "wall"
+  placementRotation: number
+  placedSoldierIds: string[] // track which roster soldiers are already placed
+
   // Actions
   loadLevel: (config: LevelConfig) => void
   setPhase: (phase: GamePhase) => void
@@ -35,6 +45,10 @@ interface GameState {
   setResult: (result: 'victory' | 'defeat', stars: number) => void
   startBattle: () => void
   resetLevel: () => void
+  selectPlacement: (type: string | null) => void
+  rotatePlacement: () => void
+  placeSoldier: (soldierId: string, position: [number, number, number]) => void
+  removePlayerUnit: (unitId: string) => void
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -55,6 +69,10 @@ export const useGameStore = create<GameState>((set, get) => ({
   starsEarned: 0,
   battleStartTime: 0,
 
+  selectedPlacement: null,
+  placementRotation: 0,
+  placedSoldierIds: [],
+
   loadLevel: (config) => set({
     level: config,
     slots: config.placement_slots.map((s) => ({ ...s, occupied: false })),
@@ -68,6 +86,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     starsEarned: 0,
     battleStartTime: 0,
     phase: 'loadout',
+    selectedPlacement: null,
+    placementRotation: 0,
+    placedSoldierIds: [],
   }),
 
   setPhase: (phase) => set({ phase }),
@@ -127,10 +148,75 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   setResult: (result, stars) => set({ result, starsEarned: stars, phase: 'result' }),
 
-  startBattle: () => set({ phase: 'battle', currentWave: 0, waveTimer: 0, battleStartTime: 0 }),
+  startBattle: () => set({ phase: 'battle', currentWave: 0, waveTimer: 0, battleStartTime: 0, selectedPlacement: null }),
 
   resetLevel: () => {
     const { level } = get()
     if (level) get().loadLevel(level)
   },
+
+  selectPlacement: (type) => set({ selectedPlacement: type }),
+
+  rotatePlacement: () => set((s) => ({
+    placementRotation: (s.placementRotation + Math.PI / 2) % (Math.PI * 2),
+  })),
+
+  placeSoldier: (soldierId, position) => {
+    const state = get()
+    const roster = useRosterStore.getState()
+    const profile = roster.soldiers.find((s) => s.id === soldierId)
+    if (!profile) return
+
+    // Already placed this soldier
+    if (state.placedSoldierIds.includes(soldierId)) return
+
+    const weaponKey = profile.equippedWeapon
+    const stats = WEAPON_STATS[weaponKey]
+    const cost = 100
+
+    if (!state.spendGold(cost)) return
+
+    const unit: GameUnit = {
+      id: nextUnitId(),
+      type: 'soldier',
+      team: 'green',
+      position,
+      rotation: state.placementRotation || Math.PI / 2,
+      health: stats.health,
+      maxHealth: stats.health,
+      status: 'idle',
+      weapon: weaponKey,
+      lastFireTime: 0,
+      fireRate: stats.fireRate,
+      range: stats.range,
+      damage: stats.damage,
+      speed: stats.speed,
+      profileId: soldierId,
+    }
+
+    set({
+      playerUnits: [...state.playerUnits, unit],
+      placedSoldierIds: [...state.placedSoldierIds, soldierId],
+      selectedPlacement: null, // deselect after placing
+    })
+  },
+
+  removePlayerUnit: (unitId) => set((s) => {
+    const unit = s.playerUnits.find((u) => u.id === unitId)
+    if (!unit) return s
+    // Refund gold
+    const newGold = s.gold + 100
+    return {
+      playerUnits: s.playerUnits.filter((u) => u.id !== unitId),
+      placedSoldierIds: unit.profileId
+        ? s.placedSoldierIds.filter((sid) => sid !== unit.profileId)
+        : s.placedSoldierIds,
+      gold: newGold,
+    }
+  }),
 }))
+
+// Dev testing helper (remove in production)
+if (typeof window !== 'undefined') {
+  ;(window as any).__gameStore = useGameStore
+}

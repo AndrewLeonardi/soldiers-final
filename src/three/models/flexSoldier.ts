@@ -693,6 +693,9 @@ export function poseRocketFire(p: SoldierParts, progress: number): void {
 }
 
 /** Unified animation dispatcher -- maps UnitStatus to pose functions */
+// Track per-soldier state for animations that shouldn't loop
+const soldierAnimState = new WeakMap<FlexSoldierResult, { deathStart: number; status: string }>()
+
 export function animateFlexSoldier(
   soldier: FlexSoldierResult,
   status: string,
@@ -700,6 +703,18 @@ export function animateFlexSoldier(
   _dt: number,
 ): void {
   const p = soldier.parts
+
+  // Track state transitions for non-looping animations
+  let animState = soldierAnimState.get(soldier)
+  if (!animState) {
+    animState = { deathStart: 0, status: '' }
+    soldierAnimState.set(soldier, animState)
+  }
+  if (status !== animState.status) {
+    if (status === 'dead') animState.deathStart = elapsed
+    animState.status = status
+  }
+
   switch (status) {
     case 'idle':
       poseIdle(p, elapsed)
@@ -723,7 +738,9 @@ export function animateFlexSoldier(
       poseHit(p, elapsed % 0.5)
       break
     case 'dead': {
-      const deathProgress = Math.min(1, (elapsed % 3) / 1.5)
+      // Death plays ONCE and holds at the end (no loop)
+      const timeSinceDeath = elapsed - animState.deathStart
+      const deathProgress = Math.min(1, timeSinceDeath / 1.5)
       poseDeath(p, deathProgress)
       break
     }

@@ -287,38 +287,21 @@ export function BattlefieldProps() {
   return (
     <group>
       <TableFrame />
-      <CoffeeMug />
-      <GiantPencil />
 
-      {/* Military props -- player side */}
-      <SandbagWall position={[-3, 0, -1]} rotation={0.2} />
-      <SandbagWall position={[-5, 0, 2]} rotation={-0.1} />
-      <SandbagWall position={[-2, 0, 3]} rotation={0.5} />
-      <FlagPole position={[-7, 0, 0]} color={0x2d5a3f} />
-      <AmmoCrate position={[-6, 0, -2]} rotation={0.3} />
-      <AmmoCrate position={[-4, 0, 1.5]} rotation={-0.5} />
+      {/* No man's land -- sparse, keeps focus on soldiers */}
+      <BarbedWire position={[1, 0, -2]} />
+      <BarbedWire position={[2, 0, 2]} rotation={0.3} />
+      <OilDrum position={[2, 0, -4]} />
 
-      {/* No man's land */}
-      <BarbedWire position={[0, 0, -2]} />
-      <BarbedWire position={[1, 0, 2]} rotation={0.3} />
-      <OilDrum position={[1, 0, -4]} />
-
-      {/* Enemy side props */}
-      <SandbagWall position={[5, 0, 1]} rotation={Math.PI} />
+      {/* Enemy side flavor */}
       <SandbagWall position={[6, 0, -2]} rotation={Math.PI + 0.3} />
       <FlagPole position={[7, 0, 0]} color={0x8b2020} />
-      <AmmoCrate position={[4, 0, -3]} rotation={1.2} />
-      <OilDrum position={[6, 0, 3]} />
+      <AmmoCrate position={[5, 0, 3]} rotation={1.2} />
 
-      {/* Terrain */}
-      <RockCluster position={[-6, 0, 4]} scale={1.2} />
+      {/* Light terrain scatter */}
       <RockCluster position={[3, 0, -5]} scale={0.8} />
       <RockCluster position={[-1, 0, 5]} />
-      <RockCluster position={[8, 0, -4]} scale={1.1} />
-
       <ScrubBrush position={[-8, 0, -3]} />
-      <ScrubBrush position={[2, 0, 4]} />
-      <ScrubBrush position={[-4, 0, -5]} />
       <ScrubBrush position={[5, 0, 5]} />
     </group>
   )

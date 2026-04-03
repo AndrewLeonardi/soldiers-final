@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef, useState, Suspense } from 'react'
+import { useEffect, useCallback, useRef, Suspense } from 'react'
 import { Canvas, useThree, useFrame } from '@react-three/fiber'
 import { Physics } from '@react-three/rapier'
 import * as THREE from 'three'
@@ -12,14 +12,14 @@ import { HUD } from '@ui/HUD'
 import { PlacementTray } from '@ui/PlacementTray'
 import { BarracksScreen } from '@ui/BarracksScreen'
 import { SoldierDetail } from '@ui/SoldierDetail'
-import { MissionBriefing } from '@ui/MissionBriefing'
 import { TrainingHUD } from '@ui/TrainingHUD'
 import { GraduationBanner } from '@ui/GraduationBanner'
 import { NeuralNetViz } from '@ui/NeuralNetViz'
+import { ResultScreen } from '@ui/ResultScreen'
 import levelData from '@config/levels/sandbox-01.json'
 import type { LevelConfig } from '@config/types'
 
-// Camera controller for training arena — sets initial position then hands off to OrbitControls
+// Camera controller for training arena
 function TrainingCamera() {
   const { camera } = useThree()
   useEffect(() => {
@@ -33,10 +33,8 @@ function TrainingCamera() {
 function BarracksCamera({ soldierCount }: { soldierCount: number }) {
   const { camera, gl, scene } = useThree()
 
-  // Clear any lingering fog from the battle scene
   useEffect(() => {
     scene.fog = null
-    return () => {}
   }, [scene])
 
   useFrame(() => {
@@ -51,13 +49,7 @@ function BarracksCamera({ soldierCount }: { soldierCount: number }) {
 }
 
 // Renders either barracks 3D scene or battlefield based on phase
-function SceneRouter({
-  selectedUnit,
-  orbitingRef,
-}: {
-  selectedUnit: string | null
-  orbitingRef: React.MutableRefObject<boolean>
-}) {
+function SceneRouter({ orbitingRef }: { orbitingRef: React.MutableRefObject<boolean> }) {
   const phase = useGameStore((s) => s.phase)
   const soldiers = useRosterStore((s) => s.soldiers)
   const openDetail = useRosterStore((s) => s.openDetail)
@@ -88,10 +80,7 @@ function SceneRouter({
 
   return (
     <Physics gravity={[0, -15, 0]}>
-      <BattleScene
-        selectedUnit={selectedUnit}
-        orbitingRef={orbitingRef}
-      />
+      <BattleScene orbitingRef={orbitingRef} />
     </Physics>
   )
 }
@@ -99,20 +88,11 @@ function SceneRouter({
 export default function Game() {
   const loadLevel = useGameStore((s) => s.loadLevel)
   const phase = useGameStore((s) => s.phase)
-  const [selectedUnit, setSelectedUnit] = useState<string | null>(null)
-  const [briefingDismissed, setBriefingDismissed] = useState(false)
   const orbitingRef = useRef(false)
 
   useEffect(() => {
     loadLevel(levelData as LevelConfig)
   }, [loadLevel])
-
-  // Reset briefing when phase changes away from placement
-  useEffect(() => {
-    if (phase !== 'placement') {
-      setBriefingDismissed(false)
-    }
-  }, [phase])
 
   const onCreated = useCallback(({ gl }: { gl: WebGLRenderer }) => {
     gl.toneMapping = THREE.ACESFilmicToneMapping
@@ -142,10 +122,7 @@ export default function Game() {
         onCreated={onCreated}
       >
         <Suspense fallback={null}>
-          <SceneRouter
-            selectedUnit={selectedUnit}
-            orbitingRef={orbitingRef}
-          />
+          <SceneRouter orbitingRef={orbitingRef} />
         </Suspense>
       </Canvas>
 
@@ -156,14 +133,8 @@ export default function Game() {
       <NeuralNetViz />
       <GraduationBanner />
       <HUD />
-      {!briefingDismissed && (
-        <MissionBriefing onBegin={() => setBriefingDismissed(true)} />
-      )}
-      <PlacementTray
-        selectedUnit={selectedUnit}
-        onSelect={setSelectedUnit}
-        briefingDismissed={briefingDismissed}
-      />
+      <PlacementTray />
+      <ResultScreen />
     </div>
   )
 }

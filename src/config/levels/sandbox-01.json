@@ -16,13 +16,6 @@
       "enemies": [
         { "type": "infantry", "count": 4, "spacing": 1.5, "path": "main" }
       ]
-    },
-    {
-      "delay": 8,
-      "enemies": [
-        { "type": "infantry", "count": 3, "spacing": 1.2, "path": "main" },
-        { "type": "infantry", "count": 2, "spacing": 1.0, "path": "flank" }
-      ]
     }
   ],
   "available_units": ["rifle_soldier", "sandbag"],

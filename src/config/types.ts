@@ -52,7 +52,7 @@ export interface LevelConfig {
 
 export interface GameUnit {
   id: string
-  type: 'soldier' | 'wall' | 'sandbag'
+  type: 'soldier' | 'wall' | 'sandbag' | 'tower'
   team: Team
   position: [number, number, number]
   rotation: number
@@ -65,6 +65,7 @@ export interface GameUnit {
   range: number
   damage: number
   speed: number
+  profileId?: string // links to SoldierProfile.id for roster soldiers
 }
 
 export interface SoldierProfile {

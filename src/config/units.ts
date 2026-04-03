@@ -13,6 +13,7 @@ export const WEAPON_STATS: Record<WeaponType, UnitStats> = {
   rocketLauncher: { health: 100, speed: 1.2, range: 9, damage: 60, fireRate: 2.5 },
   grenade: { health: 100, speed: 1.5, range: 5, damage: 40, fireRate: 3.0 },
   machineGun: { health: 100, speed: 1.0, range: 7, damage: 10, fireRate: 0.3 },
+  tank: { health: 400, speed: 0.8, range: 10, damage: 80, fireRate: 3.0 },
 }
 
 export const ENEMY_STATS: Record<EnemyType, UnitStats> = {
