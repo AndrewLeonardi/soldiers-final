@@ -245,6 +245,12 @@ function ProjectileTrails() {
   const ref = useRef<THREE.Group>(null)
   const weapon = useTrainingStore(s => s.weapon)
   const meshPool = useRef<THREE.Group[]>([])
+  const prevCount = useRef(0)
+  const lastPositions = useRef<{ x: number; y: number; z: number }[]>([])
+
+  // Explosion pool
+  const explosionPool = useRef<THREE.Mesh[]>([])
+  const explosionAges = useRef<number[]>([])
 
   useMemo(() => {
     const pool: THREE.Group[] = []
@@ -252,7 +258,6 @@ function ProjectileTrails() {
       const grp = new THREE.Group()
 
       if (weapon === 'rocketLauncher' || weapon === 'tank') {
-        // Rocket/shell: cylinder body + red cone nose + orange exhaust
         const body = new THREE.Mesh(
           new THREE.CylinderGeometry(0.04, 0.03, 0.25, 6),
           new THREE.MeshStandardMaterial({ color: '#666666', roughness: 0.3, metalness: 0.5 })
@@ -288,7 +293,6 @@ function ProjectileTrails() {
         )
         grp.add(gren)
       } else {
-        // MG bullets — tiny elongated cylinder
         const bullet = new THREE.Mesh(
           new THREE.CylinderGeometry(0.01, 0.01, 0.08, 4),
           new THREE.MeshBasicMaterial({ color: '#ffdd44' })
@@ -300,15 +304,60 @@ function ProjectileTrails() {
       pool.push(grp)
     }
     meshPool.current = pool
+
+    // Create explosion pool
+    const explosions: THREE.Mesh[] = []
+    const ages: number[] = []
+    for (let i = 0; i < 6; i++) {
+      const exp = new THREE.Mesh(
+        new THREE.SphereGeometry(0.15, 8, 8),
+        new THREE.MeshBasicMaterial({ color: '#ff6600', transparent: true, opacity: 1 })
+      )
+      exp.visible = false
+      explosions.push(exp)
+      ages.push(0)
+    }
+    explosionPool.current = explosions
+    explosionAges.current = ages
   }, [weapon])
 
-  useFrame(() => {
+  useFrame((_, dt) => {
     if (!ref.current) return
     const simState = useTrainingStore.getState().simState
     if (!simState) return
 
     const projectiles = simState.projectiles || []
+    const isExplosive = weapon === 'rocketLauncher' || weapon === 'grenade' || weapon === 'tank'
 
+    // Detect projectile impacts: if count dropped, spawn explosions at last positions
+    if (isExplosive && projectiles.length < prevCount.current) {
+      const disappeared = prevCount.current - projectiles.length
+      for (let d = 0; d < disappeared; d++) {
+        // Find a free explosion slot
+        const freeIdx = explosionAges.current.findIndex(a => a <= 0 || a > 0.5)
+        if (freeIdx >= 0 && lastPositions.current.length > 0) {
+          const pos = lastPositions.current[lastPositions.current.length - 1 - d]
+          if (pos) {
+            const exp = explosionPool.current[freeIdx]
+            exp.position.set(pos.x, Math.max(0.1, pos.y), pos.z)
+            exp.scale.setScalar(0.3)
+            exp.visible = true
+            explosionAges.current[freeIdx] = 0.01
+            if (!exp.parent) ref.current!.add(exp)
+          }
+        }
+      }
+    }
+
+    // Track last positions
+    lastPositions.current = projectiles.map(p => ({
+      x: p.x,
+      y: 'y' in p ? (p as { y: number }).y : 0.2,
+      z: p.z,
+    }))
+    prevCount.current = projectiles.length
+
+    // Update projectile meshes
     for (let i = 0; i < meshPool.current.length; i++) {
       const grp = meshPool.current[i]
       if (i < projectiles.length) {
@@ -317,7 +366,6 @@ function ProjectileTrails() {
         grp.position.set(p.x, py, p.z)
         grp.visible = true
 
-        // Orient rocket/shell in direction of travel
         if ('vx' in p && 'vz' in p) {
           const pp = p as { vx: number; vz: number; vy?: number }
           grp.rotation.y = Math.atan2(pp.vx, pp.vz)
@@ -329,6 +377,25 @@ function ProjectileTrails() {
         if (!grp.parent) ref.current!.add(grp)
       } else {
         grp.visible = false
+      }
+    }
+
+    // Animate explosions
+    for (let i = 0; i < explosionPool.current.length; i++) {
+      if (explosionAges.current[i] > 0) {
+        explosionAges.current[i] += dt
+        const t = explosionAges.current[i]
+        const exp = explosionPool.current[i]
+        const scale = 0.3 + t * 6
+        exp.scale.setScalar(Math.min(2.0, scale))
+        exp.visible = t < 0.5
+        if (exp.material instanceof THREE.MeshBasicMaterial) {
+          exp.material.opacity = Math.max(0, 1 - t * 2)
+        }
+        if (t >= 0.5) {
+          exp.visible = false
+          explosionAges.current[i] = 0
+        }
       }
     }
   })
