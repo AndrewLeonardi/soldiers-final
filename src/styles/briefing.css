@@ -7,60 +7,62 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(0, 0, 0, 0.7);
   animation: fadeIn 0.3s ease-out;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
 .briefing-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 16px;
-  padding: 28px 24px 24px;
-  max-width: 340px;
-  width: calc(100% - 48px);
-  background: linear-gradient(
-    180deg,
-    rgba(26, 42, 20, 0.95) 0%,
-    rgba(18, 30, 14, 0.98) 100%
-  );
-  border: 2px solid rgba(74, 222, 128, 0.15);
-  border-radius: 16px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+  padding: 28px 20px 20px;
+  max-width: 360px;
+  width: calc(100% - 40px);
+  background: linear-gradient(180deg, #2d4565 0%, #1e3350 50%, #162840 100%);
+  border: 3px solid var(--gold-border);
+  border-radius: var(--radius-xl);
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.7),
+    0 0 40px var(--gold-glow),
+    inset 0 2px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.3);
+  animation: popIn 0.35s var(--ease-spring) both;
 }
 
 .briefing-badge {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   color: var(--gold-text);
   text-transform: uppercase;
   letter-spacing: 3px;
+  text-shadow: 0 0 10px var(--gold-glow);
 }
 
 .briefing-title {
   font-family: var(--font-display);
-  font-size: 26px;
+  font-size: 28px;
   color: var(--text-white);
   text-transform: uppercase;
   letter-spacing: 2px;
   text-align: center;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  text-shadow:
+    0 0 20px var(--gold-glow),
+    0 2px 0 rgba(0, 0, 0, 0.6),
+    0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
 /* ── Roster ────────────────────────────────────────────── */
 
 .briefing-roster-label {
   font-family: var(--font-mono);
-  font-size: 9px;
-  color: rgba(212, 170, 64, 0.4);
+  font-size: 10px;
+  color: var(--gold-text);
   text-transform: uppercase;
   letter-spacing: 3px;
   align-self: flex-start;
+  opacity: 0.7;
 }
 
 .briefing-roster {
@@ -74,21 +76,38 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px;
-  background: rgba(30, 46, 24, 0.6);
-  border: 1px solid rgba(74, 222, 128, 0.1);
-  border-radius: 8px;
+  padding: 10px 12px;
+  background: linear-gradient(180deg, #344e6a 0%, #283e58 100%);
+  border: 2px solid #506880;
+  border-bottom: 3px solid #1a2a3a;
+  border-radius: var(--radius-md);
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
+/* Stagger entrance for roster rows */
+.briefing-roster .briefing-soldier {
+  animation: slideUp 0.25s var(--ease-out) both;
+}
+.briefing-roster .briefing-soldier:nth-child(1) { animation-delay: 0.1s; }
+.briefing-roster .briefing-soldier:nth-child(2) { animation-delay: 0.15s; }
+.briefing-roster .briefing-soldier:nth-child(3) { animation-delay: 0.2s; }
+.briefing-roster .briefing-soldier:nth-child(4) { animation-delay: 0.25s; }
+.briefing-roster .briefing-soldier:nth-child(5) { animation-delay: 0.3s; }
+.briefing-roster .briefing-soldier:nth-child(6) { animation-delay: 0.35s; }
+
 .briefing-soldier-icon {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(74, 222, 128, 0.08);
-  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(74, 222, 128, 0.12), rgba(74, 222, 128, 0.04));
+  border: 1px solid rgba(74, 222, 128, 0.2);
+  border-radius: var(--radius-sm);
   flex-shrink: 0;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .briefing-soldier-info {
@@ -97,16 +116,17 @@
 
 .briefing-soldier-name {
   font-family: var(--font-display);
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-white);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 
 .briefing-soldier-weapon {
   font-family: var(--font-mono);
-  font-size: 10px;
-  color: rgba(245, 240, 224, 0.4);
+  font-size: 11px;
+  color: rgba(245, 240, 224, 0.55);
   text-transform: uppercase;
   letter-spacing: 1px;
 }
@@ -121,31 +141,14 @@
 
 .briefing-begin {
   width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 16px 20px;
+  padding: 18px 20px;
   margin-top: 4px;
-  border: none;
-  border-radius: 14px;
-  background: linear-gradient(180deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%);
-  border-bottom: 5px solid #7f1d1d;
-  box-shadow:
-    0 4px 16px rgba(185, 28, 28, 0.5),
-    0 0 24px rgba(239, 68, 68, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  color: white;
-  font-family: var(--font-display);
-  font-size: 18px;
-  text-transform: uppercase;
+  font-size: 20px;
   letter-spacing: 3px;
-  cursor: pointer;
-  transition: transform 0.1s var(--ease-spring);
-  touch-action: none;
+  animation: popIn 0.4s var(--ease-spring) 0.2s both;
 }
 
 .briefing-begin:active {
-  transform: scale(0.96) translateY(3px);
+  transform: scale(0.96) translateY(4px);
   border-bottom-width: 2px;
 }

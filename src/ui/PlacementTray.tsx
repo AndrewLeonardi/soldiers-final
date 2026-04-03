@@ -27,6 +27,7 @@ export function PlacementTray({ onSelect, selectedUnit, briefingDismissed }: Pla
     <>
       <div className="placement-tray-bg" />
       <div className="placement-tray visible">
+       <div className="placement-tray-inner">
         {soldiers.map((sol) => {
           const canAfford = gold >= SOLDIER_COST
           const isSelected = selectedUnit === sol.id
@@ -67,6 +68,7 @@ export function PlacementTray({ onSelect, selectedUnit, briefingDismissed }: Pla
         >
           GO!
         </button>
+       </div>
       </div>
     </>
   )

@@ -52,7 +52,7 @@ export function MissionBriefing({ onBegin }: MissionBriefingProps) {
         </div>
 
         {/* Begin button */}
-        <button className="briefing-begin" onPointerDown={onBegin}>
+        <button className="btn-action-red briefing-begin" onPointerDown={onBegin}>
           <BattleIcon size={22} color="white" />
           Begin
         </button>

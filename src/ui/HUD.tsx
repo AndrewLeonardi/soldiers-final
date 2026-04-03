@@ -21,7 +21,7 @@ export function HUD() {
 
   return (
     <div className="hud safe-top safe-left safe-right">
-      <div style={{ display: 'flex', gap: 8 }}>
+      <div className="hud-resource-group">
         <div className="hud-resource">
           <GoldCoinIcon size={20} />
           <span className="hud-resource-value">{gold}</span>

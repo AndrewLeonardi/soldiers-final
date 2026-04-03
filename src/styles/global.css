@@ -1,21 +1,41 @@
 /* ── Design Tokens ─────────────────────────────────────────── */
 
 :root {
-  /* Colors */
-  --bg: #0c1408;
-  --bg-surface: #141f0e;
-  --bg-panel: #1a2a14;
-  --bg-card: #1e2e18;
+  /* Colors — warm military with rich depth */
+  --bg: #0a0d14;
+  --bg-deep: #0a0d14;
+  --bg-surface: #141c26;
+  --bg-panel: #1c2a3d;
+  --bg-card: #243448;
+  --bg-card-rgb: 36, 52, 72;
+
+  /* Gold / amber — the primary accent */
   --gold: #F59E0B;
   --gold-bright: #FFD700;
-  --gold-text: #D4AA40;
+  --gold-text: #E8C65A;
+  --gold-border: #A07830;
+  --gold-glow: rgba(232, 198, 90, 0.3);
+
+  /* Greens */
   --green: #4ADE80;
   --green-dark: #3d6b4f;
   --green-darker: #1a2e1a;
+  --green-glow: rgba(74, 222, 128, 0.25);
+
+  /* Red action */
   --red: #ef4444;
+  --red-dark: #7f1d1d;
+
+  /* Text */
   --text-white: #F5F0E0;
   --text-body: #E8D5A8;
   --text-muted: #8B7D5C;
+
+  /* Panel surfaces — opaque, warm tones */
+  --panel-bg: linear-gradient(180deg, #2a3f5c 0%, #1c2e48 100%);
+  --panel-border: #4a6080;
+  --panel-highlight: rgba(255, 255, 255, 0.12);
+  --panel-shadow: rgba(0, 0, 0, 0.6);
 
   /* Typography */
   --font-display: 'Black Ops One', cursive;
@@ -30,6 +50,13 @@
   --fs-xl: 20px;
   --fs-2xl: 28px;
   --fs-3xl: 36px;
+
+  /* Border Radius Scale */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-pill: 24px;
 
   /* Spacing (8px base) */
   --sp-1: 4px;
@@ -92,7 +119,7 @@ body {
 .game-canvas {
   width: 100%;
   height: 100svh;
-  height: 100vh; /* fallback */
+  height: 100vh;
   touch-action: none;
   position: fixed;
   top: 0;
@@ -105,7 +132,134 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 2px; }
 
+/* ── Shared Keyframes ─────────────────────────────────────── */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(40%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes popIn {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 6px 20px rgba(185, 28, 28, 0.5), 0 0 24px rgba(239, 68, 68, 0.25), inset 0 1px 0 rgba(255,255,255,0.25); }
+  50% { box-shadow: 0 6px 28px rgba(185, 28, 28, 0.7), 0 0 40px rgba(239, 68, 68, 0.4), inset 0 1px 0 rgba(255,255,255,0.25); }
+}
+
+@keyframes glowPulseGreen {
+  0%, 100% { box-shadow: 0 0 14px var(--green-glow), inset 0 0 8px rgba(74,222,128,0.06); }
+  50% { box-shadow: 0 0 24px rgba(74, 222, 128, 0.45), inset 0 0 12px rgba(74,222,128,0.12); }
+}
+
+/* ── Shared Button: Big Red Action ────────────────────────── */
+
+.btn-action-red {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 2px solid rgba(255, 120, 120, 0.4);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, #ff5555 0%, #e63535 40%, #c41e1e 70%, #a31515 100%);
+  border-bottom: 6px solid #6b1010;
+  box-shadow:
+    0 6px 20px rgba(185, 28, 28, 0.6),
+    0 0 30px rgba(239, 68, 68, 0.25),
+    inset 0 2px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+  color: white;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  transition: transform 0.1s var(--ease-spring);
+  touch-action: none;
+}
+
+.btn-action-red:active {
+  transform: scale(0.96) translateY(4px);
+  border-bottom-width: 2px;
+  box-shadow:
+    0 2px 8px rgba(185, 28, 28, 0.4),
+    inset 0 2px 0 rgba(255, 255, 255, 0.2);
+}
+
+.btn-action-red:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* ── Shared: Game Panel ───────────────────────────────────── */
+
+.game-panel {
+  background: linear-gradient(180deg, #2d4565 0%, #1e3350 50%, #162840 100%);
+  border: 2px solid var(--panel-border);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    0 8px 24px var(--panel-shadow),
+    inset 0 2px 0 var(--panel-highlight),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Shared: Resource Pill ────────────────────────────────── */
+
+.resource-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: linear-gradient(180deg, #2d4060 0%, #1e3048 100%);
+  border: 2px solid #4a6888;
+  border-radius: var(--radius-pill);
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.resource-pill .icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+}
+
+.resource-pill .icon.gold {
+  background: radial-gradient(circle at 35% 35%, #FFD700, #B8860B);
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+}
+
+.resource-pill .icon.compute {
+  background: radial-gradient(circle at 35% 35%, #4ADE80, #22863a);
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
+}
+
+.resource-pill .value {
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: var(--text-white);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  min-width: 36px;
+}
+
 /* ── Utilities ────────────────────────────────────────────── */
 
 .font-display { font-family: var(--font-display); }
 .font-mono { font-family: var(--font-mono); }
+
+.hud-resource-group {
+  display: flex;
+  gap: 8px;
+}
