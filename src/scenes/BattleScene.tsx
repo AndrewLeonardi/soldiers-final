@@ -124,9 +124,13 @@ function PlacementGround({
   return (
     <mesh
       rotation-x={-Math.PI / 2}
-      position={[0, 0.01, 0]}
+      position={[0, 0.03, 0]}
       onPointerUp={(e) => {
-        if (orbitingRef.current) return
+        console.log('[Placement] pointerUp, orbiting:', orbitingRef.current, 'point:', e.point.toArray().map(v => v.toFixed(2)))
+        if (orbitingRef.current) {
+          console.log('[Placement] Suppressed -- was orbiting')
+          return
+        }
         e.stopPropagation()
 
         const point = e.point
@@ -135,7 +139,10 @@ function PlacementGround({
         const z = Math.round(point.z * 2) / 2
 
         // Player side only (x <= 0)
-        if (x > 0.5) return
+        if (x > 0.5) {
+          console.log('[Placement] Rejected -- enemy side, x:', x)
+          return
+        }
 
         const cost = PLACEMENT_COSTS[selectedUnit] ?? 100
         if (!spendGold(cost)) return

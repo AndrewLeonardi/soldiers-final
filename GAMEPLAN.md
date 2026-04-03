@@ -4,22 +4,39 @@ This is the production build. Every line of code serves the game.
 
 ---
 
-## PHASE 1 SCOPE (build this first, nothing else)
+## CURRENT STATUS (as of 2026-04-02)
 
-One level. Playable end to end. Fun or we don't move on.
+### DONE
+- [x] Project scaffolding (Vite + React 19 + R3F + Rapier + Zustand + TS)
+- [x] Homepage ported from ToySoldiers-two (hero scene, brain viz, all sections)
+- [x] 7 model files ported to TypeScript (materials, flexSoldier, jeep,
+      plasticWall, easing, poseBlender, equipmentPoses)
+- [x] 15+ SVG icons (MicrochipIcon, GoldCoinIcon, weapon icons, UI icons)
+- [x] HUD with proper SVG icons (gold coin, microchip for compute)
+- [x] Sandbox battlefield scene (table frame, coffee mug, pencil, sandbags,
+      barbed wire, flags, oil drums, rocks, scrub, sand dunes)
+- [x] OrbitControls camera (orbit, zoom, pan with orbit-vs-click detection)
+- [x] ACESFilmic tone mapping
+- [x] Game store (Zustand: phases, units, gold, compute, waves)
+- [x] Soldier model renders with idle animation in R3F + Rapier
+- [x] Basic placement (select unit type, click ground, soldier spawns)
 
-1. Project scaffolding (Vite + React 19 + R3F + Rapier + Zustand + TypeScript)
-2. One soldier model with idle/walk/fire/death + ragdoll physics
-3. One Sandbox level with terrain props + fixed placement slots
-4. Placement phase: drag soldiers from bottom tray to slots
-5. Battle phase: soldiers fight, Rapier physics, projectiles, sound
-6. Physics comedy: ragdolls, falling off edges, wall destruction
-7. Victory/defeat splash with stars + gold earned
-8. HUD: gold counter, compute counter, wave indicator
-9. Audio: Howler.js with initial SFX (gunfire, explosions, impacts, comedy)
-10. Runs at 60fps on mobile. Feels like a game, not a web app.
+### BROKEN / INCOMPLETE
+- [ ] All unit types render as soldiers (walls, sandbags have no 3D model)
+- [ ] Orbit-vs-click detection may still suppress valid placement clicks
+- [ ] No ghost preview during placement
+- [ ] No battle phase (enemies don't spawn, no combat, no win/lose)
+- [ ] No audio system
+- [ ] No post-processing (bloom, vignette)
+- [ ] No game feel (screen shake, particles, spring animations)
 
-**The only question that matters: "Is this fun?"**
+### NOT STARTED (critical)
+- [ ] **SOLDIER LOADOUT SCREEN** -- the most important missing feature
+- [ ] **TRAINING INTEGRATION** -- spending compute to unlock skills
+- [ ] Roster store (soldier profiles, skills, equipped weapons)
+- [ ] Defense models in R3F (walls, sandbags, towers)
+- [ ] Victory/defeat screen
+- [ ] Map/level select screen
 
 ---
 
@@ -41,15 +58,110 @@ the comedy.
 
 ```
 MAP (pick a level)
-  --> PLACE (drag soldiers + defenses onto the battlefield)
-    --> BATTLE (watch it play out -- physics chaos)
-      --> RESULTS (gold, stars, injuries)
-        --> ROSTER (train skills with compute, heal with gold)
+  --> LOADOUT (configure soldiers: equip weapons, train skills, spend compute)
+    --> PLACEMENT (place configured soldiers on the battlefield)
+      --> BATTLE (watch it play out -- physics chaos)
+        --> RESULTS (gold, stars, injuries)
           --> MAP (next level)
 ```
 
-Each level is a hand-crafted puzzle. Right soldiers, right skills,
-right positions. Brute force doesn't work past early levels.
+The LOADOUT screen is where the game's depth lives. It is where compute
+(the monetization currency) feels valuable. It is the most important
+screen after the battlefield itself.
+
+---
+
+## IMMEDIATE PRIORITY: THE LOADOUT SCREEN
+
+This is the next thing we build. Nothing else until this works.
+
+### What it is
+
+A full-screen game panel (like Enlisted's soldier loadout -- see reference
+images) where players see their soldiers, equip weapons, and spend
+compute to train new skills. This screen is ALSO the entry point to
+the training arena.
+
+### Why it matters
+
+- This is where COMPUTE feels valuable (the entire business model)
+- This is where soldiers become characters you care about
+- This is where weapon variety creates strategic depth
+- This must scale to dozens of weapons, abilities, and equipment
+- This must feel like a GAME, not a dashboard
+
+### Layout (mobile-first, portrait)
+
+```
++----------------------------+
+|  [<] SGT RICO      [G] 500|  Header: soldier name + resources
+|  Rifleman  ***              |  Class + star rating
++----------------------------+
+|                            |
+|   [ 3D Soldier Model ]     |  Top 40%: rotatable preview
+|   (drag to spin)           |  Model updates live with equipped weapon
+|                            |
++----------------------------+
+|  Weaponry  Perks  Skills   |  Tab bar (like Enlisted)
++----------------------------+
+|                            |
+|  [Rifle *equipped*]        |  Weapon/item grid (scrollable)
+|  [Rocket ?trained?]        |  * = equipped, ? = unlockable
+|  [Grenade  LOCKED ]        |  LOCKED = needs compute to train
+|  [MG       LOCKED ]        |
+|                            |
++----------------------------+
+|  [SGT Rico] [PVT Ace] [+] |  Roster strip: switch soldiers
++----------------------------+
+|                            |
+|  [ TRAIN -- 1 Compute ]    |  Action: train selected locked weapon
+|  [ DEPLOY >>> ]            |  Or: proceed to placement with current loadout
++----------------------------+
+```
+
+### Key behaviors
+
+- **3D preview** shows the selected soldier holding their equipped weapon.
+  Drag to rotate. When you tap a different weapon, the model swaps live.
+- **Locked weapons** show a lock icon + shimmer + "REQUIRES TRAINING".
+  Tapping a locked weapon selects it and the bottom button becomes TRAIN.
+- **TRAIN button** costs compute (shown with microchip icon). Tapping it
+  transitions to the training arena where you watch neuroevolution in
+  real-time. When training completes, "SKILL UNLOCKED" graduation moment,
+  then back to loadout with the weapon now available.
+- **Equipped weapon** has a green border/checkmark. Tap a trained weapon
+  to equip it -- the 3D model updates instantly.
+- **Roster strip** at bottom lets you switch between soldiers. Each chip
+  shows soldier name + tiny weapon icon. [+] button recruits new soldier
+  (costs gold).
+- **DEPLOY button** takes you to the placement phase with your currently
+  configured roster.
+
+### Training (integrated into loadout)
+
+Training is NOT a separate screen. It's launched FROM the loadout when
+you tap TRAIN on a locked weapon. The training arena slides in (or the
+camera zooms into it) and you watch the neuroevolution run. When done,
+you're returned to the loadout with the skill unlocked.
+
+The ML system (neural net, genetic algorithm, scenarios) is already
+ported from solder-four and ready to integrate.
+
+### Data model
+
+Port `rosterStore.ts` from solder-four:
+```typescript
+interface SoldierProfile {
+  id: string
+  name: string
+  skills: Partial<Record<WeaponType, TrainedBrain>>
+  equippedWeapon: WeaponType
+  status: 'ready' | 'injured'
+  injuredUntilRound: number
+  battlesWon: number
+  kills: number
+}
+```
 
 ---
 
@@ -66,34 +178,37 @@ entire business model.
 healing injuries, weapon blueprints. Cannot be purchased. Ever. Gold
 is plentiful. Compute is always the bottleneck.
 
-**Phase 1 economy:** A compute counter and a gold counter on the HUD.
-That's it. No shop, no purchases, no streak system. Just the numbers.
-
 ---
 
 ## SCREENS (5 total, zero dashboard energy)
 
 ### 1. MAP -- Level Select
-- Full-screen themed map. Level nodes are physical objects (toy flags,
-  mini battlefields). Stars on completed. Padlocks on locked.
+- Full-screen themed map. Level nodes are physical objects.
+- Stars on completed. Padlocks on locked.
 - Tap a node for enemy preview. Star-gated world progression.
 
-### 2. BATTLE -- Core Gameplay (80% of the game)
-- **PLACEMENT:** Battlefield fills screen. Bottom tray holds soldiers
-  (like a toy box drawer). Drag to fixed slots. "GO" when ready.
+### 2. LOADOUT -- Soldier Configuration (NEW -- highest priority)
+- Full-screen game panel (Enlisted-style, see reference images)
+- 3D soldier preview (rotatable, updates with equipped weapon)
+- Weapon/item grid: equipped, trained, locked states
+- Training entry point (spend compute to unlock locked weapons)
+- Roster strip to switch between soldiers
+- DEPLOY button to proceed to placement
+- See "IMMEDIATE PRIORITY" section above for full spec.
+
+### 3. BATTLE -- Core Gameplay (80% of the game)
+- **PLACEMENT:** Battlefield fills screen. Configured soldiers from
+  loadout available in bottom tray. Freeform placement on player side.
+  "GO" when ready.
 - **COMBAT:** Full-screen 3D. Minimal HUD. Physics comedy. Camera
-  follows action.
+  orbit enabled.
 - **RESULT:** Stars, gold, injuries. Single "CONTINUE" button.
 
-### 3. ROSTER -- Bottom Sheet (not a page)
-- Slides up over current screen with spring animation.
-- 3D soldier figures in a row. Tap to expand stats/skills.
-- "TRAIN" button per soldier. Swipe to scroll.
-
-### 4. TRAINING -- Camera Zoom (not a page)
-- Camera flies into training arena.
+### 4. TRAINING -- Embedded in Loadout
+- Launched from loadout when tapping TRAIN on a locked weapon.
 - Watch neuroevolution in real-time. Progress ring. Milestones.
 - "SKILL UNLOCKED" graduation. Soldier poses with new weapon.
+- Returns to loadout when done.
 
 ### 5. SHOP -- Bottom Sheet (not a page)
 - Compute packs. Daily free claim. That's it.
@@ -119,99 +234,6 @@ That's it. No shop, no purchases, no streak system. Just the numbers.
 
 ---
 
-## MOBILE UX SPEC
-
-This game lives or dies on mobile feel. These are implementation
-requirements, not suggestions.
-
-### Orientation: Portrait
-- Battlefield fills top ~70% of screen
-- Unit tray sits in bottom ~20-25%
-- HUD strip across top ~48-56px
-- Matches the Clash Royale model: one-hand play, no rotation required
-- Desktop: centered viewport, same layout, mouse replaces touch
-
-### Touch Interactions
-- **Placement:** Tap unit in tray, drag onto field. Ghost preview
-  appears offset 60px ABOVE touch point (so finger doesn't occlude it).
-  Valid slots glow green, invalid glow red. Lift finger to place.
-- **All touch targets:** Minimum 48px (Google Material guideline).
-  Space interactive elements 8px+ apart.
-- **Canvas:** `touch-action: none` to prevent browser scroll/zoom.
-  Use pointer events (not touch events) for cross-device compatibility.
-- **Expensive placements:** Two-step confirm (drag + confirm button)
-  to prevent mis-taps.
-
-### Viewport & Safe Areas
-```css
-/* Always use small viewport height -- stable, no address bar jumps */
-height: 100svh;
-
-/* Handle notch/island on all edges */
-padding-top: env(safe-area-inset-top);
-padding-bottom: env(safe-area-inset-bottom);
-padding-left: env(safe-area-inset-left);
-padding-right: env(safe-area-inset-right);
-```
-```html
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-```
-The 3D canvas extends under the notch (looks better). HUD elements
-and interactive targets must stay inside safe areas.
-
-### Responsive Breakpoints
-| Breakpoint | Target             | Changes                              |
-|------------|--------------------|--------------------------------------|
-| < 380px    | iPhone SE, small   | Smallest HUD, single-row tray        |
-| 380-480px  | Standard phones    | Default mobile layout                |
-| 480-768px  | Large phones/small tablets | Slightly larger HUD, 2-row tray option |
-| 768-1024px | Tablets            | More battlefield visible, larger cards|
-| 1024px+    | Desktop            | Mouse, hover states, keyboard shortcuts|
-
-What scales: canvas, camera frustum, spacing.
-What stays fixed: touch targets (48px), font minimums (14px body),
-icon sizes (24-32px), HUD bar height (48-56px).
-
-### 3D Performance on Mobile
-```tsx
-<Canvas
-  dpr={[1, 2]}
-  gl={{ antialias: false, powerPreference: 'high-performance' }}
->
-```
-- Cap DPR at 2 (phones with DPR 3-4 render 9-16x more pixels otherwise)
-- Disable MSAA, use FXAA post-process if needed (cheaper)
-- Shadow maps: 512-1024 on mobile, 2048 on desktop
-- Max 50 draw calls on mobile (use instanced meshes for soldiers)
-- Use drei `<PerformanceMonitor>` to auto-downgrade DPR when FPS drops
-- ONE canvas only (iOS limits WebGL contexts per page)
-- Handle `webglcontextlost` event (iOS 17+ aggressively kills contexts
-  when tab is backgrounded)
-
-### Game Feel (cheap wins, massive impact)
-- **Screen shake on explosions:** Random camera offset decaying over
-  200ms. 3-5 diminishing offsets.
-- **Scale bounce on tap:** Press to 0.92 over 50ms, spring to 1.0 over
-  150ms. `cubic-bezier(0.34, 1.56, 0.64, 1)`.
-- **Number pop on resource change:** Tween displayed value over 300ms.
-  Flash counter 1.2x scale + color highlight for 200ms.
-- **Particle burst on death:** 8-12 small pieces, outward with gravity,
-  fade over 400ms.
-- **Spring easing on ALL panel animations:** Entry 300ms with overshoot.
-  Exit 200ms ease-out. Never linear. Never `transition: all`.
-- **Only animate `transform` and `opacity`** for 60fps panel animations.
-
-### Panel Design (game-feel, not web-feel)
-- No drag handles. No rounded corners. No frosted glass. These scream
-  "iOS bottom sheet."
-- Use opaque themed backgrounds (wood texture, metal plate, canvas).
-- Spring physics animation (overshoot/bounce), not ease-in-out.
-- Info panels: 60-70% screen height, game visible behind dark scrim.
-- During combat: persistent tray covers max 20% of screen.
-- Dismiss: swipe-down or explicit close button. Never tap-on-scrim.
-
----
-
 ## THE HUMOR
 
 Physics comedy is the personality of the game:
@@ -233,24 +255,18 @@ The scale contrast (tiny soldiers vs huge household objects) IS the tone.
 Hand-crafted. Specific challenges. Right strategy beats raw power.
 
 ### Design Patterns
-- **Fixed placement slots** per level (foxholes, crate tops, elevated
-  spots). NOT freeform. This makes each level a placement puzzle.
-- **Unit restriction per level** -- forces varied strategies, like
-  Angry Birds restricting which birds you get.
-- **Teach-test-twist** for new mechanics: introduce in isolation, mix
-  with existing threats, then combine unexpectedly.
-- **Sawtooth difficulty** -- spike, dip, rise, breather. Never linear.
-  Target 3.2 average attempts per level. Max 5-7 for any single level.
+- **Freeform placement** on the player side of the battlefield.
+- **Unit restriction per level** -- forces varied strategies.
+- **Teach-test-twist** for new mechanics.
+- **Sawtooth difficulty** -- target 3.2 avg attempts per level.
 
-### MVP Enemy Types (3 only -- expand later)
+### MVP Enemy Types (3 only)
 
 | Type     | Behavior                | Countered by          |
 |----------|-------------------------|-----------------------|
 | Infantry | Walks, shoots, swarms   | Splash/area damage    |
 | Jeep     | Fast, flanks            | Blocking units, mines |
 | Tank     | Armored, heavy damage   | Rockets, heavy weapons|
-
-Future (Phase 5): shielded, stealth, flying. NOT in MVP.
 
 ### Three-Star System
 
@@ -259,35 +275,6 @@ Future (Phase 5): shielded, stealth, flying. NOT in MVP.
 | 1    | Complete the level (survive)                  |
 | 2    | Complete with budget remaining (efficiency)   |
 | 3    | Level-specific bonus objective (mastery)      |
-
-Star-gated world progression: need X total stars to unlock next world.
-
-### Level Config (JSON-driven, zero code changes for new levels)
-```json
-{
-  "id": "sandbox-03",
-  "theme": "sandbox",
-  "name": "Bucket Brigade",
-  "placement_slots": [
-    { "id": "slot-1", "pos": [2, 0, 3], "type": "ground" },
-    { "id": "slot-2", "pos": [4, 1.5, 1], "type": "elevated" }
-  ],
-  "waves": [
-    { "delay": 0, "enemies": [{ "type": "infantry", "count": 5, "path": "main" }] },
-    { "delay": 8, "enemies": [
-      { "type": "infantry", "count": 3, "path": "main" },
-      { "type": "jeep", "count": 1, "path": "flank" }
-    ]}
-  ],
-  "available_units": ["rifle_soldier", "sandbag"],
-  "budget": 500,
-  "stars": {
-    "one": { "type": "survive" },
-    "two": { "type": "budget_remaining", "threshold": 200 },
-    "three": { "type": "objective", "desc": "No soldiers lost" }
-  }
-}
-```
 
 ---
 
@@ -299,12 +286,7 @@ Star-gated world progression: need X total stars to unlock next world.
 | 2     | KITCHEN TABLE | 9-16   | Salt shakers, napkins, spoons, mugs|
 | 3     | BEDROOM FLOOR | 17-25  | Books, toy blocks, shoes, rulers   |
 
-**MVP: 25 levels across 3 themes.** Expand to 5 themes / 50 levels in
-Phase 5 once retention is validated.
-
-Visual variety per world: palette swap, time-of-day lighting, weather
-overlays (screen-space), prop permutation, camera angle variation.
-Minimal new geometry per world.
+**MVP: 25 levels across 3 themes.** Scale in Phase 5.
 
 ---
 
@@ -323,11 +305,11 @@ Minimal new geometry per world.
 | Payments  | Stripe (PWA)              | Keep ~94% revenue vs ~70% app stores    |
 
 ### Visual Quality (port from ToySoldiers-two)
-- Plastic-sheen materials (MeshStandardMaterial, roughness 0.35, metalness 0)
+- Plastic-sheen materials (roughness 0.35, metalness 0)
 - Military color palette (army green, olive, khaki, sand brown)
 - Hierarchical skeletal soldier models (20+ mesh pieces, pose blending)
-- Three-point lighting + ambient + soft shadows (PCFSoftShadowMap)
-- Post-processing bloom (subtle, UnrealBloomPass at 0.3-0.4 strength)
+- Three-point lighting + ambient + soft shadows
+- Post-processing bloom (subtle)
 - ACESFilmic tone mapping
 
 ---
@@ -339,12 +321,8 @@ Built in from Phase 1. Not bolted on later.
 **Library:** Howler.js (7KB, MIT, audio sprites, spatial, mobile-ready)
 
 **SFX sources (CC0 / royalty-free, no attribution):**
-Sonniss GDC (weapons, explosions, ambience), Kenney (impacts, UI),
-Mixkit (comedy physics), Freesound USC release (Wilhelm scream),
-Tallbeard Studios (music loops). CC0-only policy. Track sources in
-LICENSES.md.
-
-See full details in audio/ directory once implemented.
+Sonniss GDC, Kenney, Mixkit, Freesound USC, Tallbeard Studios.
+CC0-only policy. Track in LICENSES.md.
 
 ---
 
@@ -373,53 +351,32 @@ src/
   assets/         -- SVG icons, fonts, audio sprite files
 ```
 
-**Key decisions:**
-- Levels are data (JSON), not code
-- Training scenarios are pluggable (new weapon = new scenario file)
-- Engine has zero rendering deps (enables headless replay + PVP validation)
-- 3D models are procedural (no GLTF/GLB, tiny bundle, instant load)
-- Audio from day one (every collision, shot, and tap has sound)
-
 ---
 
-## MVP DELIVERABLES
+## REVISED BUILD SEQUENCE
 
-### PHASE 1 -- The Vertical Slice
-(See "Phase 1 Scope" at top of this document)
-**Gate: "Is this fun?"**
+### NEXT UP: Loadout Screen + Training Integration
+1. Port rosterStore from solder-four (soldier profiles, skills, weapons)
+2. Build LoadoutScreen UI (Enlisted-style, full spec above)
+3. Build SoldierPreview component (3D model, rotatable, weapon swap)
+4. Integrate training (tap TRAIN -> neuroevolution arena -> skill unlock)
+5. Wire DEPLOY button to placement phase with configured soldiers
+6. Redesign placement tray to show roster soldiers (not unit types)
 
-### PHASE 2 -- The Training Loop
-- Roster bottom sheet (3D figures, swipe, tap to expand)
-- Training arena with neuroevolution (port from solder-four)
-- Weapon skill graduation flow
-- Compute: daily free claim, spend on training
-- Gold: earn from battles, spend on recruit/heal/blueprints
-- Shop bottom sheet (compute packs, daily claim)
-- 3-5 more Sandbox levels requiring trained skills
-- **Gate: "Does compute create desire?"**
+### THEN: Battle Phase
+7. Port defense models (walls, sandbags, towers) from solder-four
+8. Enemy spawning from wave config
+9. Soldier combat AI (targeting, firing, projectiles)
+10. Damage system + death + ragdoll physics
+11. Win/lose detection
+12. Victory/defeat result screen
 
-### PHASE 3 -- The Campaign
-- Map screen with level nodes + star gating
-- 3 themes, 25 levels total
-- Difficulty curve tuning (sawtooth)
-- Unit restriction per level
-- **Gate: "Do players come back daily?"**
-
-### PHASE 4 -- Production Polish
-- Supabase auth + cloud save
-- Stripe purchases + Battle Pass + contextual offers
-- Analytics (retention, compute spend, level completion)
-- Full audio pass (spatial, music, all SFX)
-- Performance optimization (60fps mobile)
-- Onboarding (first 3 levels teach everything through play)
-- **Gate: Soft launch ready.**
-
-### PHASE 5 -- Growth
-- PVP async raids
-- 2 more map themes (Workbench, Backyard) + 25 more levels
-- New weapons + soldier classes + enemy types (shielded, stealth, flying)
-- Social: friends, replays, sharing ("friend slop" viral version)
-- Seasonal content + events
+### THEN: Polish
+13. Audio system (Howler.js + SFX)
+14. Post-processing (bloom + vignette)
+15. Game feel (screen shake, particles, spring animations)
+16. Ghost preview for placement
+17. Map/level select screen
 
 ---
 
@@ -430,7 +387,6 @@ src/
 - Tutorial systems (the game teaches through play)
 - Settings/account pages
 - Any screen that looks like a web app
-- Freeform placement (fixed slots only)
 - Native app wrappers (PWA first)
 - More than 3 enemy types in MVP
 - More than 3 map themes in MVP
@@ -450,4 +406,4 @@ src/
 
 ---
 
-*Last updated: 2026-04-02*
+*Last updated: 2026-04-02 (evening session)*
