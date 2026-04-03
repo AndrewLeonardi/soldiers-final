@@ -28,6 +28,16 @@ export const WEAPON_DISPLAY: Record<WeaponType, { name: string; desc: string }> 
   },
 }
 
+export const WEAPON_TRAINING: Partial<Record<WeaponType, {
+  fitnessThreshold: number
+  simDuration: number
+  computeCost: number
+}>> = {
+  rocketLauncher: { fitnessThreshold: 0.6, simDuration: 6, computeCost: 100 },
+  grenade: { fitnessThreshold: 0.55, simDuration: 5, computeCost: 100 },
+  machineGun: { fitnessThreshold: 0.65, simDuration: 5, computeCost: 200 },
+}
+
 const SOLDIER_NAMES = [
   'CPL DUKE', 'PVT BLAZE', 'SGT IRON', 'PVT GRIT',
   'CPL HAWK', 'PVT STORM', 'SGT FLINT', 'PVT BOLT',

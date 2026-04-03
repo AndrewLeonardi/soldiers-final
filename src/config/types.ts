@@ -4,7 +4,7 @@ export type EnemyType = 'infantry' | 'jeep' | 'tank'
 
 export type SlotType = 'ground' | 'elevated'
 
-export type GamePhase = 'loadout' | 'placement' | 'battle' | 'result'
+export type GamePhase = 'loadout' | 'placement' | 'battle' | 'result' | 'training'
 
 export type Team = 'green' | 'tan'
 
@@ -73,6 +73,7 @@ export interface SoldierProfile {
   rank: string
   equippedWeapon: WeaponType
   unlockedWeapons: WeaponType[]
+  trainedBrains?: Partial<Record<WeaponType, number[]>>
   starRating: 1 | 2 | 3
   team: Team
 }

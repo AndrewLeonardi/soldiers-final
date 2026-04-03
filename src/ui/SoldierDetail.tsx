@@ -3,7 +3,8 @@ import { Canvas } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useGameStore } from '@stores/gameStore'
 import { useRosterStore } from '@stores/rosterStore'
-import { WEAPON_DISPLAY, WEAPON_UNLOCK_COST } from '@config/roster'
+import { useTrainingStore } from '@stores/trainingStore'
+import { WEAPON_DISPLAY, WEAPON_UNLOCK_COST, WEAPON_TRAINING } from '@config/roster'
 import type { WeaponType } from '@config/types'
 import { SoldierPreview } from '@three/models/SoldierPreview'
 import {
@@ -32,6 +33,7 @@ function WeaponIcon({ weapon, size = 28 }: { weapon: WeaponType; size?: number }
 
 export function SoldierDetail() {
   const compute = useGameStore((s) => s.compute)
+  const phase = useGameStore((s) => s.phase)
   const soldiers = useRosterStore((s) => s.soldiers)
   const detailSoldierId = useRosterStore((s) => s.detailSoldierId)
   const closeDetail = useRosterStore((s) => s.closeDetail)
@@ -39,7 +41,7 @@ export function SoldierDetail() {
   const unlockWeapon = useRosterStore((s) => s.unlockWeapon)
   const [trainingWeapon, setTrainingWeapon] = useState<WeaponType | null>(null)
 
-  if (!detailSoldierId) return null
+  if (!detailSoldierId || phase === 'training') return null
   const soldier = soldiers.find((s) => s.id === detailSoldierId)
   if (!soldier) return null
 
@@ -55,8 +57,19 @@ export function SoldierDetail() {
 
   function handleTrain() {
     if (!soldier || !trainingWeapon) return
-    if (unlockWeapon(soldier.id, trainingWeapon)) {
+    const config = WEAPON_TRAINING[trainingWeapon]
+    if (!config) {
+      // No training needed (rifle) — just unlock
+      if (unlockWeapon(soldier.id, trainingWeapon)) {
+        setTrainingWeapon(null)
+      }
+      return
+    }
+    // Launch real training
+    const started = useTrainingStore.getState().startTraining(soldier.id, trainingWeapon)
+    if (started) {
       setTrainingWeapon(null)
+      useGameStore.getState().setPhase('training')
     }
   }
 
@@ -145,9 +158,9 @@ export function SoldierDetail() {
             <div className="training-cta-sub">
               Watch your soldier learn through neural evolution
             </div>
-            <button className="training-cta-btn" onPointerDown={handleTrain} disabled={compute < WEAPON_UNLOCK_COST[trainingWeapon]}>
+            <button className="training-cta-btn" onPointerDown={handleTrain} disabled={compute < (WEAPON_TRAINING[trainingWeapon]?.computeCost ?? WEAPON_UNLOCK_COST[trainingWeapon])}>
               <MicrochipIcon size={20} color="white" />
-              Train — {WEAPON_UNLOCK_COST[trainingWeapon]} Compute
+              Begin Training — {WEAPON_TRAINING[trainingWeapon]?.computeCost ?? WEAPON_UNLOCK_COST[trainingWeapon]} Compute
             </button>
             <button className="training-cta-cancel" onPointerDown={() => setTrainingWeapon(null)}>
               Back

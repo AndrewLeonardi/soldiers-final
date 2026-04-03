@@ -6,12 +6,15 @@ import type { WebGLRenderer } from 'three'
 import { useGameStore } from '@stores/gameStore'
 import { useRosterStore } from '@stores/rosterStore'
 import { BattleScene } from './BattleScene'
+import { TrainingScene } from './TrainingScene'
 import { BarracksScene } from '@three/models/BarracksScene'
 import { HUD } from '@ui/HUD'
 import { PlacementTray } from '@ui/PlacementTray'
 import { BarracksScreen } from '@ui/BarracksScreen'
 import { SoldierDetail } from '@ui/SoldierDetail'
 import { MissionBriefing } from '@ui/MissionBriefing'
+import { TrainingHUD } from '@ui/TrainingHUD'
+import { GraduationBanner } from '@ui/GraduationBanner'
 import levelData from '@config/levels/sandbox-01.json'
 import type { LevelConfig } from '@config/types'
 
@@ -65,7 +68,11 @@ function SceneRouter({
   }
 
   if (phase === 'loadout' && detailSoldierId) {
-    return <color attach="background" args={[0x111a0d]} />
+    return <color attach="background" args={[0x0c1520]} />
+  }
+
+  if (phase === 'training') {
+    return <TrainingScene />
   }
 
   return (
@@ -134,6 +141,8 @@ export default function Game() {
       {/* HTML UI overlay */}
       <BarracksScreen />
       <SoldierDetail />
+      <TrainingHUD />
+      <GraduationBanner />
       <HUD />
       {!briefingDismissed && (
         <MissionBriefing onBegin={() => setBriefingDismissed(true)} />
