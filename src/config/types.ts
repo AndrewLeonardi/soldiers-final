@@ -4,7 +4,7 @@ export type EnemyType = 'infantry' | 'jeep' | 'tank'
 
 export type SlotType = 'ground' | 'elevated'
 
-export type GamePhase = 'placement' | 'battle' | 'result'
+export type GamePhase = 'loadout' | 'placement' | 'battle' | 'result'
 
 export type Team = 'green' | 'tan'
 
@@ -65,6 +65,16 @@ export interface GameUnit {
   range: number
   damage: number
   speed: number
+}
+
+export interface SoldierProfile {
+  id: string
+  name: string
+  rank: string
+  equippedWeapon: WeaponType
+  unlockedWeapons: WeaponType[]
+  starRating: 1 | 2 | 3
+  team: Team
 }
 
 export interface Projectile {

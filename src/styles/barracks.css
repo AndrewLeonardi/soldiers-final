@@ -1,0 +1,135 @@
+/* ── Barracks Overlay (floats over the game Canvas) ────── */
+
+.barracks-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.barracks-overlay > * {
+  pointer-events: auto;
+}
+
+/* ── Top bar ───────────────────────────────────────────── */
+
+.barracks-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  padding-top: calc(12px + env(safe-area-inset-top));
+}
+
+.barracks-title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  color: var(--gold-text);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+}
+
+.barracks-resources {
+  display: flex;
+  gap: 6px;
+}
+
+/* ── Bottom bar ────────────────────────────────────────── */
+
+.barracks-bottom {
+  padding: 12px 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.3), transparent);
+}
+
+.barracks-hint {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgba(245, 240, 224, 0.35);
+  text-align: center;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.barracks-bottom-row {
+  display: flex;
+  gap: 10px;
+}
+
+/* Recruit button */
+.barracks-recruit-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 18px;
+  border: 2px solid rgba(74, 222, 128, 0.25);
+  border-radius: 12px;
+  background: rgba(30, 46, 24, 0.8);
+  color: var(--text-white);
+  font-family: var(--font-display);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: transform 0.1s var(--ease-spring);
+  touch-action: none;
+}
+
+.barracks-recruit-btn:active {
+  transform: scale(0.95);
+}
+
+.barracks-recruit-btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.barracks-recruit-cost {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--gold-text);
+}
+
+/* Deploy button */
+.barracks-deploy {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 20px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%);
+  border-bottom: 4px solid #7f1d1d;
+  box-shadow:
+    0 4px 16px rgba(185, 28, 28, 0.5),
+    0 0 20px rgba(239, 68, 68, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  color: white;
+  font-family: var(--font-display);
+  font-size: 16px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: transform 0.1s var(--ease-spring);
+  touch-action: none;
+}
+
+.barracks-deploy:active {
+  transform: scale(0.96) translateY(2px);
+  border-bottom-width: 2px;
+}
+
+.barracks-deploy svg {
+  width: 20px;
+  height: 20px;
+}

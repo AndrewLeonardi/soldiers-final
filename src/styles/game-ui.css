@@ -138,6 +138,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 
 .unit-card-icon svg {
@@ -212,4 +213,14 @@
 .placement-tray.visible {
   transform: translateY(0);
   transition: transform 0.3s var(--ease-spring);
+}
+
+/* ── Weapon label on unit card ─────────────────────────── */
+
+.unit-card-weapon {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: rgba(245, 240, 224, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }

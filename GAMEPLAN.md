@@ -4,7 +4,7 @@ This is the production build. Every line of code serves the game.
 
 ---
 
-## CURRENT STATUS (as of 2026-04-02)
+## CURRENT STATUS (as of 2026-04-03)
 
 ### DONE
 - [x] Project scaffolding (Vite + React 19 + R3F + Rapier + Zustand + TS)
@@ -12,31 +12,42 @@ This is the production build. Every line of code serves the game.
 - [x] 7 model files ported to TypeScript (materials, flexSoldier, jeep,
       plasticWall, easing, poseBlender, equipmentPoses)
 - [x] 15+ SVG icons (MicrochipIcon, GoldCoinIcon, weapon icons, UI icons)
-- [x] HUD with proper SVG icons (gold coin, microchip for compute)
 - [x] Sandbox battlefield scene (table frame, coffee mug, pencil, sandbags,
       barbed wire, flags, oil drums, rocks, scrub, sand dunes)
 - [x] OrbitControls camera (orbit, zoom, pan with orbit-vs-click detection)
-- [x] ACESFilmic tone mapping
+- [x] ACESFilmic tone mapping + plastic-sheen materials
 - [x] Game store (Zustand: phases, units, gold, compute, waves)
-- [x] Soldier model renders with idle animation in R3F + Rapier
-- [x] Basic placement (select unit type, click ground, soldier spawns)
+- [x] Roster store (Zustand: soldier profiles, weapon equip/unlock, recruit)
+- [x] **3D Barracks hub** -- real flexSoldier models standing on a surface,
+      tap to configure, recruit button, deploy button, hover effects
+- [x] **Soldier detail screen** -- 3D soldier preview (rotatable, drag-to-spin),
+      weapon cards with equipped/trained/locked states, training CTA overlay
+- [x] **Weapon system** -- shared weapon mesh factory (rifle, rocket, grenade, MG),
+      display-size weapons for detail view, weapon swap on soldier model
+- [x] **Mission briefing modal** -- game-style pre-battle screen showing
+      level name, squad roster, BEGIN button
+- [x] **Roster-connected placement** -- placement tray shows YOUR soldiers
+      by name (SGT RICO, PVT ACE) with equipped weapon type
+- [x] **Battlefield placement** -- placed soldiers spawn as flexSoldier models
+      with correct weapon, connected to roster weapon stats
+- [x] Scene routing: barracks 3D scene vs battlefield scene based on phase
 
-### BROKEN / INCOMPLETE
-- [ ] All unit types render as soldiers (walls, sandbags have no 3D model)
-- [ ] Orbit-vs-click detection may still suppress valid placement clicks
-- [ ] No ghost preview during placement
-- [ ] No battle phase (enemies don't spawn, no combat, no win/lose)
-- [ ] No audio system
-- [ ] No post-processing (bloom, vignette)
-- [ ] No game feel (screen shake, particles, spring animations)
+### IN PROGRESS
+- [ ] Soldier detail weapon display -- 3D weapon models visible in cards
+      (display weapons built but layout needs polish)
+- [ ] Training visibility -- CTA overlay exists but training arena not built
 
-### NOT STARTED (critical)
-- [ ] **SOLDIER LOADOUT SCREEN** -- the most important missing feature
-- [ ] **TRAINING INTEGRATION** -- spending compute to unlock skills
-- [ ] Roster store (soldier profiles, skills, equipped weapons)
+### NOT STARTED (next priorities)
+- [ ] **ML/TRAINING SYSTEM** -- port NeuralNet + GeneticAlgorithm from V5,
+      build training arena with real-time neuroevolution visualization
+- [ ] **Battle simulation** -- wire BattleLoop, enemy spawning, combat AI,
+      projectiles, damage, win/lose conditions
+- [ ] Store/shop screen (browse and buy soldiers, vehicles, items)
 - [ ] Defense models in R3F (walls, sandbags, towers)
 - [ ] Victory/defeat screen
 - [ ] Map/level select screen
+- [ ] Audio system (Howler.js + SFX)
+- [ ] Post-processing (bloom, vignette)
 
 ---
 
@@ -57,161 +68,102 @@ the comedy.
 ## CORE LOOP
 
 ```
-MAP (pick a level)
-  --> LOADOUT (configure soldiers: equip weapons, train skills, spend compute)
-    --> PLACEMENT (place configured soldiers on the battlefield)
-      --> BATTLE (watch it play out -- physics chaos)
-        --> RESULTS (gold, stars, injuries)
-          --> MAP (next level)
+BARRACKS (hub -- always come back here)
+  --> tap soldier --> SOLDIER DETAIL (equip weapons, train skills)
+  --> DEPLOY --> MISSION BRIEFING --> PLACEMENT (place your soldiers)
+    --> GO --> BATTLE (watch it play out -- physics chaos)
+      --> RESULTS (gold, stars, injuries)
+        --> BARRACKS (next round)
 ```
 
-The LOADOUT screen is where the game's depth lives. It is where compute
-(the monetization currency) feels valuable. It is the most important
-screen after the battlefield itself.
+The BARRACKS is the hub. You always return here. It shows your army
+as real 3D toy soldiers standing on a surface.
+
+TRAINING is launched from the soldier detail screen when tapping a
+locked weapon. It's where compute (the monetization currency) gets
+spent. Training is the entire business model.
 
 ---
 
-## IMMEDIATE PRIORITY: THE LOADOUT SCREEN
+## SCREENS
 
-This is the next thing we build. Nothing else until this works.
+### 1. BARRACKS (Hub) -- BUILT
+- 3D flexSoldier models standing on sandy surface with wood frame
+- Tap a soldier to open detail view (hover effect: scale up + cursor)
+- Recruit [+] button (costs gold)
+- DEPLOY button transitions to placement
+- Adaptive camera: adjusts for soldier count and screen aspect ratio
 
-### What it is
+### 2. SOLDIER DETAIL -- BUILT (needs weapon display polish)
+- 3D soldier preview (rotatable, drag-to-spin, idle animation)
+- Weapon cards: equipped (green), trained (gold), locked (dimmed + lock)
+- Tapping locked weapon shows TRAINING REQUIRED overlay
+- Training CTA: pulsing button with compute cost
+- Back button returns to barracks
 
-A full-screen game panel (like Enlisted's soldier loadout -- see reference
-images) where players see their soldiers, equip weapons, and spend
-compute to train new skills. This screen is ALSO the entry point to
-the training arena.
+### 3. MISSION BRIEFING -- BUILT
+- Full-screen modal over battlefield
+- Shows level name, your squad roster with weapons + stars
+- BEGIN button dismisses and reveals placement tray
 
-### Why it matters
+### 4. PLACEMENT -- BUILT
+- Bottom tray shows YOUR soldiers by name + weapon type + gold cost
+- Tap soldier, tap battlefield to place
+- GO button starts battle
 
-- This is where COMPUTE feels valuable (the entire business model)
-- This is where soldiers become characters you care about
-- This is where weapon variety creates strategic depth
-- This must scale to dozens of weapons, abilities, and equipment
-- This must feel like a GAME, not a dashboard
+### 5. BATTLE -- PARTIAL (visuals only, no simulation)
+- Placed soldiers appear with correct weapons
+- Battlefield with props visible
+- Camera orbit works
+- No enemy spawning, no combat, no win/lose yet
 
-### Layout (mobile-first, portrait)
+### 6. TRAINING ARENA -- NOT BUILT
+- Will be launched from soldier detail when tapping TRAIN
+- Real-time neuroevolution visualization
+- NERO hybrid: scripted physics + neural net corrections
+- GA: 20-30 population, tournament selection
+- Speed controls, fitness progress, milestone notifications
 
-```
-+----------------------------+
-|  [<] SGT RICO      [G] 500|  Header: soldier name + resources
-|  Rifleman  ***              |  Class + star rating
-+----------------------------+
-|                            |
-|   [ 3D Soldier Model ]     |  Top 40%: rotatable preview
-|   (drag to spin)           |  Model updates live with equipped weapon
-|                            |
-+----------------------------+
-|  Weaponry  Perks  Skills   |  Tab bar (like Enlisted)
-+----------------------------+
-|                            |
-|  [Rifle *equipped*]        |  Weapon/item grid (scrollable)
-|  [Rocket ?trained?]        |  * = equipped, ? = unlockable
-|  [Grenade  LOCKED ]        |  LOCKED = needs compute to train
-|  [MG       LOCKED ]        |
-|                            |
-+----------------------------+
-|  [SGT Rico] [PVT Ace] [+] |  Roster strip: switch soldiers
-+----------------------------+
-|                            |
-|  [ TRAIN -- 1 Compute ]    |  Action: train selected locked weapon
-|  [ DEPLOY >>> ]            |  Or: proceed to placement with current loadout
-+----------------------------+
-```
-
-### Key behaviors
-
-- **3D preview** shows the selected soldier holding their equipped weapon.
-  Drag to rotate. When you tap a different weapon, the model swaps live.
-- **Locked weapons** show a lock icon + shimmer + "REQUIRES TRAINING".
-  Tapping a locked weapon selects it and the bottom button becomes TRAIN.
-- **TRAIN button** costs compute (shown with microchip icon). Tapping it
-  transitions to the training arena where you watch neuroevolution in
-  real-time. When training completes, "SKILL UNLOCKED" graduation moment,
-  then back to loadout with the weapon now available.
-- **Equipped weapon** has a green border/checkmark. Tap a trained weapon
-  to equip it -- the 3D model updates instantly.
-- **Roster strip** at bottom lets you switch between soldiers. Each chip
-  shows soldier name + tiny weapon icon. [+] button recruits new soldier
-  (costs gold).
-- **DEPLOY button** takes you to the placement phase with your currently
-  configured roster.
-
-### Training (integrated into loadout)
-
-Training is NOT a separate screen. It's launched FROM the loadout when
-you tap TRAIN on a locked weapon. The training arena slides in (or the
-camera zooms into it) and you watch the neuroevolution run. When done,
-you're returned to the loadout with the skill unlocked.
-
-The ML system (neural net, genetic algorithm, scenarios) is already
-ported from solder-four and ready to integrate.
-
-### Data model
-
-Port `rosterStore.ts` from solder-four:
-```typescript
-interface SoldierProfile {
-  id: string
-  name: string
-  skills: Partial<Record<WeaponType, TrainedBrain>>
-  equippedWeapon: WeaponType
-  status: 'ready' | 'injured'
-  injuredUntilRound: number
-  battlesWon: number
-  kills: number
-}
-```
+### 7. MAP / LEVEL SELECT -- NOT BUILT
+### 8. SHOP / STORE -- NOT BUILT
 
 ---
 
-## ECONOMY (summary -- see ECONOMY.md for full details)
+## TRAINING (the business model)
+
+Training is where compute gets spent. It must be visually spectacular.
+
+**Architecture (from V5 soldier-test):**
+- NERO-inspired hybrid: script the ballistics physics, neural net learns
+  aim corrections + fire timing
+- Small GA: 20-30 population, 12 hidden neurons, 136 weights
+- Trains fast in-browser (client-side)
+- Fitness function: hits (200pts), near-misses (32pts), accuracy bonus
+
+**UX flow:**
+1. Tap locked weapon in soldier detail
+2. "TRAINING REQUIRED" overlay appears
+3. Tap TRAIN (costs compute)
+4. Training arena: watch soldiers evolve in real-time
+5. Graduation: "SKILL UNLOCKED" moment
+6. Return to soldier detail with weapon now available
+
+**Status:** ML engine not ported yet. Training CTA overlay exists as
+visual placeholder. NeuralNet + GeneticAlgorithm code exists in V5
+(soldier-test repo) ready to port.
+
+---
+
+## ECONOMY
 
 Two currencies. One makes money. One doesn't.
 
 **COMPUTE (revenue):** The ONLY purchasable currency. Used to train
 soldiers in new weapon skills via real neuroevolution. Daily free drip
-of 100 Compute (~1 basic training/day). Purchasing compute is the
-entire business model.
+of 100 Compute (~1 basic training/day).
 
 **GOLD (free):** Earned by winning battles. Spent on recruiting soldiers,
-healing injuries, weapon blueprints. Cannot be purchased. Ever. Gold
-is plentiful. Compute is always the bottleneck.
-
----
-
-## SCREENS (5 total, zero dashboard energy)
-
-### 1. MAP -- Level Select
-- Full-screen themed map. Level nodes are physical objects.
-- Stars on completed. Padlocks on locked.
-- Tap a node for enemy preview. Star-gated world progression.
-
-### 2. LOADOUT -- Soldier Configuration (NEW -- highest priority)
-- Full-screen game panel (Enlisted-style, see reference images)
-- 3D soldier preview (rotatable, updates with equipped weapon)
-- Weapon/item grid: equipped, trained, locked states
-- Training entry point (spend compute to unlock locked weapons)
-- Roster strip to switch between soldiers
-- DEPLOY button to proceed to placement
-- See "IMMEDIATE PRIORITY" section above for full spec.
-
-### 3. BATTLE -- Core Gameplay (80% of the game)
-- **PLACEMENT:** Battlefield fills screen. Configured soldiers from
-  loadout available in bottom tray. Freeform placement on player side.
-  "GO" when ready.
-- **COMBAT:** Full-screen 3D. Minimal HUD. Physics comedy. Camera
-  orbit enabled.
-- **RESULT:** Stars, gold, injuries. Single "CONTINUE" button.
-
-### 4. TRAINING -- Embedded in Loadout
-- Launched from loadout when tapping TRAIN on a locked weapon.
-- Watch neuroevolution in real-time. Progress ring. Milestones.
-- "SKILL UNLOCKED" graduation. Soldier poses with new weapon.
-- Returns to loadout when done.
-
-### 5. SHOP -- Bottom Sheet (not a page)
-- Compute packs. Daily free claim. That's it.
+healing injuries, weapon blueprints. Cannot be purchased. Ever.
 
 ---
 
@@ -222,107 +174,13 @@ is plentiful. Compute is always the bottleneck.
 2. **No emojis.** Ever. SVG icons or 3D assets only.
 3. **No web patterns.** No nav bars, sidebars, breadcrumbs, card grids,
    white backgrounds, system fonts.
-4. **Full-bleed art.** Edge to edge. 3D world always visible, even
-   behind panels.
+4. **Full-bleed art.** Edge to edge. 3D world always visible.
 5. **Thumb zone.** Bottom 40% = actions. Top = HUD. Middle = game world.
-6. **Transitions are animations.** Camera moves, panel slides, zooms.
-   Never a hard page swap.
+6. **Transitions are animations.** Never a hard page swap.
 7. **Every surface is textured.** Wood, felt, dirt, plastic. No flat CSS.
 8. **Buttons have depth.** Beveled, 3D press states, spring animations.
-9. **Mobile-first, desktop-compatible.** Touch primary, mouse works.
+9. **Mobile-first, desktop-compatible.**
 10. **Simple > clever.** A 10-year-old figures it out in 5 seconds.
-
----
-
-## THE HUMOR
-
-Physics comedy is the personality of the game:
-- Soldiers ragdoll off table edges (Wilhelm scream)
-- Grenades landing short and launching YOUR guys
-- Tanks driving off ledges in slow-mo
-- Mines sending soldiers pinwheeling skyward
-- Walls collapsing and burying troops in rubble
-- Rockets knocking over giant background objects (coffee mugs, books)
-
-The scale contrast (tiny soldiers vs huge household objects) IS the tone.
-
----
-
-## LEVEL DESIGN
-
-### Philosophy: Levels are puzzles, not grinds.
-
-Hand-crafted. Specific challenges. Right strategy beats raw power.
-
-### Design Patterns
-- **Freeform placement** on the player side of the battlefield.
-- **Unit restriction per level** -- forces varied strategies.
-- **Teach-test-twist** for new mechanics.
-- **Sawtooth difficulty** -- target 3.2 avg attempts per level.
-
-### MVP Enemy Types (3 only)
-
-| Type     | Behavior                | Countered by          |
-|----------|-------------------------|-----------------------|
-| Infantry | Walks, shoots, swarms   | Splash/area damage    |
-| Jeep     | Fast, flanks            | Blocking units, mines |
-| Tank     | Armored, heavy damage   | Rockets, heavy weapons|
-
-### Three-Star System
-
-| Star | Criteria                                      |
-|------|-----------------------------------------------|
-| 1    | Complete the level (survive)                  |
-| 2    | Complete with budget remaining (efficiency)   |
-| 3    | Level-specific bonus objective (mastery)      |
-
----
-
-## MAP THEMES
-
-| World | Theme         | Levels | Props                              |
-|-------|---------------|--------|------------------------------------|
-| 1     | THE SANDBOX   | 1-8    | Buckets, shovels, pebbles, sticks  |
-| 2     | KITCHEN TABLE | 9-16   | Salt shakers, napkins, spoons, mugs|
-| 3     | BEDROOM FLOOR | 17-25  | Books, toy blocks, shoes, rulers   |
-
-**MVP: 25 levels across 3 themes.** Scale in Phase 5.
-
----
-
-## TECH STACK
-
-| Layer     | Choice                    | Why                                     |
-|-----------|---------------------------|-----------------------------------------|
-| Language  | TypeScript                | Entire R3F/Rapier/Zustand ecosystem is TS. Zero runtime cost. |
-| Framework | React 19 + Vite           | Fast builds, modern React               |
-| 3D        | Three.js + R3F            | Proven, massive ecosystem               |
-| Physics   | @react-three/rapier       | Real rigid body physics = comedy        |
-| State     | Zustand                   | Lightweight, proven in prior builds     |
-| Backend   | Supabase                  | Auth, DB, storage, realtime for PVP     |
-| Styling   | CSS modules               | Scoped, no runtime cost                 |
-| Audio     | Howler.js                 | 7KB, spatial audio, sprites, mobile-ready|
-| Payments  | Stripe (PWA)              | Keep ~94% revenue vs ~70% app stores    |
-
-### Visual Quality (port from ToySoldiers-two)
-- Plastic-sheen materials (roughness 0.35, metalness 0)
-- Military color palette (army green, olive, khaki, sand brown)
-- Hierarchical skeletal soldier models (20+ mesh pieces, pose blending)
-- Three-point lighting + ambient + soft shadows
-- Post-processing bloom (subtle)
-- ACESFilmic tone mapping
-
----
-
-## AUDIO
-
-Built in from Phase 1. Not bolted on later.
-
-**Library:** Howler.js (7KB, MIT, audio sprites, spatial, mobile-ready)
-
-**SFX sources (CC0 / royalty-free, no attribution):**
-Sonniss GDC, Kenney, Mixkit, Freesound USC, Tallbeard Studios.
-CC0-only policy. Track in LICENSES.md.
 
 ---
 
@@ -331,65 +189,73 @@ CC0-only policy. Track in LICENSES.md.
 ```
 src/
   engine/         -- Pure game logic. Zero rendering imports.
-    ml/           -- Neural net, genetic algorithm, training scenarios
-    sim/          -- Battle simulation, damage calc, win conditions
-    economy/      -- Gold, compute, daily drip, purchase validation
-    levels/       -- Level loader, star calc, progression gating
+    ml/           -- Neural net, genetic algorithm (NOT YET PORTED)
+    sim/          -- BattleManager (built, not wired)
+    economy/      -- (not started)
+    levels/       -- (not started)
 
-  three/          -- All 3D rendering. Models, materials, effects.
-    models/       -- Procedural soldier, vehicle, building, terrain factories
-    effects/      -- Destruction, particles, muzzle flash, explosions
-    camera/       -- Camera controller (follow, zoom, pan, transitions)
-    physics/      -- Rapier body setup, collision handlers
+  three/          -- All 3D rendering.
+    models/       -- flexSoldier, SoldierUnit, SoldierPreview, BarracksScene,
+                     weaponMeshes, jeep, plasticWall, materials, sandboxProps
+    effects/      -- (not started)
+    camera/       -- CameraRig (orbit controls)
+    physics/      -- SlotMarker
 
-  scenes/         -- Top-level game screens (map, battle, training)
-  ui/             -- Game UI components (HUD, bottom sheets, buttons)
-  stores/         -- Zustand (game state, roster, economy, settings)
-  config/         -- JSON level defs, weapon stats, economy constants
-  api/            -- Supabase client, auth, sync, analytics hooks
-  audio/          -- Howler.js setup, sprite definitions, sound manager
-  assets/         -- SVG icons, fonts, audio sprite files
+  scenes/         -- Game.tsx (scene router), BattleScene.tsx
+  ui/             -- BarracksScreen, SoldierDetail, MissionBriefing,
+                     PlacementTray, HUD, ToyIcons
+  stores/         -- gameStore, rosterStore
+  config/         -- types, units, roster, levels/sandbox-01.json
+  pages/          -- HomePage
+  styles/         -- barracks.css, loadout.css, briefing.css, game-ui.css
 ```
 
 ---
 
-## REVISED BUILD SEQUENCE
+## BUILD SEQUENCE
 
-### NEXT UP: Loadout Screen + Training Integration
-1. Port rosterStore from solder-four (soldier profiles, skills, weapons)
-2. Build LoadoutScreen UI (Enlisted-style, full spec above)
-3. Build SoldierPreview component (3D model, rotatable, weapon swap)
-4. Integrate training (tap TRAIN -> neuroevolution arena -> skill unlock)
-5. Wire DEPLOY button to placement phase with configured soldiers
-6. Redesign placement tray to show roster soldiers (not unit types)
+### DONE: Visual Foundation
+1. ~~Project scaffolding~~
+2. ~~Homepage~~
+3. ~~3D models + materials~~
+4. ~~Battlefield scene~~
+5. ~~Barracks with 3D soldiers~~
+6. ~~Soldier detail with weapon system~~
+7. ~~Mission briefing modal~~
+8. ~~Roster-connected placement~~
+
+### NEXT: Training System
+9. Port NeuralNet + GeneticAlgorithm from soldier-test
+10. Build training arena (3D visualization, speed controls, milestones)
+11. Wire TRAIN button to launch arena from soldier detail
+12. Graduation flow (skill unlocked, return to detail)
 
 ### THEN: Battle Phase
-7. Port defense models (walls, sandbags, towers) from solder-four
-8. Enemy spawning from wave config
-9. Soldier combat AI (targeting, firing, projectiles)
-10. Damage system + death + ragdoll physics
-11. Win/lose detection
-12. Victory/defeat result screen
+13. Wire BattleLoop into scene
+14. Enemy spawning + rendering
+15. Combat AI + projectiles + damage
+16. Win/lose detection + result screen
 
 ### THEN: Polish
-13. Audio system (Howler.js + SFX)
-14. Post-processing (bloom + vignette)
-15. Game feel (screen shake, particles, spring animations)
-16. Ghost preview for placement
-17. Map/level select screen
+17. Audio (Howler.js + SFX)
+18. Post-processing (bloom + vignette)
+19. Game feel (screen shake, particles, spring animations)
+20. Map/level select screen
+21. Store/shop screen
 
 ---
 
-## WHAT WE ARE NOT BUILDING
+## TECH STACK
 
-- Base building (too confusing, proven across 3 versions)
-- Real-time PVP in MVP
-- Tutorial systems (the game teaches through play)
-- Settings/account pages
-- Any screen that looks like a web app
-- Native app wrappers (PWA first)
-- More than 3 enemy types in MVP
-- More than 3 map themes in MVP
+| Layer     | Choice                    | Why                                     |
+|-----------|---------------------------|-----------------------------------------|
+| Language  | TypeScript 6              | Full ecosystem typing                   |
+| Framework | React 19 + Vite 8         | Fast builds, modern React               |
+| 3D        | Three.js + R3F            | Proven, massive ecosystem               |
+| Physics   | @react-three/rapier       | Real rigid body physics = comedy        |
+| State     | Zustand                   | Lightweight, proven in prior builds     |
+| Styling   | CSS (scoped)              | No runtime cost                         |
+| Audio     | Howler.js                 | 7KB, spatial audio, mobile-ready        |
 
 ---
 
@@ -399,11 +265,8 @@ src/
 - <3 second initial load
 - <100ms input latency
 - Max 50 Rapier physics bodies per scene
-- Max 30 soldiers on screen
-- Max 50 draw calls on mobile (instanced meshes)
-- Bundle size <2MB
 - DPR capped at 2
 
 ---
 
-*Last updated: 2026-04-02 (evening session)*
+*Last updated: 2026-04-03*

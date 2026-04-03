@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "soldiers-final",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["vite", "--port", "5175"],
+      "runtimeExecutable": "/opt/homebrew/bin/node",
+      "runtimeArgs": ["node_modules/.bin/vite", "--port", "5175"],
       "port": 5175
     }
   ]

@@ -4,6 +4,7 @@ import { RigidBody, CapsuleCollider } from '@react-three/rapier'
 import type { RapierRigidBody } from '@react-three/rapier'
 import * as THREE from 'three'
 import { createFlexSoldier, animateFlexSoldier } from './flexSoldier'
+import { applyWeaponToSoldier } from './weaponMeshes'
 import type { GameUnit } from '@config/types'
 import { TOY } from './materials'
 
@@ -14,29 +15,29 @@ interface SoldierUnitProps {
 export function SoldierUnit({ unit }: SoldierUnitProps) {
   const rigidRef = useRef<RapierRigidBody>(null)
   const groupRef = useRef<THREE.Group>(null)
+  const weaponRef = useRef<THREE.Group | null>(null)
 
   const soldier = useMemo(() => {
     const color = unit.team === 'green' ? TOY.armyGreen : TOY.sandBrown
     return createFlexSoldier(color)
   }, [unit.team])
 
-  // Attach the procedural mesh to the group
   useEffect(() => {
     if (groupRef.current && soldier) {
       groupRef.current.add(soldier.group)
-      return () => {
-        groupRef.current?.remove(soldier.group)
-      }
+      return () => { groupRef.current?.remove(soldier.group) }
     }
   }, [soldier])
 
-  // Animate
+  // Apply weapon based on unit's weapon type
+  useEffect(() => {
+    if (!soldier) return
+    weaponRef.current = applyWeaponToSoldier(soldier.parts, unit.weapon, weaponRef.current)
+  }, [unit.weapon, soldier])
+
   useFrame((state) => {
     if (!soldier) return
-    const elapsed = state.clock.getElapsedTime()
-    const dt = state.clock.getDelta()
-
-    animateFlexSoldier(soldier, unit.status, elapsed, dt)
+    animateFlexSoldier(soldier, unit.status, state.clock.getElapsedTime(), state.clock.getDelta())
   })
 
   const isDead = unit.status === 'dead'

@@ -30,6 +30,7 @@ interface GameState {
   occupySlot: (slotId: string) => void
   freeSlot: (slotId: string) => void
   spendGold: (amount: number) => boolean
+  spendCompute: (amount: number) => boolean
   addGold: (amount: number) => void
   setResult: (result: 'victory' | 'defeat', stars: number) => void
   startBattle: () => void
@@ -66,7 +67,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     result: null,
     starsEarned: 0,
     battleStartTime: 0,
-    phase: 'placement',
+    phase: 'loadout',
   }),
 
   setPhase: (phase) => set({ phase }),
@@ -112,6 +113,13 @@ export const useGameStore = create<GameState>((set, get) => ({
     const { gold } = get()
     if (gold < amount) return false
     set({ gold: gold - amount })
+    return true
+  },
+
+  spendCompute: (amount) => {
+    const { compute } = get()
+    if (compute < amount) return false
+    set({ compute: compute - amount })
     return true
   },
 

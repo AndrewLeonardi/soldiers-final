@@ -1,62 +1,55 @@
 import { useGameStore } from '@stores/gameStore'
-import { PLACEMENT_COSTS } from '@config/units'
-import { SoldierIcon, RocketLauncherIcon, SandbagIcon, WallIcon, GoldCoinIcon } from './ToyIcons'
+import { useRosterStore } from '@stores/rosterStore'
+import { WEAPON_DISPLAY } from '@config/roster'
+import { SoldierIcon, GoldCoinIcon } from './ToyIcons'
 import '@styles/game-ui.css'
 
-interface UnitOption {
-  id: string
-  name: string
-  cost: number
-  Icon: React.FC<{ size?: number; color?: string }>
-}
-
-const UNIT_OPTIONS: UnitOption[] = [
-  { id: 'rifle_soldier', name: 'RIFLE', cost: PLACEMENT_COSTS.rifle_soldier, Icon: SoldierIcon },
-  { id: 'rocket_soldier', name: 'ROCKET', cost: PLACEMENT_COSTS.rocket_soldier, Icon: RocketLauncherIcon },
-  { id: 'sandbag', name: 'SANDBAG', cost: PLACEMENT_COSTS.sandbag, Icon: SandbagIcon },
-  { id: 'wall', name: 'WALL', cost: PLACEMENT_COSTS.wall, Icon: WallIcon },
-]
+const SOLDIER_COST = 100
 
 interface PlacementTrayProps {
-  onSelect: (unitId: string | null) => void
+  onSelect: (soldierId: string | null) => void
   selectedUnit: string | null
+  briefingDismissed: boolean
 }
 
-export function PlacementTray({ onSelect, selectedUnit }: PlacementTrayProps) {
+export function PlacementTray({ onSelect, selectedUnit, briefingDismissed }: PlacementTrayProps) {
   const gold = useGameStore((s) => s.gold)
   const phase = useGameStore((s) => s.phase)
   const startBattle = useGameStore((s) => s.startBattle)
   const playerUnits = useGameStore((s) => s.playerUnits)
+  const soldiers = useRosterStore((s) => s.soldiers)
 
-  if (phase !== 'placement') return null
+  if (phase !== 'placement' || !briefingDismissed) return null
 
   const hasUnits = playerUnits.length > 0
 
   return (
     <>
       <div className="placement-tray-bg" />
-      <div className={`placement-tray ${phase === 'placement' ? 'visible' : 'hidden'}`}>
-        {UNIT_OPTIONS.map((unit) => {
-          const canAfford = gold >= unit.cost
-          const isSelected = selectedUnit === unit.id
+      <div className="placement-tray visible">
+        {soldiers.map((sol) => {
+          const canAfford = gold >= SOLDIER_COST
+          const isSelected = selectedUnit === sol.id
           const iconColor = isSelected ? '#4ADE80' : '#ddeedd'
+          const wpnName = WEAPON_DISPLAY[sol.equippedWeapon].name
 
           return (
             <div
-              key={unit.id}
+              key={sol.id}
               className={`unit-card ${isSelected ? 'selected' : ''} ${!canAfford ? 'disabled' : ''}`}
               onPointerDown={() => {
                 if (!canAfford) return
-                onSelect(isSelected ? null : unit.id)
+                onSelect(isSelected ? null : sol.id)
               }}
             >
               <div className="unit-card-icon">
-                <unit.Icon size={28} color={iconColor} />
+                <SoldierIcon size={28} color={iconColor} />
               </div>
-              <span className="unit-card-name">{unit.name}</span>
+              <span className="unit-card-name">{sol.name.split(' ').pop()}</span>
+              <span className="unit-card-weapon">{wpnName}</span>
               <span className="unit-card-cost">
                 <GoldCoinIcon size={12} />
-                {unit.cost}
+                {SOLDIER_COST}
               </span>
             </div>
           )

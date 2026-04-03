@@ -3,11 +3,12 @@ import { useFrame } from '@react-three/fiber'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import * as THREE from 'three'
 import { useGameStore } from '@stores/gameStore'
+import { useRosterStore } from '@stores/rosterStore'
 import { SoldierUnit } from '@three/models/SoldierUnit'
 import { BattlefieldProps } from '@three/models/sandboxProps'
 import { CameraRig } from '@three/camera/CameraRig'
 import type { GameUnit } from '@config/types'
-import { WEAPON_STATS, PLACEMENT_COSTS } from '@config/units'
+import { WEAPON_STATS } from '@config/units'
 
 let unitIdCounter = 0
 function nextUnitId() { return `u-${++unitIdCounter}` }
@@ -118,42 +119,37 @@ function PlacementGround({
   const addPlayerUnit = useGameStore((s) => s.addPlayerUnit)
   const spendGold = useGameStore((s) => s.spendGold)
   const phase = useGameStore((s) => s.phase)
+  const soldiers = useRosterStore((s) => s.soldiers)
 
   if (phase !== 'placement' || !selectedUnit) return null
+
+  // selectedUnit is now a soldier ID from the roster
+  const rosterSoldier = soldiers.find((s) => s.id === selectedUnit)
 
   return (
     <mesh
       rotation-x={-Math.PI / 2}
       position={[0, 0.03, 0]}
       onPointerUp={(e) => {
-        console.log('[Placement] pointerUp, orbiting:', orbitingRef.current, 'point:', e.point.toArray().map(v => v.toFixed(2)))
-        if (orbitingRef.current) {
-          console.log('[Placement] Suppressed -- was orbiting')
-          return
-        }
+        if (orbitingRef.current) return
         e.stopPropagation()
 
         const point = e.point
-        // Snap to 0.5 grid
         const x = Math.round(point.x * 2) / 2
         const z = Math.round(point.z * 2) / 2
 
-        // Player side only (x <= 0)
-        if (x > 0.5) {
-          console.log('[Placement] Rejected -- enemy side, x:', x)
-          return
-        }
+        if (x > 0.5) return
 
-        const cost = PLACEMENT_COSTS[selectedUnit] ?? 100
+        const cost = 100
         if (!spendGold(cost)) return
 
-        const isSoldier = selectedUnit.includes('soldier')
-        const weaponKey = selectedUnit === 'rocket_soldier' ? 'rocketLauncher' as const : 'rifle' as const
-        const stats = isSoldier ? WEAPON_STATS[weaponKey] : { health: 150, speed: 0, range: 0, damage: 0, fireRate: 0 }
+        // Use the roster soldier's equipped weapon
+        const weaponKey = rosterSoldier?.equippedWeapon ?? 'rifle'
+        const stats = WEAPON_STATS[weaponKey]
 
         const unit: GameUnit = {
           id: nextUnitId(),
-          type: isSoldier ? 'soldier' : selectedUnit === 'sandbag' ? 'sandbag' : 'wall',
+          type: 'soldier',
           team: 'green',
           position: [x, 0, z],
           rotation: Math.PI / 2,
