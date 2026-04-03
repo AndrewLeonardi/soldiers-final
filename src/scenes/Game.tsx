@@ -15,8 +15,19 @@ import { SoldierDetail } from '@ui/SoldierDetail'
 import { MissionBriefing } from '@ui/MissionBriefing'
 import { TrainingHUD } from '@ui/TrainingHUD'
 import { GraduationBanner } from '@ui/GraduationBanner'
+import { NeuralNetViz } from '@ui/NeuralNetViz'
 import levelData from '@config/levels/sandbox-01.json'
 import type { LevelConfig } from '@config/types'
+
+// Camera controller for training arena — sets initial position then hands off to OrbitControls
+function TrainingCamera() {
+  const { camera } = useThree()
+  useEffect(() => {
+    camera.position.set(4, 8, 14)
+    camera.lookAt(5, 0, 0)
+  }, [camera])
+  return <TrainingScene />
+}
 
 // Camera controller for barracks view
 function BarracksCamera({ soldierCount }: { soldierCount: number }) {
@@ -72,7 +83,7 @@ function SceneRouter({
   }
 
   if (phase === 'training') {
-    return <TrainingScene />
+    return <TrainingCamera />
   }
 
   return (
@@ -142,6 +153,7 @@ export default function Game() {
       <BarracksScreen />
       <SoldierDetail />
       <TrainingHUD />
+      <NeuralNetViz />
       <GraduationBanner />
       <HUD />
       {!briefingDismissed && (

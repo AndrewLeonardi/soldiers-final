@@ -645,6 +645,53 @@ export function poseTurretOperator(p: SoldierParts, t: number): void {
   p.rifleGrp.rotation.x = -(spineX + armX + elbowX)
 }
 
+/** Rocket Launcher — Kneeling pose: tube on right shoulder */
+export function poseRocketKneel(p: SoldierParts, t: number): void {
+  p.leftLeg.rotation.x = 0.15
+  p.leftKnee.rotation.x = -0.1
+  p.rightLeg.rotation.x = -0.2
+  p.rightKnee.rotation.x = -0.1
+  p.hips.position.y = 0.52
+
+  p.rightArm.rotation.x = -1.3
+  p.rightArm.rotation.z = -0.15
+  p.rightElbow.rotation.x = -0.5
+
+  p.leftArm.rotation.x = -1.1
+  p.leftArm.rotation.z = 0.25
+  p.leftElbow.rotation.x = -0.7
+
+  p.spine.rotation.x = -0.05 + Math.sin(t * 0.8) * 0.01
+  p.spine.rotation.z = 0
+
+  p.headGrp.rotation.x = 0.05 + Math.sin(t * 1.2) * 0.01
+  p.headGrp.rotation.y = 0.05
+
+  const spineX = -0.05
+  const armX = -1.3
+  const elbowX = -0.5
+  p.rifleGrp.rotation.x = -(spineX + armX + elbowX) - 0.2
+  p.rifleGrp.rotation.z = 0
+}
+
+/** Rocket Launcher — Fire recoil: big backward kick from shoulder */
+export function poseRocketFire(p: SoldierParts, progress: number): void {
+  poseRocketKneel(p, 0)
+
+  let kick: number
+  if (progress < 0.2) {
+    kick = Math.sin((progress / 0.2) * Math.PI)
+  } else {
+    const settle = (progress - 0.2) / 0.8
+    kick = Math.exp(-settle * 4) * Math.sin(settle * 8) * 0.5
+  }
+
+  p.spine.rotation.x = 0.05 - kick * 0.2
+  p.rightArm.rotation.x = -1.4 + kick * 0.3
+  p.headGrp.rotation.x = -0.05 + kick * 0.1
+  p.rifleGrp.rotation.x += kick * 0.4
+}
+
 /** Unified animation dispatcher -- maps UnitStatus to pose functions */
 export function animateFlexSoldier(
   soldier: FlexSoldierResult,

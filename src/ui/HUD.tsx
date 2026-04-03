@@ -7,7 +7,7 @@ export function HUD() {
   const compute = useGameStore((s) => s.compute)
   const phase = useGameStore((s) => s.phase)
 
-  if (phase === 'loadout') return null
+  if (phase === 'loadout' || phase === 'training') return null
 
   const phaseLabel = phase === 'placement'
     ? 'DEPLOY'

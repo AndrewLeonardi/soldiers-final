@@ -13,6 +13,7 @@ import {
   RifleIcon,
   RocketLauncherIcon,
   MachineGunIcon,
+  TankIcon,
   StarIcon,
   CheckIcon,
   LockIcon,
@@ -20,14 +21,16 @@ import {
 } from './ToyIcons'
 import '@styles/loadout.css'
 
-const ALL_WEAPONS: WeaponType[] = ['rifle', 'rocketLauncher', 'grenade', 'machineGun']
+const ALL_WEAPONS: WeaponType[] = ['rifle', 'rocketLauncher', 'grenade', 'machineGun', 'tank']
 
 function WeaponIcon({ weapon, size = 28 }: { weapon: WeaponType; size?: number }) {
   switch (weapon) {
     case 'rifle': return <RifleIcon size={size} />
     case 'rocketLauncher': return <RocketLauncherIcon size={size} />
     case 'machineGun': return <MachineGunIcon size={size} />
+    case 'tank': return <TankIcon size={size} />
     case 'grenade': return <TrainIcon size={size} />
+    default: return <RifleIcon size={size} />
   }
 }
 
@@ -81,7 +84,7 @@ export function SoldierDetail() {
           dpr={[1, 2]}
           shadows
           gl={{ antialias: false, powerPreference: 'high-performance' }}
-          camera={{ fov: 30, position: [0, 0.35, 2.4], near: 0.1, far: 20 }}
+          camera={{ fov: 30, position: [0, 0.5, 3.2], near: 0.1, far: 20 }}
           onCreated={({ gl }) => {
             gl.toneMapping = THREE.ACESFilmicToneMapping
             gl.toneMappingExposure = 1.2

@@ -1,4 +1,4 @@
-export type WeaponType = 'rifle' | 'rocketLauncher' | 'grenade' | 'machineGun'
+export type WeaponType = 'rifle' | 'rocketLauncher' | 'grenade' | 'machineGun' | 'tank'
 
 export type EnemyType = 'infantry' | 'jeep' | 'tank'
 

@@ -306,3 +306,31 @@
   0% { transform: scale(0) rotate(-180deg); opacity: 0; }
   100% { transform: scale(1) rotate(0deg); opacity: 1; }
 }
+
+/* ── Neural Network Visualization ────────────────────── */
+
+.nn-viz {
+  position: absolute;
+  bottom: 56px;
+  left: 16px;
+  background: linear-gradient(180deg, rgba(26, 37, 56, 0.9), rgba(16, 24, 40, 0.92));
+  border: 2px solid #3a5570;
+  border-radius: var(--radius-lg);
+  padding: 8px 10px 6px;
+  z-index: 10;
+  pointer-events: none;
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.nn-title {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: rgba(180, 200, 240, 0.4);
+  text-align: center;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+}
