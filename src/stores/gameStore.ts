@@ -49,6 +49,7 @@ interface GameState {
   selectPlacement: (type: string | null) => void
   rotatePlacement: () => void
   placeSoldier: (soldierId: string, position: [number, number, number]) => void
+  placeDefense: (type: 'wall' | 'sandbag' | 'tower', position: [number, number, number]) => void
   removePlayerUnit: (unitId: string) => void
 }
 
@@ -235,6 +236,37 @@ export const useGameStore = create<GameState>((set, get) => ({
       playerUnits: [...state.playerUnits, unit],
       placedSoldierIds: [...state.placedSoldierIds, soldierId],
       selectedPlacement: null, // deselect after placing
+    })
+  },
+
+  placeDefense: (type, position) => {
+    const state = get()
+    const costs: Record<string, number> = { wall: 50, sandbag: 75, tower: 200 }
+    const cost = costs[type] ?? 0
+    const healthMap: Record<string, number> = { wall: 200, sandbag: 150, tower: 300 }
+
+    if (!state.spendGold(cost)) return
+
+    const unit: GameUnit = {
+      id: nextUnitId(),
+      type: type as any,
+      team: 'green',
+      position,
+      rotation: state.placementRotation,
+      health: healthMap[type] ?? 200,
+      maxHealth: healthMap[type] ?? 200,
+      status: 'idle',
+      weapon: 'rifle',
+      lastFireTime: 0,
+      fireRate: 0,
+      range: 0,
+      damage: 0,
+      speed: 0,
+    }
+
+    set({
+      playerUnits: [...state.playerUnits, unit],
+      selectedPlacement: null,
     })
   },
 

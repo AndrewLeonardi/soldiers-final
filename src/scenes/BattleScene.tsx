@@ -6,6 +6,7 @@ import { useGameStore } from '@stores/gameStore'
 import { useRosterStore } from '@stores/rosterStore'
 import { NeuralNet } from '@engine/ml/neuralNet'
 import { SoldierUnit } from '@three/models/SoldierUnit'
+import { WallDefense, SandbagDefense, WatchTower } from '@three/models/Defenses'
 import { ProjectileMesh } from '@three/models/ProjectileMesh'
 import { Intel } from '@three/models/Intel'
 import { GhostPreview } from '@three/models/GhostPreview'
@@ -694,7 +695,13 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
             const x = Math.round(e.point.x * 2) / 2
             const z = Math.round(e.point.z * 2) / 2
             if (x > 2) return
-            placeSoldier(selectedPlacement, [x, 0, z])
+
+            const sel = selectedPlacement
+            if (sel === 'wall' || sel === 'sandbag' || sel === 'tower') {
+              useGameStore.getState().placeDefense(sel, [x, 0, z])
+            } else {
+              placeSoldier(sel, [x, 0, z])
+            }
           }}
         >
           <planeGeometry args={[20, 14]} />
@@ -702,10 +709,13 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
         </mesh>
       )}
 
-      {/* Soldiers */}
-      {renderPlayers.map((unit) => (
-        <SoldierUnit key={unit.id} unit={unit} />
-      ))}
+      {/* Player units: soldiers + defenses */}
+      {renderPlayers.map((unit) => {
+        if (unit.type === 'wall') return <WallDefense key={unit.id} position={unit.position} rotation={unit.rotation} />
+        if (unit.type === 'sandbag') return <SandbagDefense key={unit.id} position={unit.position} rotation={unit.rotation} />
+        if (unit.type === 'tower') return <WatchTower key={unit.id} position={unit.position} rotation={unit.rotation} />
+        return <SoldierUnit key={unit.id} unit={unit} />
+      })}
       {renderEnemies.map((unit) => (
         <SoldierUnit key={unit.id} unit={unit} />
       ))}

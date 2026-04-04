@@ -66,27 +66,31 @@ This is the production build. Every line of code serves the game.
 - [x] **No mission briefing** -- deploy goes straight to placement
       (removed unnecessary extra tap)
 
+- [x] **Real neural net AI in battle** -- trained soldiers use actual
+      136-weight NN (NERO hybrid) for precise aim corrections.
+      Untrained soldiers fire with wild random aim (±23 degrees).
+      Rifle is always "trained" (basic scripted aim).
+- [x] **Weapon-specific projectiles** -- rockets (ballistic arc + 3.6
+      blast radius), grenades (bounce + 1.2s fuse + 3.0 blast),
+      MG (rapid straight). All with area knockback on explosion.
+- [x] **Battle camera** -- fov=38, position=[0,14,16] shows full
+      battlefield (matches soldier-test)
+- [x] **Round progression** -- nextRound() heals survivors, awards
+      gold (200+round*50), spawns escalating waves from ROUND_WAVES
+      (4 infantry -> 6 -> 5+jeep -> 8+2jeeps -> 6+tank)
+- [x] **Compute prominence** -- "UNTRAINED" red pulsing badge on
+      placement cards. "TRAIN YOUR SOLDIERS" tip on defeat screen.
+      Round number in placement bar and results.
+- [x] **Defense objects** -- walls (destructible 6x5 brick grid with
+      structural integrity + cascading collapse), sandbags (U-shaped
+      bunker), watch towers (elevated platform at y=1.8). Placement
+      via defense cards in tray (wall $50, sandbag $75, tower $200).
+
 ### NEEDS WORK (known issues)
-- [ ] **Battle camera** -- camera needs to zoom out wider to show full
-      battlefield during battle (soldiers sometimes off-screen)
-- [ ] **Placement feels disconnected** -- green zone appears but it's
-      not obvious where your soldiers will have the most impact
 - [ ] **Enemy AI too simple** -- enemies walk in a straight line to Intel,
       no flanking, no cover-seeking, no grenade throws
-- [ ] **No projectile variety in battle** -- grenade/MG weapon types
-      fire bullets instead of their actual projectile types
-- [ ] **Trained brains not used in battle** -- soldiers fight the same
-      whether trained or not (brain weights are stored but dormant)
 
 ### NOT STARTED (next priorities)
-- [ ] **Defense objects** -- walls (destructible brick grid), sandbags,
-      watchtowers (from soldier-test: Defenses.tsx pattern)
-- [ ] **Grenade/rocket blast radius** -- area damage, knockback velocity,
-      wall block destruction with cascading collapse
-- [ ] **Round progression** -- nextRound() with escalating waves, surviving
-      soldiers persist, gold reward (200 + round*50)
-- [ ] **Brain weight integration** -- trained soldiers get stat buffs
-      (faster fire, more damage) during battle
 - [ ] Store/shop screen (browse and buy soldiers, vehicles, items)
 - [ ] Victory/defeat animations (camera sweep, celebration particles)
 - [ ] Map/level select screen
