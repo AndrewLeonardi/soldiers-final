@@ -12,11 +12,11 @@ This is the production build. Every line of code serves the game.
 - [x] 7 model files ported to TypeScript (materials, flexSoldier, jeep,
       plasticWall, easing, poseBlender, equipmentPoses)
 - [x] 15+ SVG icons (MicrochipIcon, GoldCoinIcon, weapon icons, UI icons)
-- [x] Sandbox battlefield scene (table frame, coffee mug, pencil, sandbags,
-      barbed wire, flags, oil drums, rocks, scrub, sand dunes)
+- [x] Sandbox battlefield scene (table frame, barbed wire, oil drums,
+      rocks, scrub -- simplified, no household clutter)
 - [x] OrbitControls camera (orbit, zoom, pan with orbit-vs-click detection)
 - [x] ACESFilmic tone mapping + plastic-sheen materials
-- [x] Game store (Zustand: phases, units, gold, compute, waves)
+- [x] Game store (Zustand: phases, units, gold, compute, placement state)
 - [x] Roster store (Zustand: soldier profiles, weapon equip/unlock, recruit)
 - [x] **3D Barracks hub** -- real flexSoldier models standing on a surface,
       tap to configure, recruit button, deploy button, hover effects
@@ -24,15 +24,13 @@ This is the production build. Every line of code serves the game.
       5 weapon cards (rifle, rocket, grenade, MG, tank) with states
 - [x] **Weapon system** -- shared weapon mesh factory (rifle, rocket, grenade,
       MG), display-size weapons, weapon swap on soldier model
-- [x] **Mission briefing modal** -- game-style pre-battle screen showing
-      level name, squad roster, BEGIN button
-- [x] **Roster-connected placement** -- placement tray shows YOUR soldiers
-      by name (SGT RICO, PVT ACE) with equipped weapon type
+- [x] **Roster-connected placement** -- military green cards show YOUR soldiers
+      by name (RICO, ACE) with equipped weapon type and gold cost
 - [x] **Battlefield placement** -- placed soldiers spawn as flexSoldier models
-      with correct weapon, connected to roster weapon stats
+      with correct weapon, ghost preview follows cursor (green/red zones)
 - [x] Scene routing: barracks, battlefield, training scenes based on phase
-- [x] **Visual overhaul** -- mobile game UI with chunky beveled buttons,
-      navy-blue gradient panels, gold borders, warm depth
+- [x] **Visual overhaul** -- mobile game UI with military green placement cards,
+      gradient overlays, beveled buttons, game-feel transitions
 - [x] **ML Training System** -- full NERO hybrid neuroevolution:
       - NeuralNet (6->12->4 feedforward, tanh, 136 weights)
       - GeneticAlgorithm (pop=30, tournament selection, adaptive mutation)
@@ -41,8 +39,7 @@ This is the production build. Every line of code serves the game.
       - Training store (Zustand) bridges engine to UI
       - 3D Training Arena with soldier/tank, soda-can targets, explosions
       - Weapon-specific poses (rocket kneeling, grenade throw, MG burst)
-      - Weapon-specific projectiles (rocket mesh+exhaust, grenade sphere,
-        MG bullets, tank shells) with impact explosions
+      - Weapon-specific projectiles with impact explosions
       - Procedural toy tank model (hull, tracks, rotating turret+barrel)
       - TrainingHUD: generation counter, fitness %, sparkline, speed
         controls (1x-50x), progress bar to graduation
@@ -51,13 +48,47 @@ This is the production build. Every line of code serves the game.
       - GraduationBanner: "SKILL LEARNED!" celebration with stars
       - Brain weights persist on SoldierProfile
       - Training launched from soldier detail via "BEGIN TRAINING" CTA
+- [x] **Battle system** -- mutable-ref physics (soldier-test pattern):
+      - Enemy soldiers spawn from waves, march toward Intel objective
+      - Player soldiers auto-target nearest enemy, fire bullets/rockets
+      - Projectile rendering (bullet cylinders, rocket meshes + flame)
+      - Collision detection with damage, hit status, death knockback
+      - Ragdoll physics: velocity, gravity, ground bounce, spin decay
+      - Death animation plays once and holds (no looping)
+      - Win condition: all enemies dead. Lose: enemy reaches Intel
+      - Single-wave first level (4 infantry)
+- [x] **Intel objective** -- rotating briefcase on pedestal at [-7,0,0],
+      golden glow ring, point light to draw attention
+- [x] **Ghost preview** -- transparent green/red shape follows cursor
+      during placement, snaps to 0.5 grid, validates player zone (x<=2)
+- [x] **Result screen** -- DEFEAT/VICTORY banner, stars, enemies eliminated,
+      soldiers surviving, gold reward, TRY AGAIN / NEXT BATTLE button
+- [x] **No mission briefing** -- deploy goes straight to placement
+      (removed unnecessary extra tap)
+
+### NEEDS WORK (known issues)
+- [ ] **Battle camera** -- camera needs to zoom out wider to show full
+      battlefield during battle (soldiers sometimes off-screen)
+- [ ] **Placement feels disconnected** -- green zone appears but it's
+      not obvious where your soldiers will have the most impact
+- [ ] **Enemy AI too simple** -- enemies walk in a straight line to Intel,
+      no flanking, no cover-seeking, no grenade throws
+- [ ] **No projectile variety in battle** -- grenade/MG weapon types
+      fire bullets instead of their actual projectile types
+- [ ] **Trained brains not used in battle** -- soldiers fight the same
+      whether trained or not (brain weights are stored but dormant)
 
 ### NOT STARTED (next priorities)
-- [ ] **Battle simulation** -- wire BattleLoop, enemy spawning, combat AI,
-      projectiles, damage, win/lose conditions
+- [ ] **Defense objects** -- walls (destructible brick grid), sandbags,
+      watchtowers (from soldier-test: Defenses.tsx pattern)
+- [ ] **Grenade/rocket blast radius** -- area damage, knockback velocity,
+      wall block destruction with cascading collapse
+- [ ] **Round progression** -- nextRound() with escalating waves, surviving
+      soldiers persist, gold reward (200 + round*50)
+- [ ] **Brain weight integration** -- trained soldiers get stat buffs
+      (faster fire, more damage) during battle
 - [ ] Store/shop screen (browse and buy soldiers, vehicles, items)
-- [ ] Defense models in R3F (walls, sandbags, towers)
-- [ ] Victory/defeat screen
+- [ ] Victory/defeat animations (camera sweep, celebration particles)
 - [ ] Map/level select screen
 - [ ] Audio system (Howler.js + SFX)
 - [ ] Post-processing (bloom, vignette)
@@ -84,8 +115,8 @@ the comedy.
 ```
 BARRACKS (hub -- always come back here)
   --> tap soldier --> SOLDIER DETAIL (equip weapons, train skills)
-  --> DEPLOY --> MISSION BRIEFING --> PLACEMENT (place your soldiers)
-    --> GO --> BATTLE (watch it play out -- physics chaos)
+  --> DEPLOY --> PLACEMENT (place soldiers + defenses on battlefield)
+    --> FIGHT! --> BATTLE (watch it play out -- physics chaos)
       --> RESULTS (gold, stars, injuries)
         --> BARRACKS (next round)
 ```
@@ -96,6 +127,11 @@ as real 3D toy soldiers standing on a surface.
 TRAINING is launched from the soldier detail screen when tapping a
 locked weapon. It's where compute (the monetization currency) gets
 spent. Training is the entire business model.
+
+BATTLE uses the Intel objective from soldier-test: enemies march toward
+a TOP SECRET briefcase. If any enemy reaches it, you lose. Kill all
+enemies to win. Place soldiers and defenses strategically to block
+the advance.
 
 ---
 
@@ -119,35 +155,38 @@ spent. Training is the entire business model.
 
 ### 3. TRAINING ARENA -- BUILT
 - 3D arena: soldier/tank + red soda-can targets on sandy ground
-- Weapon-specific rendering:
-  - Rocket: soldier kneels with launcher on shoulder, fires rocket meshes
-  - Grenade: soldier throws, grenade arcs with splash
-  - Machine Gun: soldier aims, rapid bullet trails
-  - Tank: procedural tank drives, turret auto-tracks, shells fire
-- Impact explosions (expanding orange fireball on rocket/grenade/shell hit)
-- TrainingHUD overlay: GEN counter, fitness %, sparkline, speed (1x-50x),
+- Weapon-specific rendering (rocket, grenade, MG, tank scenarios)
+- Impact explosions on hits
+- TrainingHUD: GEN counter, fitness %, sparkline, speed (1x-50x),
   progress bar, pause/stop buttons
-- NeuralNetViz: SVG showing 6 input -> 12 hidden -> 4 output nodes
-  with weighted connections (green=positive, red=negative)
-- GraduationBanner: "SKILL LEARNED!" with 3 gold stars, fitness stats,
-  "Save & Continue" button
-- Brain weights saved to SoldierProfile on graduation
+- NeuralNetViz: SVG showing 6->12->4 nodes with weighted connections
+- GraduationBanner: "SKILL LEARNED!" with stars + "Save & Continue"
 
-### 4. MISSION BRIEFING -- BUILT
-- Full-screen modal over battlefield
-- Shows level name, your squad roster with weapons + stars
-- BEGIN button dismisses and reveals placement tray
+### 4. PLACEMENT -- BUILT
+- Deploy goes straight here (no mission briefing)
+- Military green placement cards at bottom (soldier-test style)
+- Each card shows soldier name, weapon type, gold cost
+- Cards go dim with "PLACED" badge after placement
+- Ghost preview (green/red transparent shape) follows cursor
+- Green zone highlights valid placement area (x <= 2)
+- "PLACE TROOPS" becomes "FIGHT!" when soldiers are placed
+- One soldier per card (can't place same soldier twice)
 
-### 5. PLACEMENT -- BUILT
-- Bottom tray panel with YOUR soldiers by name + weapon type + gold cost
-- Tap soldier, tap battlefield to place
-- GO button starts battle
+### 5. BATTLE -- BUILT (core working, needs polish)
+- Mutable-ref physics pattern (from soldier-test)
+- Enemy soldiers spawn and march toward Intel briefcase
+- Player soldiers auto-target and fire at enemies
+- Projectile rendering (bullets, rockets with flame)
+- Death knockback + ragdoll (velocity, spin, ground bounce)
+- Win: all enemies dead. Lose: enemy reaches Intel
+- Intel briefcase: rotating, golden glow, "TOP SECRET" stripe
 
-### 6. BATTLE -- PARTIAL (visuals only, no simulation)
-- Placed soldiers appear with correct weapons
-- Battlefield with props visible
-- Camera orbit works
-- No enemy spawning, no combat, no win/lose yet
+### 6. RESULTS -- BUILT
+- DEFEAT/VICTORY banner with overlay
+- Stats: enemies eliminated, soldiers surviving
+- Gold reward on victory (200 + round*50)
+- Stars (1-3 based on performance)
+- TRY AGAIN / NEXT BATTLE button
 
 ### 7. MAP / LEVEL SELECT -- NOT BUILT
 ### 8. SHOP / STORE -- NOT BUILT
@@ -174,14 +213,28 @@ Training is where compute gets spent. It must be visually spectacular.
 - Graduation: bestFitness >= threshold AND generation >= 5
 - Brain weights persist on SoldierProfile as number[] (136 values)
 
-**UX flow (BUILT):**
-1. Tap locked weapon in soldier detail
-2. "TRAINING REQUIRED" overlay appears with gold-bordered panel
-3. Tap "BEGIN TRAINING" (costs compute)
-4. Training arena: watch soldier/tank evolve in real-time
-5. Speed controls: 1x to 50x
-6. Graduation: "SKILL LEARNED!" celebration with 3 gold stars
-7. "Save & Continue" returns to barracks with weapon unlocked
+---
+
+## BATTLE (the gameplay)
+
+**Architecture (BUILT -- soldier-test pattern):**
+- Mutable refs for per-frame updates (NOT Zustand store per frame)
+- BattleScene.tsx contains all battle logic in a single useFrame loop
+- Enemy AI: march toward Intel, stop to fire at nearby player soldiers
+- Player AI: auto-target nearest enemy, fire when in range
+- Projectile physics: bullets (linear), rockets (arced with gravity)
+- Collision: radius-based hit detection, damage application
+- Ragdoll: velocity knockback, gravity, ground bounce, spin decay
+- Death: animation plays once and holds, body settles on ground
+- Intel objective: briefcase at [-7,0,0], enemies lose if they reach it
+
+**Still needed:**
+- Defense objects (walls, sandbags, towers) from soldier-test
+- Grenade/rocket blast radius with area damage + knockback
+- Wall block destruction (structural integrity, cascading collapse)
+- Weapon-specific battle behavior (grenade arc, MG rapid fire)
+- Trained brain stat buffs (faster fire, more damage)
+- Round progression with escalating difficulty
 
 ---
 
@@ -229,23 +282,25 @@ src/
   engine/         -- Pure game logic. Zero rendering imports.
     ml/           -- NeuralNet, GeneticAlgorithm, simulationRunner
       scenarios/  -- rocketScenario, grenadeScenario, machineGunScenario, tankScenario
-    sim/          -- BattleManager (built, not wired)
+    sim/          -- BattleManager (legacy, replaced by BattleScene inline logic)
 
   three/          -- All 3D rendering.
     models/       -- flexSoldier (18 poses + rocket poses), SoldierUnit,
                      SoldierPreview, BarracksScene, weaponMeshes, jeep,
-                     plasticWall, materials, sandboxProps
+                     plasticWall, materials, sandboxProps, Intel,
+                     GhostPreview, ProjectileMesh
     camera/       -- CameraRig (orbit controls)
     physics/      -- SlotMarker
 
-  scenes/         -- Game.tsx (scene router), BattleScene.tsx, TrainingScene.tsx
-  ui/             -- BarracksScreen, SoldierDetail, MissionBriefing,
-                     PlacementTray, HUD, TrainingHUD, GraduationBanner,
-                     NeuralNetViz, ToyIcons
+  scenes/         -- Game.tsx (scene router), BattleScene.tsx (all battle
+                     logic + rendering), TrainingScene.tsx
+  ui/             -- BarracksScreen, SoldierDetail, PlacementTray,
+                     HUD, TrainingHUD, GraduationBanner, NeuralNetViz,
+                     ResultScreen, ToyIcons
   stores/         -- gameStore, rosterStore, trainingStore
   config/         -- types, units, roster, levels/sandbox-01.json
   pages/          -- HomePage
-  styles/         -- barracks.css, loadout.css, briefing.css, game-ui.css,
+  styles/         -- barracks.css, loadout.css, game-ui.css,
                      training.css, homepage.css, global.css
 ```
 
@@ -253,33 +308,41 @@ src/
 
 ## BUILD SEQUENCE
 
-### DONE: Visual Foundation + Training
+### DONE: Visual Foundation + Training + Battle
 1. ~~Project scaffolding~~
 2. ~~Homepage~~
 3. ~~3D models + materials~~
 4. ~~Battlefield scene~~
 5. ~~Barracks with 3D soldiers~~
 6. ~~Soldier detail with weapon system~~
-7. ~~Mission briefing modal~~
-8. ~~Roster-connected placement~~
-9. ~~Visual overhaul (mobile game UI)~~
-10. ~~ML Training System (NeuralNet + GA + training arena + graduation)~~
-11. ~~Tank weapon type + tank training scenario~~
-12. ~~Neural network visualization~~
+7. ~~Roster-connected placement~~
+8. ~~Visual overhaul (mobile game UI)~~
+9. ~~ML Training System (NeuralNet + GA + training arena + graduation)~~
+10. ~~Tank weapon type + tank training scenario~~
+11. ~~Neural network visualization~~
+12. ~~Battle system (mutable-ref physics, enemy AI, projectiles)~~
+13. ~~Intel objective (briefcase)~~
+14. ~~Ghost preview + placement UX~~
+15. ~~Result screen (defeat/victory)~~
+16. ~~Simplified battlefield (removed clutter)~~
+17. ~~Removed mission briefing (straight to placement)~~
 
-### NEXT: Battle Phase
-13. Wire BattleLoop into scene
-14. Enemy spawning + rendering
-15. Combat AI + projectiles + damage
-16. Win/lose detection + result screen
+### NEXT: Battle Polish + Defenses
+18. Defense objects (walls, sandbags, towers from soldier-test)
+19. Grenade/rocket blast radius + area knockback
+20. Wall destruction (structural integrity, cascading collapse)
+21. Battle camera (zoom out to show full battlefield)
+22. Weapon-specific battle behavior (grenade arcs, MG burst)
+23. Round progression (escalating waves, gold rewards)
+24. Trained brain stat buffs in battle
 
-### THEN: Polish
-17. Audio (Howler.js + SFX)
-18. Post-processing (bloom + vignette)
-19. Game feel (screen shake, particles, spring animations)
-20. Map/level select screen
-21. Store/shop screen
-22. Roster persistence (localStorage)
+### THEN: Game Feel + Systems
+25. Audio (Howler.js + SFX)
+26. Post-processing (bloom + vignette)
+27. Screen shake, particles, spring animations
+28. Map/level select screen
+29. Store/shop screen
+30. Roster persistence (localStorage)
 
 ---
 
@@ -290,7 +353,7 @@ src/
 | Language  | TypeScript 6              | Full ecosystem typing                   |
 | Framework | React 19 + Vite 8         | Fast builds, modern React               |
 | 3D        | Three.js + R3F            | Proven, massive ecosystem               |
-| Physics   | @react-three/rapier       | Real rigid body physics = comedy        |
+| Physics   | Custom (mutable refs)     | soldier-test pattern, predictable comedy |
 | State     | Zustand                   | Lightweight, proven in prior builds     |
 | Styling   | CSS (scoped)              | No runtime cost                         |
 | Audio     | Howler.js                 | 7KB, spatial audio, mobile-ready        |
@@ -302,9 +365,10 @@ src/
 - 60fps on mid-tier mobile (iPhone 12 / Pixel 6)
 - <3 second initial load
 - <100ms input latency
-- Max 50 Rapier physics bodies per scene
+- Max 50 units per scene
 - DPR capped at 2
 - Training: 50 headless ticks/frame at 50x speed < 1ms
+- Battle: mutable-ref updates (no Zustand per frame during combat)
 
 ---
 

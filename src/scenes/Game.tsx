@@ -114,8 +114,8 @@ export default function Game() {
           powerPreference: 'high-performance',
         }}
         camera={{
-          fov: 45,
-          position: [0, 12, 10],
+          fov: 38,
+          position: [0, 14, 16],
           near: 0.1,
           far: 100,
         }}

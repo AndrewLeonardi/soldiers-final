@@ -11,7 +11,13 @@ interface CameraRigProps {
 export function CameraRig({ orbitingRef }: CameraRigProps) {
   const controlsRef = useRef<OrbitControlsImpl>(null)
   const phase = useGameStore((s) => s.phase)
-  const { gl } = useThree()
+  const { camera, gl } = useThree()
+
+  // Set initial camera for battlefield view (wide enough to see everything)
+  useEffect(() => {
+    camera.position.set(0, 14, 16)
+    camera.lookAt(0, 0, 0)
+  }, [camera])
 
   // Track pointer movement distance to distinguish click from orbit
   useEffect(() => {
@@ -52,13 +58,13 @@ export function CameraRig({ orbitingRef }: CameraRigProps) {
   return (
     <OrbitControls
       ref={controlsRef}
-      enablePan={true}
+      enablePan={false}
       enableDamping={true}
       dampingFactor={0.08}
-      minDistance={5}
-      maxDistance={20}
-      maxPolarAngle={Math.PI * 0.45}
-      minPolarAngle={Math.PI * 0.1}
+      minDistance={8}
+      maxDistance={28}
+      maxPolarAngle={Math.PI / 2.3}
+      minPolarAngle={Math.PI / 6}
       autoRotateSpeed={0.5}
       target={[0, 0, 0]}
     />

@@ -3,22 +3,27 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import * as THREE from 'three'
 import { useGameStore } from '@stores/gameStore'
+import { useRosterStore } from '@stores/rosterStore'
+import { NeuralNet } from '@engine/ml/neuralNet'
 import { SoldierUnit } from '@three/models/SoldierUnit'
 import { ProjectileMesh } from '@three/models/ProjectileMesh'
 import { Intel } from '@three/models/Intel'
 import { GhostPreview } from '@three/models/GhostPreview'
 import { BattlefieldProps } from '@three/models/sandboxProps'
 import { CameraRig } from '@three/camera/CameraRig'
-import { ENEMY_STATS } from '@config/units'
-import type { GameUnit, Projectile, Wave, WaveEnemy, EnemyType } from '@config/types'
+import { ENEMY_STATS, ROUND_WAVES } from '@config/units'
+import type { GameUnit, Projectile, Wave, WaveEnemy, EnemyType, WeaponType } from '@config/types'
 
 // ── Battle constants ────────────────────────────────────
 const INTEL_POS = new THREE.Vector3(-7, 0, 0)
-const LOSE_THRESHOLD = 1.5 // distance to Intel = defeat
+const LOSE_THRESHOLD = 1.5
 const SPAWN_X = 8
 const BULLET_SPEED = 20
-const ROCKET_SPEED = 8
-const ROCKET_GRAVITY = -6
+const ROCKET_SPEED = 12
+const GRENADE_SPEED = 6
+const MG_BULLET_SPEED = 20
+const ROCKET_GRAV = 9.0 // for ballistic calc (positive = downward)
+const PROJECTILE_GRAVITY = -6 // applied per frame to rocket/grenade vy
 const PROJECTILE_MAX_AGE = 4
 const HIT_RADIUS = 0.5
 const GRAVITY = -15
@@ -26,21 +31,53 @@ const GRAVITY = -15
 let _eid = 1000
 let _pid = 5000
 
-// ── Mutable unit type for battle (no store updates per frame) ──
+// ── Mutable unit type for battle ──
 interface BattleUnit extends GameUnit {
   velocity: [number, number, number]
   spinSpeed: number
   stateAge: number
   facingAngle: number
+  nn?: NeuralNet // cached neural net (only for trained soldiers)
+  isTrained: boolean
+  shotsFired: number
+  shotsHit: number
+}
+
+/** Compute ideal ballistic elevation for a given distance */
+function idealElevation(dist: number): number {
+  const arg = (ROCKET_GRAV * dist) / (ROCKET_SPEED * ROCKET_SPEED)
+  return Math.abs(arg) <= 1 ? 0.5 * Math.asin(arg) : 0.6
 }
 
 function makeBattleUnit(unit: GameUnit): BattleUnit {
+  // Look up trained brain weights from roster
+  const roster = useRosterStore.getState()
+  const profile = roster.soldiers.find((s) => s.id === unit.profileId)
+  const weaponKey = unit.weapon as WeaponType
+  const brainWeights = profile?.trainedBrains?.[weaponKey]
+
+  let nn: NeuralNet | undefined
+  let isTrained = false
+
+  // Rifle doesn't need training
+  if (weaponKey === 'rifle') {
+    isTrained = true // rifles are always "trained" (basic aim)
+  } else if (brainWeights && brainWeights.length > 0) {
+    nn = new NeuralNet(6, 12, 4)
+    nn.setWeights(brainWeights)
+    isTrained = true
+  }
+
   return {
     ...unit,
     velocity: [0, 0, 0],
     spinSpeed: 0,
     stateAge: 0,
     facingAngle: unit.rotation,
+    nn,
+    isTrained,
+    shotsFired: 0,
+    shotsHit: 0,
   }
 }
 
@@ -168,41 +205,50 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
     const enemies = enemiesRef.current
     const projectiles = projectilesRef.current
 
-    // ── Spawn waves ──
-    const level = useGameStore.getState().level
-    if (level) {
-      for (let i = 0; i < level.waves.length; i++) {
-        if (wavesSpawned.current.has(i)) continue
-        const wave = level.waves[i] as Wave
-        if (time >= wave.delay) {
-          wavesSpawned.current.add(i)
-          for (const enemyDef of wave.enemies) {
-            const def = enemyDef as WaveEnemy
-            const stats = ENEMY_STATS[def.type as EnemyType]
-            if (!stats) continue
-            const spacing = def.spacing ?? 1.2
-            const pathZ = def.path === 'flank' ? 3 : 0
-            for (let j = 0; j < def.count; j++) {
-              const zOff = (j - (def.count - 1) / 2) * spacing
-              enemies.push(makeBattleUnit({
-                id: `e-${++_eid}`,
-                type: 'soldier',
-                team: 'tan',
-                position: [SPAWN_X + j * 0.5, 0, pathZ + zOff],
-                rotation: Math.PI, // face left (toward Intel)
-                health: stats.health,
-                maxHealth: stats.health,
-                status: 'walking',
-                weapon: 'rifle',
-                lastFireTime: -10,
-                fireRate: stats.fireRate,
-                range: stats.range,
-                damage: stats.damage,
-                speed: stats.speed,
-              }))
-            }
-          }
-        }
+    // ── Spawn wave (one wave per round, from ROUND_WAVES config) ──
+    if (!wavesSpawned.current.has(0) && time >= 0.5) {
+      wavesSpawned.current.add(0)
+      const round = useGameStore.getState().round
+      const waveIdx = Math.min(round - 1, ROUND_WAVES.length - 1)
+      const wave = ROUND_WAVES[waveIdx]
+
+      // Spawn infantry
+      for (let j = 0; j < wave.soldiers; j++) {
+        const z = (j - (wave.soldiers - 1) / 2) * 1.4
+        const stats = ENEMY_STATS.infantry
+        enemies.push(makeBattleUnit({
+          id: `e-${++_eid}`, type: 'soldier', team: 'tan',
+          position: [SPAWN_X + Math.random() * 1.5, 0, z],
+          rotation: Math.PI, health: stats.health, maxHealth: stats.health,
+          status: 'walking', weapon: 'rifle', lastFireTime: -10,
+          fireRate: stats.fireRate, range: stats.range,
+          damage: stats.damage, speed: stats.speed,
+        }))
+      }
+      // Spawn jeeps
+      for (let j = 0; j < wave.jeeps; j++) {
+        const z = (j - (wave.jeeps - 1) / 2) * 2.5
+        const stats = ENEMY_STATS.jeep
+        enemies.push(makeBattleUnit({
+          id: `e-${++_eid}`, type: 'soldier', team: 'tan',
+          position: [SPAWN_X + 1 + Math.random(), 0, z],
+          rotation: Math.PI, health: stats.health, maxHealth: stats.health,
+          status: 'walking', weapon: 'rifle', lastFireTime: -10,
+          fireRate: stats.fireRate, range: stats.range,
+          damage: stats.damage, speed: stats.speed,
+        }))
+      }
+      // Spawn tanks
+      for (let j = 0; j < wave.tanks; j++) {
+        const stats = ENEMY_STATS.tank
+        enemies.push(makeBattleUnit({
+          id: `e-${++_eid}`, type: 'soldier', team: 'tan',
+          position: [SPAWN_X + 2, 0, j * 3],
+          rotation: Math.PI, health: stats.health, maxHealth: stats.health,
+          status: 'walking', weapon: 'rifle', lastFireTime: -10,
+          fireRate: stats.fireRate, range: stats.range,
+          damage: stats.damage, speed: stats.speed,
+        }))
       }
     }
 
@@ -268,47 +314,138 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
       enemy.rotation = enemy.facingAngle
     }
 
-    // ── Player AI ──
+    // ── Player AI (NERO hybrid -- trained NN vs untrained chaos) ──
     for (const player of players) {
       if (player.status === 'dead') { player.stateAge += delta; continue }
       player.stateAge += delta
 
       const pPos = new THREE.Vector3(...player.position)
+      const aliveEnemies = enemies.filter((e) => e.status !== 'dead')
       let nearestEnemy: BattleUnit | null = null
       let nearestDist = Infinity
-      for (const e of enemies) {
-        if (e.status === 'dead') continue
+      for (const e of aliveEnemies) {
         const d = pPos.distanceTo(new THREE.Vector3(...e.position))
         if (d < nearestDist) { nearestDist = d; nearestEnemy = e }
       }
 
       if (nearestEnemy && nearestDist <= player.range) {
         const ePos = new THREE.Vector3(...nearestEnemy.position)
-        player.facingAngle = Math.atan2(ePos.x - pPos.x, ePos.z - pPos.z)
+        const dx = ePos.x - pPos.x
+        const dz = ePos.z - pPos.z
+        const baseAngle = Math.atan2(dx, dz)
+        player.facingAngle = baseAngle
 
-        const isRocket = player.weapon === 'rocketLauncher'
+        const weapon = player.weapon as WeaponType
+        const cooldownMet = time - player.lastFireTime >= player.fireRate
 
-        if (time - player.lastFireTime >= player.fireRate) {
+        // Build NN inputs (same format as training scenarios)
+        const cooldownRatio = Math.min(1, (time - player.lastFireTime) / player.fireRate)
+        const elevation = idealElevation(nearestDist)
+        const nnInputs = [
+          ePos.x / 10,
+          ePos.z / 5,
+          Math.min(1, nearestDist / 10),
+          elevation / 0.8,
+          1.0 - cooldownRatio, // 0 = ready, 1 = full cooldown
+          aliveEnemies.length / 5,
+        ]
+
+        // Get aim corrections from trained NN or random chaos
+        let aimCorrection = 0
+        let elevCorrection = 0
+        let shouldFire = cooldownMet
+
+        if (weapon === 'rifle') {
+          // Rifle: basic scripted aim, always "trained"
+          aimCorrection = 0
+          elevCorrection = 0
+        } else if (player.nn && player.isTrained) {
+          // TRAINED: neural net provides precise corrections
+          const outputs = player.nn.forward(nnInputs)
+          if (weapon === 'rocketLauncher') {
+            aimCorrection = outputs[0] * 0.2
+            elevCorrection = outputs[1] * 0.15
+          } else if (weapon === 'grenade') {
+            aimCorrection = outputs[0] * 0.25
+            elevCorrection = outputs[1] * 0.2
+          } else if (weapon === 'machineGun') {
+            aimCorrection = outputs[0] * 0.3
+            elevCorrection = 0
+          }
+          shouldFire = cooldownMet && outputs[2] > 0
+        } else {
+          // UNTRAINED: hilariously bad aim
+          aimCorrection = (Math.random() - 0.5) * 0.8 // wild offset (±23 degrees)
+          elevCorrection = (Math.random() - 0.5) * 0.4 // random arc
+          // Sometimes hesitates, sometimes fires too early
+          shouldFire = cooldownMet && Math.random() > 0.3
+        }
+
+        if (shouldFire) {
           player.lastFireTime = time
           player.status = 'firing'
           player.stateAge = 0
+          player.shotsFired++
 
           const muzzle: [number, number, number] = [pPos.x, pPos.y + 0.8, pPos.z]
-          const tCenter = new THREE.Vector3(ePos.x, ePos.y + 0.5, ePos.z)
-          const dir = tCenter.sub(new THREE.Vector3(...muzzle)).normalize()
+          const finalAngle = baseAngle + aimCorrection
 
-          if (isRocket) {
+          if (weapon === 'rocketLauncher') {
+            // Rocket: ballistic arc with NERO corrections
+            const finalElev = Math.max(0.05, elevation + elevCorrection)
+            const cosE = Math.cos(finalElev)
             projectiles.push({
               id: `p-${++_pid}`,
               position: muzzle,
-              velocity: [dir.x * ROCKET_SPEED, dir.y * ROCKET_SPEED + 3, dir.z * ROCKET_SPEED],
+              velocity: [
+                Math.sin(finalAngle) * cosE * ROCKET_SPEED,
+                Math.sin(finalElev) * ROCKET_SPEED,
+                Math.cos(finalAngle) * cosE * ROCKET_SPEED,
+              ],
               type: 'rocket',
               damage: player.damage,
               ownerId: player.id,
               team: 'green',
               age: 0,
             })
+          } else if (weapon === 'grenade') {
+            // Grenade: high arc throw
+            const finalElev = Math.max(0.15, 0.5 + elevCorrection)
+            const cosE = Math.cos(finalElev)
+            projectiles.push({
+              id: `p-${++_pid}`,
+              position: muzzle,
+              velocity: [
+                Math.sin(finalAngle) * cosE * GRENADE_SPEED,
+                5.5 + elevCorrection * 2,
+                Math.cos(finalAngle) * cosE * GRENADE_SPEED,
+              ],
+              type: 'grenade' as any,
+              damage: player.damage,
+              ownerId: player.id,
+              team: 'green',
+              age: 0,
+            })
+          } else if (weapon === 'machineGun') {
+            // MG: rapid straight bullets with sweep
+            const dir = new THREE.Vector3(
+              Math.sin(finalAngle), 0.05, Math.cos(finalAngle)
+            ).normalize()
+            projectiles.push({
+              id: `p-${++_pid}`,
+              position: muzzle,
+              velocity: [dir.x * MG_BULLET_SPEED, dir.y * MG_BULLET_SPEED, dir.z * MG_BULLET_SPEED],
+              type: 'bullet',
+              damage: player.damage,
+              ownerId: player.id,
+              team: 'green',
+              age: 0,
+            })
           } else {
+            // Rifle: direct aim
+            const tCenter = ePos.clone()
+            tCenter.y += 0.5
+            const dir = tCenter.sub(new THREE.Vector3(...muzzle)).normalize()
             projectiles.push({
               id: `p-${++_pid}`,
               position: muzzle,
@@ -329,6 +466,40 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
       player.rotation = player.facingAngle
     }
 
+    // ── Explosion helper (blast radius damage + knockback) ──
+    function applyExplosion(center: [number, number, number], blastRadius: number, blastDamage: number, team: string) {
+      const allUnits = [...players, ...enemies]
+      const cPos = new THREE.Vector3(...center)
+      for (const unit of allUnits) {
+        if (unit.status === 'dead') continue
+        if (unit.team === team) continue // no friendly fire
+        const uPos = new THREE.Vector3(...unit.position)
+        uPos.y += 0.4
+        const dist = cPos.distanceTo(uPos)
+        if (dist < blastRadius) {
+          const force = (blastRadius - dist) / blastRadius
+          const dmg = Math.round(blastDamage * force)
+          unit.health -= dmg
+          // Knockback
+          const knockDir = uPos.clone().sub(cPos).normalize()
+          const knockForce = force * 6
+          unit.velocity[0] += knockDir.x * knockForce
+          unit.velocity[1] += 0.4 + force * 3
+          unit.velocity[2] += knockDir.z * knockForce
+          unit.spinSpeed = 1 + Math.random() * 2
+
+          if (unit.health <= 0) {
+            unit.health = 0
+            unit.status = 'dead'
+            unit.stateAge = 0
+          } else {
+            unit.status = 'hit'
+            unit.stateAge = 0
+          }
+        }
+      }
+    }
+
     // ── Update projectiles ──
     for (let i = projectiles.length - 1; i >= 0; i--) {
       const p = projectiles[i]
@@ -336,9 +507,9 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
 
       if (p.age > PROJECTILE_MAX_AGE) { projectiles.splice(i, 1); continue }
 
-      // Gravity for rockets
-      if (p.type === 'rocket') {
-        p.velocity[1] += ROCKET_GRAVITY * delta
+      // Gravity for rockets and grenades
+      if (p.type === 'rocket' || p.type === 'grenade') {
+        p.velocity[1] += PROJECTILE_GRAVITY * delta
       }
 
       // Integrate position
@@ -346,11 +517,36 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
       p.position[1] += p.velocity[1] * delta
       p.position[2] += p.velocity[2] * delta
 
-      // Remove if below ground
-      if (p.position[1] < -0.5) { projectiles.splice(i, 1); continue }
+      // Grenade bounce on ground
+      if (p.type === 'grenade' && p.position[1] < 0.07) {
+        p.position[1] = 0.07
+        p.velocity[1] *= -0.3
+        p.velocity[0] *= 0.6
+        p.velocity[2] *= 0.6
+      }
+
+      // Grenade fuse explosion
+      if (p.type === 'grenade' && p.age >= (p.fuseTime ?? 1.2)) {
+        applyExplosion(p.position, 3.0, 60, p.team)
+        projectiles.splice(i, 1)
+        continue
+      }
+
+      // Rocket ground impact explosion
+      if (p.type === 'rocket' && p.position[1] < 0.1) {
+        applyExplosion(p.position, 3.6, 90, p.team)
+        projectiles.splice(i, 1)
+        continue
+      }
+
+      // Remove bullets below ground
+      if (p.type === 'bullet' && p.position[1] < -0.5) {
+        projectiles.splice(i, 1)
+        continue
+      }
     }
 
-    // ── Collision detection ──
+    // ── Collision detection (bullets = direct hit, rockets/grenades = explode) ──
     for (let i = projectiles.length - 1; i >= 0; i--) {
       const p = projectiles[i]
       const allUnits = [...players, ...enemies]
@@ -365,22 +561,32 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
         const dist = Math.sqrt(dx * dx + dy * dy + dz * dz)
 
         if (dist < HIT_RADIUS) {
-          // Apply damage
-          unit.health -= p.damage
-          if (unit.health <= 0) {
-            unit.health = 0
-            unit.status = 'dead'
-            unit.stateAge = 0
-            // Death knockback
-            const knockDir = new THREE.Vector3(dx, 0, dz).normalize()
-            unit.velocity[0] += knockDir.x * 1.5
-            unit.velocity[1] += 1.5
-            unit.velocity[2] += knockDir.z * 1.5
-            unit.spinSpeed = 1 + Math.random() * 1.5
+          if (p.type === 'rocket') {
+            // Rocket: explode on direct hit
+            applyExplosion(p.position, 3.6, 90, p.team)
+          } else if (p.type === 'grenade') {
+            // Grenade: explode on direct hit
+            applyExplosion(p.position, 3.0, 60, p.team)
           } else {
-            unit.status = 'hit'
-            unit.stateAge = 0
+            // Bullet: direct damage only
+            unit.health -= p.damage
+            if (unit.health <= 0) {
+              unit.health = 0
+              unit.status = 'dead'
+              unit.stateAge = 0
+              const knockDir = new THREE.Vector3(dx, 0, dz).normalize()
+              unit.velocity[0] += knockDir.x * 1.5
+              unit.velocity[1] += 1.5
+              unit.velocity[2] += knockDir.z * 1.5
+              unit.spinSpeed = 1 + Math.random() * 1.5
+            } else {
+              unit.status = 'hit'
+              unit.stateAge = 0
+            }
           }
+          // Track hits for accuracy stats
+          const shooter = [...players, ...enemies].find((u) => u.id === p.ownerId)
+          if (shooter && 'shotsHit' in shooter) shooter.shotsHit++
           projectiles.splice(i, 1)
           break
         }
@@ -433,9 +639,9 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
     }
 
     // ── Check victory ──
-    const allWavesSpawned = level ? wavesSpawned.current.size >= level.waves.length : false
+    const waveSpawned = wavesSpawned.current.has(0)
     const livingEnemies = enemies.filter((e) => e.status !== 'dead')
-    if (allWavesSpawned && enemies.length > 0 && livingEnemies.length === 0) {
+    if (waveSpawned && enemies.length > 0 && livingEnemies.length === 0) {
       const livingPlayers = players.filter((p) => p.status !== 'dead')
       const allSurvived = livingPlayers.length === players.length
       let stars = 1

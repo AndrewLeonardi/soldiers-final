@@ -9,6 +9,7 @@ const SOLDIER_COST = 100
 export function PlacementTray() {
   const gold = useGameStore((s) => s.gold)
   const phase = useGameStore((s) => s.phase)
+  const round = useGameStore((s) => s.round)
   const startBattle = useGameStore((s) => s.startBattle)
   const playerUnits = useGameStore((s) => s.playerUnits)
   const selectedPlacement = useGameStore((s) => s.selectedPlacement)
@@ -19,16 +20,23 @@ export function PlacementTray() {
   if (phase !== 'placement') return null
 
   const hasUnits = playerUnits.length > 0
-  const allPlaced = soldiers.every((s) => placedSoldierIds.includes(s.id))
 
   return (
     <div className="placement-bar">
+      {/* Round indicator */}
+      <div className="placement-round">ROUND {round}</div>
+
       {/* Soldier cards */}
       {soldiers.map((sol) => {
         const canAfford = gold >= SOLDIER_COST
         const isPlaced = placedSoldierIds.includes(sol.id)
         const isSelected = selectedPlacement === sol.id
         const wpnName = WEAPON_DISPLAY[sol.equippedWeapon].name
+
+        // Check if soldier is trained for their equipped weapon
+        const isRifle = sol.equippedWeapon === 'rifle'
+        const hasBrain = sol.trainedBrains?.[sol.equippedWeapon]
+        const isTrained = isRifle || (hasBrain && hasBrain.length > 0)
 
         return (
           <div
@@ -49,6 +57,8 @@ export function PlacementTray() {
             <span className="placement-card-weapon">{wpnName}</span>
             {isPlaced ? (
               <span className="placement-card-placed">PLACED</span>
+            ) : !isTrained ? (
+              <span className="placement-card-untrained">UNTRAINED</span>
             ) : (
               <span className="placement-card-cost">
                 <span className="coin" />
@@ -71,7 +81,7 @@ export function PlacementTray() {
           }
         }}
       >
-        {allPlaced ? 'FIGHT!' : hasUnits ? 'FIGHT!' : 'PLACE TROOPS'}
+        {hasUnits ? 'FIGHT!' : 'PLACE TROOPS'}
       </button>
     </div>
   )

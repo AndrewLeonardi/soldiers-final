@@ -87,6 +87,8 @@
   z-index: 10;
   background: linear-gradient(to top, rgba(20, 30, 15, 0.9), rgba(20, 30, 15, 0.6), transparent);
   pointer-events: none;
+  /* Needed for round label positioning */
+  position: fixed;
 }
 
 .placement-bar > * {
@@ -208,6 +210,30 @@
   font-weight: 700;
 }
 
+.placement-card-untrained {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: #ff6644;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-weight: 700;
+  animation: pulseFade 1.5s ease-in-out infinite;
+}
+
+.placement-round {
+  position: absolute;
+  top: -32px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-display);
+  font-size: 14px;
+  color: var(--gold-text);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+}
+
 /* ── Fight Button ──────────────────────────────────────── */
 
 .battle-btn {
@@ -283,6 +309,15 @@
     0 0 40px var(--gold-glow),
     inset 0 2px 0 rgba(255, 255, 255, 0.1);
   animation: slideUp 0.4s var(--ease-spring);
+}
+
+.result-round {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgba(245, 240, 224, 0.5);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
 }
 
 .result-banner {
@@ -383,4 +418,27 @@
 .result-btn:active {
   transform: scale(0.95) translateY(3px);
   border-bottom-width: 2px;
+}
+
+.result-btn.victory-btn {
+  background: linear-gradient(180deg, #4ADE80 0%, #22863a 100%);
+  border-color: rgba(74, 222, 128, 0.5);
+  border-bottom-color: #1a5a2a;
+  box-shadow:
+    0 6px 20px rgba(34, 134, 58, 0.6),
+    inset 0 2px 0 rgba(255, 255, 255, 0.3);
+}
+
+.result-tip {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--gold-text);
+  letter-spacing: 1.5px;
+  text-align: center;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  background: rgba(212, 170, 64, 0.1);
+  border: 1px solid rgba(212, 170, 64, 0.2);
+  border-radius: var(--radius-sm);
+  animation: pulseFade 2s ease-in-out infinite;
 }

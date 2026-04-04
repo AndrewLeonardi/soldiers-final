@@ -45,6 +45,7 @@ interface GameState {
   setResult: (result: 'victory' | 'defeat', stars: number) => void
   startBattle: () => void
   resetLevel: () => void
+  nextRound: () => void
   selectPlacement: (type: string | null) => void
   rotatePlacement: () => void
   placeSoldier: (soldierId: string, position: [number, number, number]) => void
@@ -153,6 +154,42 @@ export const useGameStore = create<GameState>((set, get) => ({
   resetLevel: () => {
     const { level } = get()
     if (level) get().loadLevel(level)
+  },
+
+  nextRound: () => {
+    const state = get()
+    const nextRoundNum = state.round + 1
+    const goldReward = 200 + state.round * 50
+
+    // Keep surviving soldiers (heal them, reset state)
+    const surviving = state.playerUnits
+      .filter((u) => u.status !== 'dead')
+      .map((u) => ({
+        ...u,
+        health: u.maxHealth,
+        status: 'idle' as const,
+        lastFireTime: 0,
+      }))
+
+    set({
+      phase: 'placement',
+      round: nextRoundNum,
+      gold: state.gold + goldReward,
+      playerUnits: surviving,
+      enemyUnits: [],
+      projectiles: [],
+      result: null,
+      starsEarned: 0,
+      currentWave: 0,
+      waveTimer: 0,
+      battleStartTime: 0,
+      selectedPlacement: null,
+      placementRotation: 0,
+      // Keep placedSoldierIds for surviving soldiers
+      placedSoldierIds: surviving
+        .filter((u) => u.profileId)
+        .map((u) => u.profileId!),
+    })
   },
 
   selectPlacement: (type) => set({ selectedPlacement: type }),

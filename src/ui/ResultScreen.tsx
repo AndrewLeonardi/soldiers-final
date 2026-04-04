@@ -6,8 +6,8 @@ export function ResultScreen() {
   const result = useGameStore((s) => s.result)
   const starsEarned = useGameStore((s) => s.starsEarned)
   const round = useGameStore((s) => s.round)
-  const gold = useGameStore((s) => s.gold)
   const resetLevel = useGameStore((s) => s.resetLevel)
+  const nextRound = useGameStore((s) => s.nextRound)
   const playerUnits = useGameStore((s) => s.playerUnits)
   const enemyUnits = useGameStore((s) => s.enemyUnits)
 
@@ -21,6 +21,9 @@ export function ResultScreen() {
   return (
     <div className="result-overlay">
       <div className="result-panel">
+        {/* Round label */}
+        <div className="result-round">ROUND {round}</div>
+
         <div className={`result-banner ${isVictory ? 'victory' : 'defeat'}`}>
           {isVictory ? 'VICTORY!' : 'DEFEAT!'}
         </div>
@@ -52,12 +55,28 @@ export function ResultScreen() {
           )}
         </div>
 
-        <button
-          className="result-btn"
-          onPointerDown={() => resetLevel()}
-        >
-          {isVictory ? 'NEXT BATTLE' : 'TRY AGAIN'}
-        </button>
+        {/* Compute tip on defeat */}
+        {!isVictory && (
+          <div className="result-tip">
+            TRAIN YOUR SOLDIERS TO IMPROVE THEIR AIM
+          </div>
+        )}
+
+        {isVictory ? (
+          <button
+            className="result-btn victory-btn"
+            onPointerDown={(e) => { e.stopPropagation(); nextRound() }}
+          >
+            NEXT ROUND
+          </button>
+        ) : (
+          <button
+            className="result-btn"
+            onPointerDown={(e) => { e.stopPropagation(); resetLevel() }}
+          >
+            TRY AGAIN
+          </button>
+        )}
       </div>
     </div>
   )

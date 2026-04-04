@@ -28,3 +28,12 @@ export const PLACEMENT_COSTS: Record<string, number> = {
   sandbag: 75,
   wall: 50,
 }
+
+// Escalating enemy waves per round
+export const ROUND_WAVES: { soldiers: number; jeeps: number; tanks: number }[] = [
+  { soldiers: 4, jeeps: 0, tanks: 0 },   // Round 1
+  { soldiers: 6, jeeps: 0, tanks: 0 },   // Round 2
+  { soldiers: 5, jeeps: 1, tanks: 0 },   // Round 3
+  { soldiers: 8, jeeps: 2, tanks: 0 },   // Round 4
+  { soldiers: 6, jeeps: 1, tanks: 1 },   // Round 5+
+]

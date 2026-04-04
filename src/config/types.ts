@@ -83,9 +83,10 @@ export interface Projectile {
   id: string
   position: [number, number, number]
   velocity: [number, number, number]
-  type: 'bullet' | 'rocket'
+  type: 'bullet' | 'rocket' | 'grenade'
   damage: number
   ownerId: string
   team: Team
   age: number
+  fuseTime?: number // grenade fuse (explodes at this age)
 }

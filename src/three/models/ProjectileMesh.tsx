@@ -23,7 +23,12 @@ export function ProjectileMesh({ projectile }: ProjectileMeshProps) {
     const vy = projectile.velocity[1]
     const vz = projectile.velocity[2]
     const len = Math.sqrt(vx * vx + vy * vy + vz * vz)
-    if (len > 0.01) {
+
+    if (projectile.type === 'grenade') {
+      // Grenades tumble
+      ref.current.rotation.x += 0.15
+      ref.current.rotation.z += 0.1
+    } else if (len > 0.01) {
       const dir = new THREE.Vector3(vx / len, vy / len, vz / len)
       const quat = new THREE.Quaternion()
       quat.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir)
@@ -49,6 +54,23 @@ export function ProjectileMesh({ projectile }: ProjectileMeshProps) {
             transparent
             opacity={0.8}
           />
+        </mesh>
+      </group>
+    )
+  }
+
+  if (projectile.type === 'grenade') {
+    return (
+      <group ref={ref} position={projectile.position}>
+        {/* Grenade body -- olive sphere */}
+        <mesh castShadow>
+          <sphereGeometry args={[0.06, 8, 6]} />
+          <meshStandardMaterial color={0x4a5a3a} roughness={0.5} />
+        </mesh>
+        {/* Pin / fuse nub */}
+        <mesh position={[0, 0.06, 0]}>
+          <cylinderGeometry args={[0.015, 0.015, 0.04, 4]} />
+          <meshStandardMaterial color={0x888888} roughness={0.3} metalness={0.4} />
         </mesh>
       </group>
     )
