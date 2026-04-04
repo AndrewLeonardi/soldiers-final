@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import { useGameStore } from '@stores/gameStore'
 import { useRosterStore } from '@stores/rosterStore'
 import { useTrainingStore } from '@stores/trainingStore'
+import { useTutorialStore } from '@stores/tutorialStore'
 import { WEAPON_DISPLAY, WEAPON_UNLOCK_COST, WEAPON_TRAINING } from '@config/roster'
 import type { WeaponType } from '@config/types'
 import { SoldierPreview } from '@three/models/SoldierPreview'
@@ -55,6 +56,9 @@ export function SoldierDetail() {
       setTrainingWeapon(null)
     } else {
       setTrainingWeapon(weapon)
+      if (useTutorialStore.getState().isStep('tap-rocket')) {
+        useTutorialStore.getState().advanceTo('begin-training')
+      }
     }
   }
 
@@ -73,6 +77,9 @@ export function SoldierDetail() {
     if (started) {
       setTrainingWeapon(null)
       useGameStore.getState().setPhase('training')
+      if (useTutorialStore.getState().isStep('begin-training')) {
+        useTutorialStore.getState().advanceTo('watch-training')
+      }
     }
   }
 

@@ -1,5 +1,7 @@
 import { useTrainingStore } from '@stores/trainingStore'
 import { useGameStore } from '@stores/gameStore'
+import { useRosterStore } from '@stores/rosterStore'
+import { useTutorialStore } from '@stores/tutorialStore'
 import { WEAPON_DISPLAY } from '@config/roster'
 import { StarIcon } from './ToyIcons'
 import '@styles/training.css'
@@ -19,6 +21,11 @@ export function GraduationBanner() {
   function handleContinue() {
     graduate()
     setPhase('loadout')
+    if (useTutorialStore.getState().isStep('save-training')) {
+      // Close soldier detail so we land on barracks (where Deploy button is)
+      useRosterStore.getState().closeDetail()
+      useTutorialStore.getState().advanceTo('deploy')
+    }
   }
 
   return (

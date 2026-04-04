@@ -1,5 +1,6 @@
 import { useGameStore } from '@stores/gameStore'
 import { useRosterStore } from '@stores/rosterStore'
+import { useTutorialStore } from '@stores/tutorialStore'
 import { SOLDIER_RECRUIT_COST } from '@config/roster'
 import { GoldCoinIcon, MicrochipIcon, BattleIcon } from './ToyIcons'
 import '@styles/barracks.css'
@@ -41,7 +42,12 @@ export function BarracksScreen() {
           <div className="barracks-bottom-row">
             <button
               className="barracks-recruit-btn"
-              onPointerDown={() => recruitSoldier()}
+              onPointerDown={() => {
+                const success = recruitSoldier()
+                if (success && useTutorialStore.getState().isStep('recruit')) {
+                  useTutorialStore.getState().advanceTo('tap-soldier')
+                }
+              }}
               disabled={gold < SOLDIER_RECRUIT_COST}
             >
               + Recruit

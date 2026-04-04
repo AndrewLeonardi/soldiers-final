@@ -29,6 +29,9 @@ export const PLACEMENT_COSTS: Record<string, number> = {
   wall: 50,
 }
 
+// Tutorial wave: trivially easy (2 infantry)
+export const TUTORIAL_WAVE = { soldiers: 2, jeeps: 0, tanks: 0 }
+
 // Escalating enemy waves per round
 export const ROUND_WAVES: { soldiers: number; jeeps: number; tanks: number }[] = [
   { soldiers: 4, jeeps: 0, tanks: 0 },   // Round 1

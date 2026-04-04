@@ -90,6 +90,18 @@ This is the production build. Every line of code serves the game.
 - [ ] **Enemy AI too simple** -- enemies walk in a straight line to Intel,
       no flanking, no cover-seeking, no grenade throws
 
+- [x] **Tutorial / Onboarding** -- 12-step guided tutorial:
+      - Welcome modals with gold + compute reveal (animated counters)
+      - Spotlight system with 4-mask cutout + pulsing gold ring + speech bubbles
+      - Walks player through: recruit → view loadout → train weapon → deploy → battle → victory
+      - Compute gets dramatic green-themed reveal (pulsing glow, premium feel)
+      - Starts with zero soldiers and zero resources (recruit moment feels earned)
+      - Tutorial battle uses easy wave (2 infantry only)
+      - Completion celebration with stars + "YOU'RE READY, COMMANDER"
+      - Persists to localStorage (only plays once)
+      - tutorialStore (Zustand) drives state machine, TutorialOverlay renders UI
+      - Mobile-game UX: beveled buttons, gold/green accents, popIn animations
+
 ### NOT STARTED (next priorities)
 - [ ] Store/shop screen (browse and buy soldiers, vehicles, items)
 - [ ] Victory/defeat animations (camera sweep, celebration particles)
@@ -192,8 +204,20 @@ the advance.
 - Stars (1-3 based on performance)
 - TRY AGAIN / NEXT BATTLE button
 
-### 7. MAP / LEVEL SELECT -- NOT BUILT
-### 8. SHOP / STORE -- NOT BUILT
+### 7. TUTORIAL -- BUILT
+- 12-step guided onboarding (welcome-gold → welcome-compute → recruit
+  → tap-soldier → tap-rocket → begin-training → watch-training →
+  save-training → deploy → place-soldier → fight → complete)
+- Modal cards: gold/green themed with animated counters + beveled buttons
+- Spotlight system: 4-mask cutout with pulsing gold ring + speech bubbles
+- Hint overlays: floating text for passive steps (training, placement)
+- Completion: stars celebration + "YOU'RE READY, COMMANDER"
+- Persists to localStorage, tutorial plays once on first visit
+- Tutorial battle: 2 infantry (trivially winnable)
+- tutorialStore.ts + TutorialOverlay.tsx + tutorial.css
+
+### 8. MAP / LEVEL SELECT -- NOT BUILT
+### 9. SHOP / STORE -- NOT BUILT
 
 ---
 
@@ -300,8 +324,8 @@ src/
                      logic + rendering), TrainingScene.tsx
   ui/             -- BarracksScreen, SoldierDetail, PlacementTray,
                      HUD, TrainingHUD, GraduationBanner, NeuralNetViz,
-                     ResultScreen, ToyIcons
-  stores/         -- gameStore, rosterStore, trainingStore
+                     ResultScreen, TutorialOverlay, ToyIcons
+  stores/         -- gameStore, rosterStore, trainingStore, tutorialStore
   config/         -- types, units, roster, levels/sandbox-01.json
   pages/          -- HomePage
   styles/         -- barracks.css, loadout.css, game-ui.css,
@@ -331,8 +355,10 @@ src/
 16. ~~Simplified battlefield (removed clutter)~~
 17. ~~Removed mission briefing (straight to placement)~~
 
-### NEXT: Battle Polish + Defenses
-18. Defense objects (walls, sandbags, towers from soldier-test)
+18. ~~Defense objects (walls, sandbags, towers from soldier-test)~~
+19. ~~Tutorial / Onboarding (12-step guided flow with spotlight system)~~
+
+### NEXT: Game Feel + Systems
 19. Grenade/rocket blast radius + area knockback
 20. Wall destruction (structural integrity, cascading collapse)
 21. Battle camera (zoom out to show full battlefield)
@@ -376,4 +402,4 @@ src/
 
 ---
 
-*Last updated: 2026-04-03*
+*Last updated: 2026-04-04*

@@ -16,6 +16,8 @@ import { TrainingHUD } from '@ui/TrainingHUD'
 import { GraduationBanner } from '@ui/GraduationBanner'
 import { NeuralNetViz } from '@ui/NeuralNetViz'
 import { ResultScreen } from '@ui/ResultScreen'
+import { TutorialOverlay } from '@ui/TutorialOverlay'
+import { useTutorialStore } from '@stores/tutorialStore'
 import levelData from '@config/levels/sandbox-01.json'
 import type { LevelConfig } from '@config/types'
 
@@ -89,10 +91,21 @@ export default function Game() {
   const loadLevel = useGameStore((s) => s.loadLevel)
   const phase = useGameStore((s) => s.phase)
   const orbitingRef = useRef(false)
+  const tutorialCompleted = useTutorialStore((s) => s.completed)
+  const startTutorial = useTutorialStore((s) => s.startTutorial)
 
   useEffect(() => {
     loadLevel(levelData as LevelConfig)
   }, [loadLevel])
+
+  // Start tutorial on first play
+  useEffect(() => {
+    if (!tutorialCompleted) {
+      // Small delay to let loadLevel finish
+      const t = setTimeout(() => startTutorial(), 100)
+      return () => clearTimeout(t)
+    }
+  }, [tutorialCompleted, startTutorial])
 
   const onCreated = useCallback(({ gl }: { gl: WebGLRenderer }) => {
     gl.toneMapping = THREE.ACESFilmicToneMapping
@@ -135,6 +148,7 @@ export default function Game() {
       <HUD />
       <PlacementTray />
       <ResultScreen />
+      <TutorialOverlay />
     </div>
   )
 }

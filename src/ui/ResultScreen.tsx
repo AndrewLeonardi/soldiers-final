@@ -1,4 +1,5 @@
 import { useGameStore } from '@stores/gameStore'
+import { useTutorialStore } from '@stores/tutorialStore'
 import '@styles/game-ui.css'
 
 export function ResultScreen() {
@@ -11,7 +12,12 @@ export function ResultScreen() {
   const playerUnits = useGameStore((s) => s.playerUnits)
   const enemyUnits = useGameStore((s) => s.enemyUnits)
 
+  const tutorialActive = useTutorialStore((s) => s.active)
+
   if (phase !== 'result' || result === null) return null
+
+  // During tutorial, let TutorialOverlay handle the victory screen
+  if (tutorialActive && result === 'victory') return null
 
   const isVictory = result === 'victory'
   const goldReward = isVictory ? 200 + round * 50 : 0

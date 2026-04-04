@@ -12,7 +12,8 @@ import { Intel } from '@three/models/Intel'
 import { GhostPreview } from '@three/models/GhostPreview'
 import { BattlefieldProps } from '@three/models/sandboxProps'
 import { CameraRig } from '@three/camera/CameraRig'
-import { ENEMY_STATS, ROUND_WAVES } from '@config/units'
+import { ENEMY_STATS, ROUND_WAVES, TUTORIAL_WAVE } from '@config/units'
+import { useTutorialStore } from '@stores/tutorialStore'
 import type { GameUnit, Projectile, Wave, WaveEnemy, EnemyType, WeaponType } from '@config/types'
 
 // ── Battle constants ────────────────────────────────────
@@ -210,8 +211,9 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
     if (!wavesSpawned.current.has(0) && time >= 0.5) {
       wavesSpawned.current.add(0)
       const round = useGameStore.getState().round
+      const isTutorial = useTutorialStore.getState().isTutorialBattle()
       const waveIdx = Math.min(round - 1, ROUND_WAVES.length - 1)
-      const wave = ROUND_WAVES[waveIdx]
+      const wave = isTutorial ? TUTORIAL_WAVE : ROUND_WAVES[waveIdx]
 
       // Spawn infantry
       for (let j = 0; j < wave.soldiers; j++) {

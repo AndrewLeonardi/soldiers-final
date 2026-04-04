@@ -1,0 +1,385 @@
+/* ═══════════════════════════════════════════════
+   TUTORIAL OVERLAY -- Mobile game onboarding
+   Angry Birds style: chunky, bold, playful
+   ═══════════════════════════════════════════════ */
+
+/* ── Base overlay (always on top) ────────────── */
+.tutorial-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.tutorial-overlay.blocking {
+  pointer-events: auto;
+}
+
+/* ── Modal backdrop ──────────────────────────── */
+.tutorial-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.78);
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* ── Card (modal content) ────────────────────── */
+.tutorial-card {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 36px 28px 28px;
+  max-width: 380px;
+  width: calc(100% - 48px);
+  background: linear-gradient(180deg, #2d4565 0%, #1e3350 50%, #162840 100%);
+  border: 3px solid var(--gold-border);
+  border-radius: var(--radius-xl);
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.8),
+    0 0 50px var(--gold-glow),
+    inset 0 2px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.3);
+  animation: tutorialPop 0.45s var(--ease-spring) both;
+  text-align: center;
+}
+
+/* ── Compute reveal variant (GREEN themed) ───── */
+.tutorial-card.compute-reveal {
+  border-color: #3daa5a;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.8),
+    0 0 60px rgba(74, 222, 128, 0.35),
+    0 0 120px rgba(74, 222, 128, 0.15),
+    inset 0 2px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.3);
+  animation: tutorialPop 0.45s var(--ease-spring) both,
+             computeGlow 2s ease-in-out 0.5s infinite;
+}
+
+/* ── Completion card (GOLD celebration) ──────── */
+.tutorial-card.complete-card {
+  border-color: var(--gold-bright);
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.8),
+    0 0 60px rgba(255, 215, 0, 0.4),
+    0 0 120px rgba(255, 215, 0, 0.15),
+    inset 0 2px 0 rgba(255, 255, 255, 0.15),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Icon container ──────────────────────────── */
+.tutorial-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  animation: iconBounce 0.6s var(--ease-spring) 0.2s both;
+}
+
+.tutorial-icon.gold-icon {
+  background: radial-gradient(circle at 40% 35%, #FFE066, #C8960C);
+  box-shadow:
+    0 6px 20px rgba(255, 215, 0, 0.5),
+    0 0 40px rgba(255, 215, 0, 0.3),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.tutorial-icon.compute-icon {
+  background: radial-gradient(circle at 40% 35%, #6BF09C, #1B8A40);
+  box-shadow:
+    0 6px 20px rgba(74, 222, 128, 0.5),
+    0 0 40px rgba(74, 222, 128, 0.3),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* ── Title text ──────────────────────────────── */
+.tutorial-title {
+  font-family: var(--font-display);
+  font-size: 26px;
+  color: var(--gold-bright);
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  text-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.6),
+    0 0 20px var(--gold-glow);
+  line-height: 1.2;
+}
+
+.compute-reveal .tutorial-title {
+  color: #4ADE80;
+  text-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.6),
+    0 0 20px rgba(74, 222, 128, 0.4);
+}
+
+/* ── Body text ───────────────────────────────── */
+.tutorial-body {
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--text-body);
+  line-height: 1.6;
+  max-width: 300px;
+}
+
+.tutorial-body strong {
+  color: var(--gold-bright);
+  font-weight: 700;
+}
+
+.compute-reveal .tutorial-body strong {
+  color: #4ADE80;
+}
+
+/* ── Animated counter ────────────────────────── */
+.tutorial-counter {
+  font-family: var(--font-display);
+  font-size: 42px;
+  letter-spacing: 2px;
+  animation: counterPop 0.4s var(--ease-spring) both;
+}
+
+.tutorial-counter.gold-counter {
+  color: var(--gold-bright);
+  text-shadow: 0 2px 12px rgba(255, 215, 0, 0.6);
+}
+
+.tutorial-counter.compute-counter {
+  color: #4ADE80;
+  text-shadow: 0 2px 12px rgba(74, 222, 128, 0.6);
+}
+
+/* ── Continue button (beveled, chunky) ───────── */
+.tutorial-continue-btn {
+  padding: 16px 48px;
+  background: linear-gradient(180deg, #FFCC33 0%, #E8A820 40%, #CC8800 70%, #AA6600 100%);
+  border: 2px solid #FFE066;
+  border-bottom: 6px solid #885500;
+  border-radius: var(--radius-lg);
+  color: #2a1800;
+  font-family: var(--font-display);
+  font-size: 18px;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  box-shadow:
+    0 6px 20px rgba(200, 150, 12, 0.5),
+    inset 0 2px 0 rgba(255, 255, 255, 0.3);
+  transition: transform 0.1s var(--ease-spring);
+  touch-action: none;
+  user-select: none;
+  margin-top: 4px;
+}
+
+.tutorial-continue-btn:active {
+  transform: scale(0.96) translateY(4px);
+  border-bottom-width: 2px;
+}
+
+.compute-reveal .tutorial-continue-btn {
+  background: linear-gradient(180deg, #5aaa5a 0%, #3d7b4f 40%, #2d6a3f 70%, #1d5a30 100%);
+  border-color: #6aba6a;
+  border-bottom-color: #1a3a1a;
+  color: white;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  box-shadow:
+    0 6px 20px rgba(46, 125, 50, 0.5),
+    inset 0 2px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* ── Spotlight mask ──────────────────────────── */
+.tutorial-spotlight {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.78);
+  transition: clip-path 0.3s var(--ease-out);
+  pointer-events: auto;
+}
+
+/* ── Spotlight ring (pulsing gold border) ────── */
+.tutorial-ring {
+  position: fixed;
+  border: 3px solid var(--gold-bright);
+  border-radius: var(--radius-lg);
+  pointer-events: none;
+  animation: ringPulse 1.5s ease-in-out infinite;
+  box-shadow:
+    0 0 20px rgba(255, 215, 0, 0.5),
+    inset 0 0 20px rgba(255, 215, 0, 0.15);
+}
+
+/* ── Speech bubble ───────────────────────────── */
+.tutorial-bubble {
+  position: fixed;
+  max-width: 300px;
+  padding: 14px 20px;
+  background: linear-gradient(180deg, #2d4565 0%, #1e3350 100%);
+  border: 2px solid var(--gold-border);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.6),
+    0 0 20px var(--gold-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  animation: bubblePop 0.35s var(--ease-spring) both;
+  pointer-events: none;
+  z-index: 51;
+}
+
+.tutorial-bubble-text {
+  font-family: var(--font-display);
+  font-size: 15px;
+  color: var(--text-white);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  line-height: 1.4;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+/* Bubble pointer (arrow) -- uses --arrow-offset for alignment */
+.tutorial-bubble::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: #1e3350;
+  border-right: 2px solid var(--gold-border);
+  border-bottom: 2px solid var(--gold-border);
+  /* Arrow points toward the spotlight target via CSS custom property */
+  left: calc(50% + var(--arrow-offset, 0px));
+  margin-left: -7px;
+}
+
+.tutorial-bubble.above::after {
+  bottom: -9px;
+  transform: rotate(45deg);
+}
+
+.tutorial-bubble.below::after {
+  top: -9px;
+  transform: rotate(-135deg);
+}
+
+/* ── Floating hint (no mask) ─────────────────── */
+.tutorial-hint {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 24px;
+  background: linear-gradient(180deg, rgba(45, 69, 101, 0.95) 0%, rgba(30, 51, 80, 0.95) 100%);
+  border: 2px solid var(--gold-border);
+  border-radius: var(--radius-pill);
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.5),
+    0 0 16px var(--gold-glow);
+  font-family: var(--font-display);
+  font-size: 13px;
+  color: var(--text-white);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  white-space: normal;
+  max-width: calc(100% - 48px);
+  text-align: center;
+  animation: hintFloat 2s ease-in-out infinite, bubblePop 0.35s var(--ease-spring) both;
+  pointer-events: none;
+  z-index: 51;
+}
+
+.tutorial-hint.top {
+  top: 80px;
+}
+
+.tutorial-hint.middle {
+  top: 40%;
+}
+
+/* ── Completion stars ────────────────────────── */
+.tutorial-stars {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.tutorial-star {
+  animation: starSpin 0.5s var(--ease-spring) both;
+}
+
+.tutorial-star:nth-child(1) { animation-delay: 0.15s; }
+.tutorial-star:nth-child(2) { animation-delay: 0.3s; }
+.tutorial-star:nth-child(3) { animation-delay: 0.45s; }
+
+/* ═══════════════════════════════════════════════
+   KEYFRAMES
+   ═══════════════════════════════════════════════ */
+
+@keyframes starSpin {
+  0% { transform: scale(0) rotate(-180deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+@keyframes tutorialPop {
+  0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+  60% { transform: translate(-50%, -50%) scale(1.04); }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+
+@keyframes iconBounce {
+  0% { transform: scale(0); }
+  50% { transform: scale(1.2); }
+  75% { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+
+@keyframes counterPop {
+  0% { transform: scale(0.5); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes computeGlow {
+  0%, 100% {
+    box-shadow:
+      0 20px 60px rgba(0, 0, 0, 0.8),
+      0 0 60px rgba(74, 222, 128, 0.35),
+      0 0 120px rgba(74, 222, 128, 0.15),
+      inset 0 2px 0 rgba(255, 255, 255, 0.12),
+      inset 0 -3px 6px rgba(0, 0, 0, 0.3);
+  }
+  50% {
+    box-shadow:
+      0 20px 60px rgba(0, 0, 0, 0.8),
+      0 0 80px rgba(74, 222, 128, 0.5),
+      0 0 160px rgba(74, 222, 128, 0.25),
+      inset 0 2px 0 rgba(255, 255, 255, 0.12),
+      inset 0 -3px 6px rgba(0, 0, 0, 0.3);
+  }
+}
+
+@keyframes ringPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 20px rgba(255, 215, 0, 0.5),
+      inset 0 0 20px rgba(255, 215, 0, 0.15);
+  }
+  50% {
+    box-shadow:
+      0 0 36px rgba(255, 215, 0, 0.7),
+      inset 0 0 30px rgba(255, 215, 0, 0.25);
+  }
+}
+
+@keyframes bubblePop {
+  0% { transform: translateX(-50%) scale(0.7); opacity: 0; }
+  100% { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+
+@keyframes hintFloat {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(-6px); }
+}
