@@ -1,5 +1,6 @@
 import { useGameStore } from '@stores/gameStore'
 import { useRosterStore } from '@stores/rosterStore'
+import * as sfx from '@audio/sfx'
 import { WEAPON_DISPLAY } from '@config/roster'
 import { SoldierIcon, GoldCoinIcon } from './ToyIcons'
 import '@styles/game-ui.css'
@@ -100,6 +101,7 @@ export function PlacementTray() {
           e.stopPropagation()
           if (hasUnits) {
             selectPlacement(null)
+            sfx.deployHorn()
             startBattle()
           }
         }}

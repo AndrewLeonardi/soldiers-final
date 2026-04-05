@@ -5,6 +5,7 @@ import { useGameStore } from '@stores/gameStore'
 import { useRosterStore } from '@stores/rosterStore'
 import { useTrainingStore } from '@stores/trainingStore'
 import { STARTER_ROSTER } from '@config/roster'
+import * as sfx from '@audio/sfx'
 import { GoldCoinIcon, MicrochipIcon, StarIcon } from './ToyIcons'
 import '@styles/tutorial.css'
 
@@ -231,6 +232,18 @@ export function TutorialOverlay() {
     }
   }, [active, phase, result, advanceTo])
 
+  // Play sounds on step transitions
+  useEffect(() => {
+    if (!active) return
+    if (step === 'welcome-gold' || step === 'welcome-compute') {
+      sfx.modalAppear()
+    } else if (step === 'complete') {
+      sfx.completionFanfare()
+    } else {
+      sfx.stepAdvance()
+    }
+  }, [active, step])
+
   if (!active) return null
 
   // ── Modal steps ─────────────────────────────────
@@ -328,7 +341,7 @@ export function TutorialOverlay() {
   if (step === 'tap-soldier') {
     return (
       <div className="tutorial-overlay">
-        <div className="tutorial-hint top">
+        <div className="tutorial-hint above-tray">
           Tap your soldier to see their loadout
         </div>
       </div>

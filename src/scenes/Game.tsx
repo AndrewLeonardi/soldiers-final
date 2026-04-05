@@ -18,6 +18,7 @@ import { NeuralNetViz } from '@ui/NeuralNetViz'
 import { ResultScreen } from '@ui/ResultScreen'
 import { TutorialOverlay } from '@ui/TutorialOverlay'
 import { useTutorialStore } from '@stores/tutorialStore'
+import { resumeOnInteraction } from '@audio/context'
 import levelData from '@config/levels/sandbox-01.json'
 import type { LevelConfig } from '@config/types'
 
@@ -41,9 +42,9 @@ function BarracksCamera({ soldierCount }: { soldierCount: number }) {
 
   useFrame(() => {
     const aspect = gl.domElement.clientWidth / gl.domElement.clientHeight
-    const countBonus = Math.max(0, (soldierCount - 2) * 0.4)
-    const z = (aspect < 1 ? 4.5 : 3.0) + countBonus
-    const y = aspect < 1 ? 0.75 : 0.65
+    const countBonus = Math.max(0, (soldierCount - 2) * 0.25)
+    const z = (aspect < 1 ? 6.0 : 4.5) + countBonus
+    const y = aspect < 1 ? 0.9 : 0.9
     camera.position.set(0, y, z)
     camera.lookAt(0, 0.3, 0)
   })
@@ -96,6 +97,7 @@ export default function Game() {
 
   useEffect(() => {
     loadLevel(levelData as LevelConfig)
+    resumeOnInteraction()
   }, [loadLevel])
 
   // Start tutorial on first play

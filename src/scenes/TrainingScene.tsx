@@ -13,6 +13,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { useTrainingStore } from '@stores/trainingStore'
+import * as sfx from '@audio/sfx'
 import {
   createFlexSoldier,
   poseRocketKneel,
@@ -66,6 +67,7 @@ function TargetCan({ position, alive }: { position: [number, number, number]; al
       wasAlive.current = false
       ref.current.visible = false
       explosionAge.current = 0.01
+      sfx.targetHitPop()
     }
     if (explosionRef.current && explosionAge.current > 0) {
       explosionAge.current += dt
@@ -107,6 +109,7 @@ function TargetCan({ position, alive }: { position: [number, number, number]; al
 function TrainingSoldier() {
   const soldierRef = useRef<THREE.Group>(null)
   const partsRef = useRef<SoldierParts | null>(null)
+  const prevFired = useRef(false)
   const weapon = useTrainingStore(s => s.weapon)
 
   useEffect(() => {
@@ -143,6 +146,15 @@ function TrainingSoldier() {
 
     const elapsed = simState.elapsed
     const justFired = simState.justFired
+
+    // Play fire sound on rising edge
+    if (justFired && !prevFired.current) {
+      if (weapon === 'rocketLauncher' || weapon === 'tank') sfx.rocketLaunch()
+      else if (weapon === 'grenade') sfx.grenadeThrow()
+      else if (weapon === 'machineGun') sfx.mgBurst()
+      else sfx.rifleShot()
+    }
+    prevFired.current = justFired
 
     if (weapon === 'rocketLauncher') {
       if (justFired) {
@@ -331,6 +343,7 @@ function ProjectileTrails() {
 
     // Detect projectile impacts: if count dropped, spawn explosions at last positions
     if (isExplosive && projectiles.length < prevCount.current) {
+      sfx.explosionSmall()
       const disappeared = prevCount.current - projectiles.length
       for (let d = 0; d < disappeared; d++) {
         // Find a free explosion slot

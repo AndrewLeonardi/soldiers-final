@@ -296,6 +296,10 @@
   top: 80px;
 }
 
+.tutorial-hint.above-tray {
+  bottom: 180px;
+}
+
 .tutorial-hint.middle {
   top: 40%;
 }

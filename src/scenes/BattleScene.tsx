@@ -14,6 +14,7 @@ import { BattlefieldProps } from '@three/models/sandboxProps'
 import { CameraRig } from '@three/camera/CameraRig'
 import { ENEMY_STATS, ROUND_WAVES, TUTORIAL_WAVE } from '@config/units'
 import { useTutorialStore } from '@stores/tutorialStore'
+import * as sfx from '@audio/sfx'
 import type { GameUnit, Projectile, Wave, WaveEnemy, EnemyType, WeaponType } from '@config/types'
 
 // ── Battle constants ────────────────────────────────────
@@ -295,6 +296,7 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
             team: 'tan',
             age: 0,
           })
+          sfx.rifleShot()
         } else if (enemy.stateAge > 0.4) {
           enemy.status = 'idle'
         }
@@ -309,6 +311,7 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
         // Check defeat condition
         if (ePos.distanceTo(INTEL_POS) < LOSE_THRESHOLD) {
           useGameStore.getState().setResult('defeat', 0)
+          sfx.explosionLarge()
           battleActive.current = false
           return
         }
@@ -411,6 +414,7 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
               team: 'green',
               age: 0,
             })
+            sfx.rocketLaunch()
           } else if (weapon === 'grenade') {
             // Grenade: high arc throw
             const finalElev = Math.max(0.15, 0.5 + elevCorrection)
@@ -429,6 +433,7 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
               team: 'green',
               age: 0,
             })
+            sfx.grenadeThrow()
           } else if (weapon === 'machineGun') {
             // MG: rapid straight bullets with sweep
             const dir = new THREE.Vector3(
@@ -444,6 +449,7 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
               team: 'green',
               age: 0,
             })
+            sfx.mgBurst()
           } else {
             // Rifle: direct aim
             const tCenter = ePos.clone()
@@ -459,6 +465,7 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
               team: 'green',
               age: 0,
             })
+            sfx.rifleShot()
           }
         } else if (player.stateAge > 0.4) {
           player.status = 'idle'
@@ -495,6 +502,7 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
             unit.health = 0
             unit.status = 'dead'
             unit.stateAge = 0
+            sfx.deathThud()
           } else {
             unit.status = 'hit'
             unit.stateAge = 0
@@ -531,6 +539,7 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
       // Grenade fuse explosion
       if (p.type === 'grenade' && p.age >= (p.fuseTime ?? 1.2)) {
         applyExplosion(p.position, 3.0, 60, p.team)
+        sfx.explosionLarge()
         projectiles.splice(i, 1)
         continue
       }
@@ -538,6 +547,7 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
       // Rocket ground impact explosion
       if (p.type === 'rocket' && p.position[1] < 0.1) {
         applyExplosion(p.position, 3.6, 90, p.team)
+        sfx.explosionLarge()
         projectiles.splice(i, 1)
         continue
       }
@@ -567,16 +577,20 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
           if (p.type === 'rocket') {
             // Rocket: explode on direct hit
             applyExplosion(p.position, 3.6, 90, p.team)
+            sfx.explosionLarge()
           } else if (p.type === 'grenade') {
             // Grenade: explode on direct hit
             applyExplosion(p.position, 3.0, 60, p.team)
+            sfx.explosionLarge()
           } else {
             // Bullet: direct damage only
             unit.health -= p.damage
+            sfx.bulletImpact()
             if (unit.health <= 0) {
               unit.health = 0
               unit.status = 'dead'
               unit.stateAge = 0
+              sfx.deathThud()
               const knockDir = new THREE.Vector3(dx, 0, dz).normalize()
               unit.velocity[0] += knockDir.x * 1.5
               unit.velocity[1] += 1.5
@@ -651,6 +665,7 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
       if (useGameStore.getState().gold >= 200) stars = 2
       if (allSurvived) stars = 3
       useGameStore.getState().setResult('victory', stars)
+      sfx.graduationFanfare()
       battleActive.current = false
     }
 

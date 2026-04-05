@@ -5,6 +5,7 @@ import { useGameStore } from '@stores/gameStore'
 import { useRosterStore } from '@stores/rosterStore'
 import { useTrainingStore } from '@stores/trainingStore'
 import { useTutorialStore } from '@stores/tutorialStore'
+import * as sfx from '@audio/sfx'
 import { WEAPON_DISPLAY, WEAPON_UNLOCK_COST, WEAPON_TRAINING } from '@config/roster'
 import type { WeaponType } from '@config/types'
 import { SoldierPreview } from '@three/models/SoldierPreview'
@@ -53,6 +54,7 @@ export function SoldierDetail() {
     if (!soldier) return
     if (soldier.unlockedWeapons.includes(weapon)) {
       equipWeapon(soldier.id, weapon)
+      sfx.weaponEquip()
       setTrainingWeapon(null)
     } else {
       setTrainingWeapon(weapon)

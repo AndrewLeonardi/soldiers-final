@@ -2,6 +2,7 @@ import { useGameStore } from '@stores/gameStore'
 import { useRosterStore } from '@stores/rosterStore'
 import { useTutorialStore } from '@stores/tutorialStore'
 import { SOLDIER_RECRUIT_COST } from '@config/roster'
+import * as sfx from '@audio/sfx'
 import { GoldCoinIcon, MicrochipIcon, BattleIcon } from './ToyIcons'
 import '@styles/barracks.css'
 
@@ -13,6 +14,11 @@ export function BarracksScreen() {
 
   const recruitSoldier = useRosterStore((s) => s.recruitSoldier)
   const detailSoldierId = useRosterStore((s) => s.detailSoldierId)
+
+  // During tutorial tap-soldier step, lock buttons so player must tap the soldier
+  const tutorialActive = useTutorialStore((s) => s.active)
+  const tutorialStep = useTutorialStore((s) => s.step)
+  const isTapSoldierStep = tutorialActive && tutorialStep === 'tap-soldier'
 
   if (phase !== 'loadout' || detailSoldierId) return null
 
@@ -36,19 +42,23 @@ export function BarracksScreen() {
       {/* Bottom: recruit + deploy */}
       <div className="barracks-bottom">
         <div className="barracks-bottom-panel">
-          <div className="barracks-hint">
-            Tap a soldier to configure
-          </div>
+          {/* Hide default hint during tutorial (tutorial overlay shows its own) */}
+          {!isTapSoldierStep && (
+            <div className="barracks-hint">
+              Tap a soldier to configure
+            </div>
+          )}
           <div className="barracks-bottom-row">
             <button
               className="barracks-recruit-btn"
               onPointerDown={() => {
                 const success = recruitSoldier()
+                if (success) sfx.recruitChime()
                 if (success && useTutorialStore.getState().isStep('recruit')) {
                   useTutorialStore.getState().advanceTo('tap-soldier')
                 }
               }}
-              disabled={gold < SOLDIER_RECRUIT_COST}
+              disabled={gold < SOLDIER_RECRUIT_COST || isTapSoldierStep}
             >
               + Recruit
               <span className="barracks-recruit-cost">
@@ -58,7 +68,8 @@ export function BarracksScreen() {
             </button>
             <button
               className="btn-action-red barracks-deploy"
-              onPointerDown={() => setPhase('placement')}
+              onPointerDown={() => { sfx.buttonTap(); setPhase('placement') }}
+              disabled={isTapSoldierStep}
             >
               <BattleIcon size={22} color="white" />
               Deploy

@@ -1,7 +1,9 @@
+import { useEffect } from 'react'
 import { useTrainingStore } from '@stores/trainingStore'
 import { useGameStore } from '@stores/gameStore'
 import { useRosterStore } from '@stores/rosterStore'
 import { useTutorialStore } from '@stores/tutorialStore'
+import * as sfx from '@audio/sfx'
 import { WEAPON_DISPLAY } from '@config/roster'
 import { StarIcon } from './ToyIcons'
 import '@styles/training.css'
@@ -13,6 +15,11 @@ export function GraduationBanner() {
   const weapon = useTrainingStore(s => s.weapon)
   const graduate = useTrainingStore(s => s.graduate)
   const setPhase = useGameStore(s => s.setPhase)
+
+  // Play fanfare when graduation happens
+  useEffect(() => {
+    if (status === 'graduated') sfx.graduationFanfare()
+  }, [status])
 
   if (status !== 'graduated') return null
 
