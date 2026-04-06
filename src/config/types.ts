@@ -36,6 +36,13 @@ export interface StarCriteria {
   desc?: string
 }
 
+export interface HazardConfig {
+  type: 'sweeping_arm' | 'spring_launcher' | 'explosive_barrel'
+  position: [number, number, number]
+  rotation?: number
+  params?: Record<string, number>
+}
+
 export interface LevelConfig {
   id: string
   theme: string
@@ -44,6 +51,7 @@ export interface LevelConfig {
   waves: Wave[]
   available_units: string[]
   budget: number
+  hazards?: HazardConfig[]
   stars: {
     one: StarCriteria
     two: StarCriteria

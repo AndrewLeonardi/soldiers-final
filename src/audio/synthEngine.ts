@@ -354,3 +354,125 @@ export function synthStepAdvance(dest: AudioNode, ctx: AudioContext): number {
   osc.stop(ctx.currentTime + 0.07)
   return 0.07
 }
+
+// ═══════════════════════════════════════════════════
+// HAZARD SOUNDS
+// ═══════════════════════════════════════════════════
+
+/** Spring launcher: rising pitch boing */
+export function synthSpringBoing(dest: AudioNode, ctx: AudioContext): number {
+  const t = ctx.currentTime
+  // Main boing: sine with rapid frequency rise
+  const osc = ctx.createOscillator()
+  const g = ctx.createGain()
+  osc.type = 'sine'
+  osc.frequency.setValueAtTime(200, t)
+  osc.frequency.exponentialRampToValueAtTime(1200, t + 0.08)
+  osc.frequency.exponentialRampToValueAtTime(600, t + 0.2)
+  g.gain.setValueAtTime(0.001, t)
+  g.gain.linearRampToValueAtTime(0.2, t + 0.01)
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.25)
+  osc.connect(g)
+  g.connect(dest)
+  osc.start(t)
+  osc.stop(t + 0.3)
+
+  // Metallic overtone
+  const osc2 = ctx.createOscillator()
+  const g2 = ctx.createGain()
+  osc2.type = 'triangle'
+  osc2.frequency.setValueAtTime(800, t)
+  osc2.frequency.exponentialRampToValueAtTime(2400, t + 0.06)
+  osc2.frequency.exponentialRampToValueAtTime(1000, t + 0.15)
+  g2.gain.setValueAtTime(0.001, t)
+  g2.gain.linearRampToValueAtTime(0.08, t + 0.01)
+  g2.gain.exponentialRampToValueAtTime(0.001, t + 0.2)
+  osc2.connect(g2)
+  g2.connect(dest)
+  osc2.start(t)
+  osc2.stop(t + 0.25)
+
+  return 0.3
+}
+
+/** Sweeping arm: whoosh as it passes */
+export function synthSweepWhoosh(dest: AudioNode, ctx: AudioContext): number {
+  const t = ctx.currentTime
+  // Filtered noise sweep
+  const noise = ctx.createBufferSource()
+  noise.buffer = getNoiseBuffer(ctx)
+  const filter = ctx.createBiquadFilter()
+  filter.type = 'bandpass'
+  filter.frequency.setValueAtTime(300, t)
+  filter.frequency.linearRampToValueAtTime(2000, t + 0.1)
+  filter.frequency.linearRampToValueAtTime(400, t + 0.25)
+  filter.Q.value = 3
+  const g = ctx.createGain()
+  g.gain.setValueAtTime(0.001, t)
+  g.gain.linearRampToValueAtTime(0.12, t + 0.05)
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.3)
+  noise.connect(filter)
+  filter.connect(g)
+  g.connect(dest)
+  noise.start(t)
+  noise.stop(t + 0.35)
+  return 0.35
+}
+
+/** Barrel explosion: deeper, longer version of explosion */
+export function synthBarrelExplosion(dest: AudioNode, ctx: AudioContext): number {
+  const t = ctx.currentTime
+  // Deep boom
+  noiseBurst(ctx, dest, 0.08, 'lowpass', 400, 1, 0.3)
+  // Crackle layer
+  noiseBurst(ctx, dest, 0.05, 'bandpass', 1500, 3, 0.15)
+  // Sub bass
+  const osc = ctx.createOscillator()
+  const g = ctx.createGain()
+  osc.type = 'sine'
+  osc.frequency.setValueAtTime(80, t)
+  osc.frequency.exponentialRampToValueAtTime(30, t + 0.3)
+  g.gain.setValueAtTime(0.001, t)
+  g.gain.linearRampToValueAtTime(0.25, t + 0.01)
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.4)
+  osc.connect(g)
+  g.connect(dest)
+  osc.start(t)
+  osc.stop(t + 0.45)
+  return 0.45
+}
+
+/** Falling scream: descending pitch with vibrato (comedy!) */
+export function synthFallScream(dest: AudioNode, ctx: AudioContext): number {
+  const t = ctx.currentTime
+  const osc = ctx.createOscillator()
+  const g = ctx.createGain()
+  osc.type = 'sawtooth'
+  // Descending pitch with wobble
+  osc.frequency.setValueAtTime(800, t)
+  osc.frequency.linearRampToValueAtTime(200, t + 0.6)
+  // Vibrato via LFO
+  const lfo = ctx.createOscillator()
+  const lfoG = ctx.createGain()
+  lfo.frequency.value = 12
+  lfoG.gain.value = 40
+  lfo.connect(lfoG)
+  lfoG.connect(osc.frequency)
+  // Envelope
+  g.gain.setValueAtTime(0.001, t)
+  g.gain.linearRampToValueAtTime(0.1, t + 0.02)
+  g.gain.setValueAtTime(0.1, t + 0.3)
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.6)
+  // Filter to make it less harsh
+  const filter = ctx.createBiquadFilter()
+  filter.type = 'lowpass'
+  filter.frequency.value = 2000
+  osc.connect(filter)
+  filter.connect(g)
+  g.connect(dest)
+  osc.start(t)
+  osc.stop(t + 0.65)
+  lfo.start(t)
+  lfo.stop(t + 0.65)
+  return 0.65
+}

@@ -26,6 +26,10 @@ import {
   synthGraduationFanfare,
   synthModalAppear,
   synthStepAdvance,
+  synthSpringBoing,
+  synthSweepWhoosh,
+  synthBarrelExplosion,
+  synthFallScream,
 } from './synthEngine'
 
 // Re-export volume controls
@@ -145,4 +149,24 @@ export function stepAdvance(): void {
 
 export function completionFanfare(): void {
   play(pools.fanfare, synthGraduationFanfare)
+}
+
+// ═══════════════════════════════════════════════════
+// HAZARDS
+// ═══════════════════════════════════════════════════
+
+export function springBoing(): void {
+  play(pools.ui, synthSpringBoing)
+}
+
+export function sweepWhoosh(): void {
+  play(pools.ui, synthSweepWhoosh)
+}
+
+export function barrelExplosion(): void {
+  play(pools.explosionLarge, synthBarrelExplosion)
+}
+
+export function fallScream(): void {
+  play(pools.ui, synthFallScream)
 }

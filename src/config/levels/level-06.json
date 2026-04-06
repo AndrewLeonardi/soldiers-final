@@ -51,6 +51,13 @@
   ],
   "available_units": ["rifle_soldier", "sandbag", "wall", "tower"],
   "budget": 2000,
+  "hazards": [
+    { "type": "spring_launcher", "position": [0, 0, -4] },
+    { "type": "spring_launcher", "position": [0, 0, 4] },
+    { "type": "explosive_barrel", "position": [4, 0, -3] },
+    { "type": "explosive_barrel", "position": [4.5, 0, -2] },
+    { "type": "explosive_barrel", "position": [4, 0, 3] }
+  ],
   "stars": {
     "one": { "type": "survive", "desc": "Survive the full assault" },
     "two": { "type": "budget_remaining", "threshold": 800, "desc": "800+ gold remaining" },

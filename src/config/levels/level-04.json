@@ -32,6 +32,11 @@
   ],
   "available_units": ["rifle_soldier", "sandbag", "wall", "tower"],
   "budget": 1000,
+  "hazards": [
+    { "type": "spring_launcher", "position": [2, 0, -3] },
+    { "type": "spring_launcher", "position": [2, 0, 3] },
+    { "type": "explosive_barrel", "position": [4, 0, 0] }
+  ],
   "stars": {
     "one": { "type": "survive", "desc": "Survive the rocket barrage" },
     "two": { "type": "budget_remaining", "threshold": 400, "desc": "400+ gold remaining" },

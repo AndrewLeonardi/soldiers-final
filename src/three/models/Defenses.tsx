@@ -1,15 +1,14 @@
 import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import {
+  BLOCK_W, BLOCK_H, BLOCK_D, WALL_COLS, WALL_ROWS,
+  BLOCK_GRAVITY, BLOCK_DAMPING, BLOCK_GROUND_BOUNCE_VY,
+  BLOCK_GROUND_FRICTION, BLOCK_SETTLE_SPEED, BLOCK_SUPPORT_OVERLAP,
+  ROW_COLLAPSE_THRESHOLD,
+} from '@engine/physics/battlePhysics'
 
-// ── Wall Segment (destructible brick grid) ──────────────
-const BLOCK_W = 0.4
-const BLOCK_H = 0.2
-const BLOCK_D = 0.2
-const WALL_COLS = 6
-const WALL_ROWS = 5
-const BLOCK_GRAVITY = -12
-
+// ── Wall Segment (destructible brick grid — denser, punchier) ──
 const blockGeo = new THREE.BoxGeometry(BLOCK_W, BLOCK_H, BLOCK_D)
 const wallMat = new THREE.MeshStandardMaterial({ color: 0x4a6b3a, roughness: 0.35, metalness: 0.02 })
 
@@ -19,6 +18,8 @@ export interface WallBlock {
   alive: boolean
   settled: boolean
   homePos: THREE.Vector3
+  row: number
+  col: number
 }
 
 interface DefenseProps {
@@ -40,6 +41,7 @@ export function WallDefense({ position, rotation = 0, wallBlocksRef, wallId }: W
     for (let row = 0; row < WALL_ROWS; row++) {
       for (let col = 0; col < WALL_COLS; col++) {
         const mesh = new THREE.Mesh(blockGeo, wallMat)
+        // Staggered brick pattern
         const offsetX = row % 2 === 0 ? 0 : BLOCK_W * 0.5
         const x = col * BLOCK_W - (WALL_COLS * BLOCK_W) / 2 + BLOCK_W / 2 + offsetX
         const y = row * BLOCK_H + BLOCK_H / 2
@@ -52,6 +54,8 @@ export function WallDefense({ position, rotation = 0, wallBlocksRef, wallId }: W
           alive: true,
           settled: true,
           homePos: new THREE.Vector3(x, y, 0),
+          row,
+          col,
         })
       }
     }
@@ -66,6 +70,8 @@ export function WallDefense({ position, rotation = 0, wallBlocksRef, wallId }: W
   }, [blocks, wallId, wallBlocksRef])
 
   const integrityTimer = useRef(0)
+  // Track pending row collapses for staggered cascade effect
+  const pendingCollapses = useRef<{ row: number; delay: number }[]>([])
 
   useFrame((_, rawDelta) => {
     const delta = Math.min(rawDelta, 0.05)
@@ -76,48 +82,80 @@ export function WallDefense({ position, rotation = 0, wallBlocksRef, wallId }: W
       initialized.current = true
     }
 
-    // Structural integrity: unsupported blocks fall
+    // Process pending cascade collapses with stagger delay
+    for (let i = pendingCollapses.current.length - 1; i >= 0; i--) {
+      const pc = pendingCollapses.current[i]
+      pc.delay -= delta
+      if (pc.delay <= 0) {
+        // Collapse all alive blocks in this row
+        for (const b of blocks) {
+          if (b.row === pc.row && b.alive && b.settled) {
+            b.settled = false
+            b.velocity.y = -0.8
+            b.velocity.x += (Math.random() - 0.5) * 0.5
+            b.velocity.z += (Math.random() - 0.5) * 0.3
+          }
+        }
+        pendingCollapses.current.splice(i, 1)
+      }
+    }
+
+    // ── Structural integrity: unsupported blocks fall ──
     integrityTimer.current += delta
-    if (integrityTimer.current > 0.15) {
+    if (integrityTimer.current > 0.1) {
       integrityTimer.current = 0
+
       for (let row = 1; row < WALL_ROWS; row++) {
-        for (let col = 0; col < WALL_COLS; col++) {
-          const idx = row * WALL_COLS + col
-          const block = blocks[idx]
-          if (!block.alive || !block.settled) continue
+        const rowBlocks = blocks.filter(b => b.row === row)
+        const aliveInRow = rowBlocks.filter(b => b.alive)
+
+        // Check if row has lost >40% — if so, cascade collapse the whole row
+        const destroyedFrac = 1 - aliveInRow.length / WALL_COLS
+        if (destroyedFrac >= ROW_COLLAPSE_THRESHOLD && aliveInRow.some(b => b.settled)) {
+          const alreadyPending = pendingCollapses.current.some(pc => pc.row === row)
+          if (!alreadyPending) {
+            pendingCollapses.current.push({ row, delay: 0.033 * (row - 1) })
+          }
+          continue
+        }
+
+        // Per-block support check: need STRONG support (>50% overlap), not just touching
+        for (const block of aliveInRow) {
+          if (!block.settled) continue
 
           const belowRow = row - 1
-          let hasSupport = false
+          if (belowRow < 0) continue
 
-          if (belowRow < 0) { hasSupport = true; continue }
-
+          // Count how many support blocks exist below
+          let totalSupport = 0
           const bx = block.mesh.position.x
-          for (let bc = 0; bc < WALL_COLS; bc++) {
-            const belowIdx = belowRow * WALL_COLS + bc
-            const belowBlock = blocks[belowIdx]
-            if (!belowBlock.alive || !belowBlock.settled) continue
+          for (const belowBlock of blocks) {
+            if (belowBlock.row !== belowRow) continue
+            // Block must be alive AND either settled or just displaced
+            if (!belowBlock.alive) continue
             const overlap = BLOCK_W - Math.abs(bx - belowBlock.mesh.position.x)
-            if (overlap > BLOCK_W * 0.25) {
-              hasSupport = true
-              break
+            if (overlap > BLOCK_W * 0.15) {
+              totalSupport += overlap / BLOCK_W
             }
           }
 
-          if (!hasSupport) {
+          // Need at least 40% total overlap support to stay up
+          if (totalSupport < 0.4) {
             block.settled = false
-            block.velocity.y = -0.5
-            block.velocity.x += (Math.random() - 0.5) * 0.3
+            block.velocity.y = -0.8 - Math.random() * 0.5
+            block.velocity.x += (Math.random() - 0.5) * 0.5
+            block.velocity.z += (Math.random() - 0.5) * 0.3
           }
         }
       }
     }
 
-    // Block physics
+    // ── Block physics ──
     for (const b of blocks) {
       if (!b.alive) continue
       const speed = b.velocity.length()
 
-      if (speed < 0.01 && b.mesh.position.y <= b.homePos.y + 0.01) {
+      if (speed < BLOCK_SETTLE_SPEED && b.mesh.position.y <= b.homePos.y + 0.01) {
         b.settled = true
         b.velocity.set(0, 0, 0)
         continue
@@ -130,19 +168,19 @@ export function WallDefense({ position, rotation = 0, wallBlocksRef, wallId }: W
       // Ground collision
       if (b.mesh.position.y < BLOCK_H / 2) {
         b.mesh.position.y = BLOCK_H / 2
-        b.velocity.y *= -0.25
-        b.velocity.x *= 0.6
-        b.velocity.z *= 0.6
+        b.velocity.y *= BLOCK_GROUND_BOUNCE_VY
+        b.velocity.x *= BLOCK_GROUND_FRICTION
+        b.velocity.z *= BLOCK_GROUND_FRICTION
         if (Math.abs(b.velocity.y) < 0.3) b.velocity.y = 0
       }
 
-      // Tumble when moving
+      // Tumble when moving fast
       if (speed > 0.5) {
         b.mesh.rotation.x += b.velocity.z * delta * 2
         b.mesh.rotation.z -= b.velocity.x * delta * 2
       }
 
-      b.velocity.multiplyScalar(0.993)
+      b.velocity.multiplyScalar(BLOCK_DAMPING)
     }
   })
 

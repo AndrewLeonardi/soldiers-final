@@ -29,6 +29,10 @@
   ],
   "available_units": ["rifle_soldier", "sandbag", "wall"],
   "budget": 800,
+  "hazards": [
+    { "type": "explosive_barrel", "position": [3, 0, -2] },
+    { "type": "explosive_barrel", "position": [3.5, 0, -1] }
+  ],
   "stars": {
     "one": { "type": "survive", "desc": "Survive both waves" },
     "two": { "type": "budget_remaining", "threshold": 300, "desc": "300+ gold remaining" },
