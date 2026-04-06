@@ -67,7 +67,7 @@ export const useTutorialStore = create<TutorialState>((set, get) => ({
   },
 }))
 
-// Dev testing helper (remove in production)
-if (typeof window !== 'undefined') {
+// Dev testing helper
+if (typeof window !== 'undefined' && import.meta.env.DEV) {
   ;(window as any).__tutorialStore = useTutorialStore
 }

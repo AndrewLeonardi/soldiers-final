@@ -16,7 +16,7 @@ const DEFENSE_OPTIONS = [
 export function PlacementTray() {
   const gold = useGameStore((s) => s.gold)
   const phase = useGameStore((s) => s.phase)
-  const round = useGameStore((s) => s.round)
+  const level = useGameStore((s) => s.level)
   const startBattle = useGameStore((s) => s.startBattle)
   const playerUnits = useGameStore((s) => s.playerUnits)
   const selectedPlacement = useGameStore((s) => s.selectedPlacement)
@@ -30,8 +30,8 @@ export function PlacementTray() {
 
   return (
     <div className="placement-bar">
-      {/* Round indicator */}
-      <div className="placement-round">ROUND {round}</div>
+      {/* Level name */}
+      <div className="placement-round">{level?.name?.toUpperCase() ?? 'MISSION'}</div>
 
       {/* Soldier cards */}
       {soldiers.map((sol) => {

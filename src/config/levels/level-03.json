@@ -1,0 +1,46 @@
+{
+  "id": "level-03",
+  "theme": "sandbox",
+  "name": "Heavy Metal",
+  "placement_slots": [
+    { "id": "slot-1", "pos": [-4, 0, -3], "type": "ground" },
+    { "id": "slot-2", "pos": [-4, 0, -1], "type": "ground" },
+    { "id": "slot-3", "pos": [-4, 0, 1], "type": "ground" },
+    { "id": "slot-4", "pos": [-4, 0, 3], "type": "ground" },
+    { "id": "slot-5", "pos": [-2, 0, -2], "type": "ground" },
+    { "id": "slot-6", "pos": [-2, 0, 0], "type": "ground" },
+    { "id": "slot-7", "pos": [-2, 0, 2], "type": "ground" },
+    { "id": "slot-8", "pos": [0, 0, -1], "type": "ground" },
+    { "id": "slot-9", "pos": [0, 0, 1], "type": "ground" },
+    { "id": "slot-10", "pos": [-5, 0.8, 0], "type": "elevated" }
+  ],
+  "waves": [
+    {
+      "delay": 0.5,
+      "enemies": [
+        { "type": "infantry", "count": 4, "spacing": 1.5, "path": "main" }
+      ]
+    },
+    {
+      "delay": 10,
+      "enemies": [
+        { "type": "infantry", "count": 3, "spacing": 1.5, "path": "main" },
+        { "type": "jeep", "count": 2, "spacing": 2.5, "path": "flank" }
+      ]
+    },
+    {
+      "delay": 20,
+      "enemies": [
+        { "type": "infantry", "count": 2, "spacing": 1.5, "path": "main" },
+        { "type": "tank", "count": 1, "spacing": 3, "path": "main" }
+      ]
+    }
+  ],
+  "available_units": ["rifle_soldier", "sandbag", "wall", "tower"],
+  "budget": 1200,
+  "stars": {
+    "one": { "type": "survive", "desc": "Survive all three waves" },
+    "two": { "type": "budget_remaining", "threshold": 400, "desc": "400+ gold remaining" },
+    "three": { "type": "objective", "desc": "No soldiers lost" }
+  }
+}

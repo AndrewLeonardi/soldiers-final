@@ -4,7 +4,7 @@ export type EnemyType = 'infantry' | 'jeep' | 'tank'
 
 export type SlotType = 'ground' | 'elevated'
 
-export type GamePhase = 'loadout' | 'placement' | 'battle' | 'result' | 'training'
+export type GamePhase = 'loadout' | 'placement' | 'battle' | 'result' | 'training' | 'levelSelect'
 
 export type Team = 'green' | 'tan'
 
@@ -22,6 +22,7 @@ export interface WaveEnemy {
   count: number
   spacing?: number
   path: string
+  weapon?: WeaponType // defaults to 'rifle' if omitted
 }
 
 export interface Wave {
@@ -48,6 +49,16 @@ export interface LevelConfig {
     two: StarCriteria
     three: StarCriteria
   }
+}
+
+export interface LevelProgress {
+  completed: boolean
+  bestStars: number // 0-3
+}
+
+export interface CampaignProgress {
+  currentLevelId: string
+  levels: Record<string, LevelProgress>
 }
 
 export interface GameUnit {

@@ -67,6 +67,7 @@ export const STARTER_ROSTER: SoldierProfile[] = [
     unlockedWeapons: ['rifle'],
     starRating: 2,
     team: 'green',
+    trainedBrains: {},
   },
   {
     id: 'soldier-2',
@@ -76,5 +77,6 @@ export const STARTER_ROSTER: SoldierProfile[] = [
     unlockedWeapons: ['rifle', 'rocketLauncher'],
     starRating: 1,
     team: 'green',
+    trainedBrains: {},
   },
 ]

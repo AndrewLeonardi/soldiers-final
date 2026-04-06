@@ -16,6 +16,7 @@ interface UnitLike {
   facingAngle?: number
   spinSpeed?: number
   velocity?: [number, number, number]
+  stateAge?: number
 }
 
 interface SoldierUnitProps {
@@ -26,6 +27,7 @@ export function SoldierUnit({ unit }: SoldierUnitProps) {
   const groupRef = useRef<THREE.Group>(null!)
   const weaponRef = useRef<THREE.Group | null>(null)
   const tumbleRef = useRef({ rx: 0, rz: 0 })
+  const muzzleFlashRef = useRef<THREE.PointLight>(null!)
 
   const soldier = useMemo(() => {
     const color = unit.team === 'green' ? TOY.armyGreen : TOY.sandBrown
@@ -52,6 +54,16 @@ export function SoldierUnit({ unit }: SoldierUnitProps) {
     const isRagdolling = spin > 0.1 && unit.position[1] > 0.05
     if (!isRagdolling) {
       animateFlexSoldier(soldier, unit.status as any, state.clock.getElapsedTime(), delta)
+    }
+
+    // Muzzle flash: bright point light when firing
+    if (muzzleFlashRef.current) {
+      const isFiring = unit.status === 'firing' && (unit.stateAge ?? 1) < 0.1
+      if (isFiring) {
+        muzzleFlashRef.current.intensity = 4 * (1 - (unit.stateAge ?? 0) / 0.1)
+      } else {
+        muzzleFlashRef.current.intensity = 0
+      }
     }
 
     // Position -- lerp to unit position, clamp above ground
@@ -106,5 +118,16 @@ export function SoldierUnit({ unit }: SoldierUnitProps) {
     }
   })
 
-  return <group ref={groupRef} />
+  return (
+    <group ref={groupRef}>
+      {/* Muzzle flash light -- activates during firing */}
+      <pointLight
+        ref={muzzleFlashRef}
+        color={0xffaa22}
+        intensity={0}
+        distance={4}
+        position={[0, 0.8, 0.3]}
+      />
+    </group>
+  )
 }

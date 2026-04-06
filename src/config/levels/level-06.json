@@ -1,0 +1,59 @@
+{
+  "id": "level-06",
+  "theme": "sandbox",
+  "name": "Full Assault",
+  "placement_slots": [
+    { "id": "slot-1", "pos": [-5, 0, -4], "type": "ground" },
+    { "id": "slot-2", "pos": [-5, 0, -2], "type": "ground" },
+    { "id": "slot-3", "pos": [-5, 0, 0], "type": "ground" },
+    { "id": "slot-4", "pos": [-5, 0, 2], "type": "ground" },
+    { "id": "slot-5", "pos": [-5, 0, 4], "type": "ground" },
+    { "id": "slot-6", "pos": [-3, 0, -3], "type": "ground" },
+    { "id": "slot-7", "pos": [-3, 0, -1], "type": "ground" },
+    { "id": "slot-8", "pos": [-3, 0, 1], "type": "ground" },
+    { "id": "slot-9", "pos": [-3, 0, 3], "type": "ground" },
+    { "id": "slot-10", "pos": [-1, 0, -1], "type": "ground" },
+    { "id": "slot-11", "pos": [-1, 0, 1], "type": "ground" },
+    { "id": "slot-12", "pos": [-6, 0.8, 0], "type": "elevated" }
+  ],
+  "waves": [
+    {
+      "delay": 0.5,
+      "enemies": [
+        { "type": "infantry", "count": 4, "spacing": 1.5, "path": "main" },
+        { "type": "jeep", "count": 1, "spacing": 2.5, "path": "flank" }
+      ]
+    },
+    {
+      "delay": 10,
+      "enemies": [
+        { "type": "infantry", "count": 3, "spacing": 2.0, "path": "main", "weapon": "rocketLauncher" },
+        { "type": "infantry", "count": 2, "spacing": 1.5, "path": "flank", "weapon": "machineGun" }
+      ]
+    },
+    {
+      "delay": 20,
+      "enemies": [
+        { "type": "infantry", "count": 2, "spacing": 2.0, "path": "main", "weapon": "grenade" },
+        { "type": "jeep", "count": 2, "spacing": 2.5, "path": "flank" },
+        { "type": "tank", "count": 1, "spacing": 3, "path": "main" }
+      ]
+    },
+    {
+      "delay": 30,
+      "enemies": [
+        { "type": "infantry", "count": 2, "spacing": 2.0, "path": "main", "weapon": "rocketLauncher" },
+        { "type": "infantry", "count": 2, "spacing": 2.0, "path": "flank", "weapon": "grenade" },
+        { "type": "infantry", "count": 1, "spacing": 2.0, "path": "main", "weapon": "machineGun" },
+        { "type": "tank", "count": 1, "spacing": 3, "path": "flank" }
+      ]
+    }
+  ],
+  "available_units": ["rifle_soldier", "sandbag", "wall", "tower"],
+  "budget": 2000,
+  "stars": {
+    "one": { "type": "survive", "desc": "Survive the full assault" },
+    "two": { "type": "budget_remaining", "threshold": 800, "desc": "800+ gold remaining" },
+    "three": { "type": "objective", "desc": "No soldiers lost" }
+  }
+}

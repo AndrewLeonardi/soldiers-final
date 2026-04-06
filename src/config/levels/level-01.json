@@ -1,5 +1,5 @@
 {
-  "id": "sandbox-01",
+  "id": "level-01",
   "theme": "sandbox",
   "name": "First Contact",
   "placement_slots": [
@@ -12,7 +12,7 @@
   ],
   "waves": [
     {
-      "delay": 0,
+      "delay": 0.5,
       "enemies": [
         { "type": "infantry", "count": 4, "spacing": 1.5, "path": "main" }
       ]
@@ -21,8 +21,8 @@
   "available_units": ["rifle_soldier", "sandbag"],
   "budget": 500,
   "stars": {
-    "one": { "type": "survive" },
-    "two": { "type": "budget_remaining", "threshold": 200 },
+    "one": { "type": "survive", "desc": "Survive the assault" },
+    "two": { "type": "budget_remaining", "threshold": 200, "desc": "200+ gold remaining" },
     "three": { "type": "objective", "desc": "No soldiers lost" }
   }
 }

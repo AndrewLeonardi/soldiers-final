@@ -4,115 +4,71 @@ This is the production build. Every line of code serves the game.
 
 ---
 
-## CURRENT STATUS (as of 2026-04-04)
+## CURRENT STATUS (as of 2026-04-06)
 
-### DONE
-- [x] Project scaffolding (Vite + React 19 + R3F + Rapier + Zustand + TS)
-- [x] Homepage ported from ToySoldiers-two (hero scene, brain viz, all sections)
-- [x] 7 model files ported to TypeScript (materials, flexSoldier, jeep,
-      plasticWall, easing, poseBlender, equipmentPoses)
-- [x] 15+ SVG icons (MicrochipIcon, GoldCoinIcon, weapon icons, UI icons)
-- [x] Sandbox battlefield scene (table frame, barbed wire, oil drums,
-      rocks, scrub -- simplified, no household clutter)
-- [x] OrbitControls camera (orbit, zoom, pan with orbit-vs-click detection)
-- [x] ACESFilmic tone mapping + plastic-sheen materials
-- [x] Game store (Zustand: phases, units, gold, compute, placement state)
-- [x] Roster store (Zustand: soldier profiles, weapon equip/unlock, recruit)
-- [x] **3D Barracks hub** -- real flexSoldier models standing on a surface,
-      tap to configure, recruit button, deploy button, hover effects.
-      Zoomed-out camera for army overview (scales with soldier count).
-- [x] **Soldier detail screen** -- 3D soldier preview (rotatable, drag-to-spin),
-      5 weapon cards (rifle, rocket, grenade, MG, tank) with states
-- [x] **Weapon system** -- shared weapon mesh factory (rifle, rocket, grenade,
-      MG), display-size weapons, weapon swap on soldier model
-- [x] **Roster-connected placement** -- military green cards show YOUR soldiers
-      by name (RICO, ACE) with equipped weapon type and gold cost
-- [x] **Battlefield placement** -- placed soldiers spawn as flexSoldier models
-      with correct weapon, ghost preview follows cursor (green/red zones)
-- [x] Scene routing: barracks, battlefield, training scenes based on phase
-- [x] **Visual overhaul** -- mobile game UI with military green placement cards,
-      gradient overlays, beveled buttons, game-feel transitions
-- [x] **ML Training System** -- full NERO hybrid neuroevolution:
-      - NeuralNet (6->12->4 feedforward, tanh, 136 weights)
-      - GeneticAlgorithm (pop=30, tournament selection, adaptive mutation)
-      - 5 weapon scenarios (rocket, grenade, MG, tank + rifle default)
-      - Hybrid approach: scripted physics + NN learns corrections
-      - Training store (Zustand) bridges engine to UI
-      - 3D Training Arena with soldier/tank, soda-can targets, explosions
-      - Weapon-specific poses (rocket kneeling, grenade throw, MG burst)
-      - Weapon-specific projectiles with impact explosions
-      - Procedural toy tank model (hull, tracks, rotating turret+barrel)
-      - TrainingHUD: generation counter, fitness %, sparkline, speed
-        controls (1x-50x), progress bar to graduation
-      - NeuralNetViz: SVG overlay showing live NN nodes + weighted
-        connections (green/red), weapon-specific labels
-      - GraduationBanner: "SKILL LEARNED!" celebration with stars
-      - Brain weights persist on SoldierProfile
-      - Training launched from soldier detail via "BEGIN TRAINING" CTA
-- [x] **Battle system** -- mutable-ref physics (soldier-test pattern):
-      - Enemy soldiers spawn from waves, march toward Intel objective
-      - Player soldiers auto-target nearest enemy, fire bullets/rockets
-      - Projectile rendering (bullet cylinders, rocket meshes + flame)
-      - Collision detection with damage, hit status, death knockback
-      - Ragdoll physics: velocity, gravity, ground bounce, spin decay
-      - Death animation plays once and holds (no looping)
-      - Win condition: all enemies dead. Lose: enemy reaches Intel
-- [x] **Real neural net AI in battle** -- trained soldiers use actual
-      136-weight NN (NERO hybrid) for precise aim corrections.
-      Untrained soldiers fire with wild random aim (±23 degrees).
-      Rifle is always "trained" (basic scripted aim).
-- [x] **Weapon-specific projectiles** -- rockets (ballistic arc + 3.6
-      blast radius), grenades (bounce + 1.2s fuse + 3.0 blast),
-      MG (rapid straight). All with area knockback on explosion.
-- [x] **Battle camera** -- fov=38, position=[0,14,16] shows full battlefield
-- [x] **Round progression** -- nextRound() heals survivors, awards
-      gold (200+round*50), spawns escalating waves from ROUND_WAVES
-      (4 infantry -> 6 -> 5+jeep -> 8+2jeeps -> 6+tank)
-- [x] **Compute prominence** -- "UNTRAINED" red pulsing badge on
-      placement cards. "TRAIN YOUR SOLDIERS" tip on defeat screen.
-- [x] **Defense objects** -- walls (destructible 6x5 brick grid with
-      structural integrity + cascading collapse), sandbags (U-shaped
-      bunker), watch towers (elevated platform at y=1.8). Placement
-      via defense cards in tray (wall $50, sandbag $75, tower $200).
-- [x] **Intel objective** -- rotating briefcase on pedestal at [-7,0,0],
-      golden glow ring, point light to draw attention
-- [x] **Ghost preview** -- transparent green/red shape follows cursor
-      during placement, snaps to 0.5 grid, validates player zone (x<=2)
-- [x] **Result screen** -- DEFEAT/VICTORY banner, stars, enemies eliminated,
-      soldiers surviving, gold reward, TRY AGAIN / NEXT BATTLE button
-- [x] **Tutorial / Onboarding** -- 12-step guided tutorial:
-      - Welcome modals with gold + compute reveal (animated counters)
-      - Spotlight system: 4-mask cutout + pulsing gold ring + speech bubbles
-        with dynamic arrow alignment
-      - Walks through: recruit → view loadout → train weapon → deploy →
-        battle → victory
-      - Compute gets dramatic green-themed reveal (pulsing glow, premium feel)
-      - Starts with zero soldiers and zero resources (earned, not given)
-      - Tutorial battle: easy 2-infantry wave (trivially winnable)
-      - Buttons disabled during guided steps (can't skip ahead)
-      - Completion: stars celebration + "YOU'RE READY, COMMANDER"
-      - Persists to localStorage (only plays once)
-      - tutorialStore (Zustand) + TutorialOverlay + tutorial.css
+### TIER 1 -- COMPLETE
+All game-feel and campaign foundation items are done.
 
-- [x] **Audio system (Web Audio API)** -- 17 synthesized sounds, zero
-      external files. All sounds generated at runtime via oscillators,
-      noise buffers, and filters:
-      - Battle: rifle shot, MG burst, rocket launch, grenade throw,
-        explosions (large/small), bullet impact, death thud
-      - UI: button tap, recruit chime, deploy horn, weapon equip
-      - Training: target hit pop, graduation fanfare
-      - Tutorial: modal appear, step advance, completion fanfare
-      - Voice pool system prevents audio overload (max voices per
-        category + cooldown to prevent phasing)
-      - Mobile AudioContext resume on first touch interaction
-      - src/audio/: context.ts, voicePool.ts, synthEngine.ts, sfx.ts
+- [x] Everything from build steps 1-20 (scaffolding through audio)
+- [x] **Roster + game persistence (localStorage)** -- Zustand persist
+      middleware on rosterStore (soldiers, trained brains, weapons) and
+      gameStore (gold, compute, campaign progress). Survives page refresh.
+      Version-migrated persist (v1→v2) for campaign schema.
+- [x] **Wall destruction wired up** -- Explosions damage wall blocks
+      (blast radius knockback + cascade collapse). Bullets absorbed by
+      walls (walls = cover). Projectile-wall collision detection.
+- [x] **Visual effects overhaul:**
+      - ExplosionEffect: dual-sphere fireball + point light flash + 8-12
+        debris particles (radial velocity, gravity, ground bounce, fade)
+      - ScreenShake: dampened oscillation camera shake, triggerShake()
+        callable from anywhere, fires on every explosion
+      - Enhanced ProjectileMesh: bullets have glow sphere + trailing
+        cylinder (team-colored green/red), rockets have nose cone +
+        exhaust trail + smoke puff, grenades pulse emissive glow
+      - Bloom post-processing (EffectComposer + Bloom, luminanceThreshold
+        0.9, mipmapBlur) -- muzzle flashes and explosions glow naturally
+      - Muzzle flash: per-soldier pointLight that fires on weapon discharge
+- [x] **6-level campaign with multi-wave battles:**
+      - Level 1 "First Contact": 1 wave, 4 infantry, budget 500
+      - Level 2 "Armored Advance": 2 waves, infantry + jeep, budget 800
+      - Level 3 "Heavy Metal": 3 waves, infantry + jeeps + tank, budget 1200
+      - Level 4 "Rocket Rain": 2 waves, enemy rocket soldiers, budget 1000
+      - Level 5 "Grenades & Glory": 3 waves, enemy grenades + rockets, budget 1500
+      - Level 6 "Full Assault": 4 waves, ALL enemy weapons + tanks, budget 2000
+      - Multi-wave spawning from level JSON (delay-based, not round-based)
+      - Star criteria from level config (survive / budget threshold / no losses)
+      - Campaign progress persists to localStorage
+- [x] **Enemy weapon scaling** -- enemies can fire rockets (ballistic arc),
+      grenades (bounce + fuse), and MG (rapid sweep). WaveEnemy type has
+      optional `weapon` field. getEnemyStats() merges base type stats with
+      weapon overrides. Aim randomness for fairness.
+- [x] **Level Select (Angry Birds node map):**
+      - Full themed terrain map: layered background, winding dirt path,
+        military decorations (flag, barbed wire, sandbags, ammo crates,
+        compass rose, footprints, rocks)
+      - Beveled 3D node buttons with gradient fills, drop shadows, inner
+        bevel highlights, name plates, gold stars
+      - Animations: staggered node entrance (pop), current-level idle bob,
+        pulsing gold glow rings, completed sparkles, flag wave
+      - Level N+1 unlocks when N completed with >= 1 star
+- [x] **Victory juice:**
+      - Slow-mo on last enemy death (1.5s at 0.2x time scale)
+      - Confetti burst (45-60 gold/green/white particles with flutter,
+        tumble, light gravity, fade)
+      - Victory camera sweep (auto-rotate ramps 0.5→2.5, subtle zoom,
+        eases back after 3s)
+      - Result screen shows level name + star criteria breakdown
+      - NEXT LEVEL / LEVEL SELECT / TRY AGAIN buttons
+- [x] **Audio system (Web Audio API)** -- 17 synthesized sounds, zero files
 
 ### NEEDS WORK (known issues)
-- [ ] **Enemy AI too simple** -- enemies walk in a straight line to Intel,
-      no flanking, no cover-seeking, no grenade throws
-- [ ] **No roster persistence** -- soldiers/brains/gold reset on page refresh
-- [ ] **No campaign progression** -- only one level (sandbox-01), enemies
-      don't scale with player (no enemy rockets, tanks, grenades yet)
+- [ ] **Enemy AI movement too simple** -- enemies march in a straight line
+      to Intel. No flanking, cover-seeking, or tactical grouping.
+      (Enemies DO now fire rockets/grenades/MG, but movement is basic.)
+- [ ] **No store / shop screen** -- can't buy recruits or compute packs
+- [ ] **No compute economy tuning** -- no daily drip, no purchase flow
+- [ ] **Soldier names/personality** -- no name plates in battle, no veteran
+      bonuses, no stat growth from surviving battles
 
 ---
 
@@ -133,25 +89,29 @@ the comedy.
 ## CORE LOOP
 
 ```
-BARRACKS (hub -- always come back here)
-  --> tap soldier --> SOLDIER DETAIL (equip weapons, train skills)
-  --> DEPLOY --> PLACEMENT (place soldiers + defenses on battlefield)
-    --> FIGHT! --> BATTLE (watch it play out -- physics chaos)
-      --> RESULTS (gold, stars, injuries)
-        --> BARRACKS (next round)
+LEVEL SELECT (campaign map -- choose your mission)
+  --> BARRACKS (hub -- configure your army)
+    --> tap soldier --> SOLDIER DETAIL (equip weapons, train skills)
+    --> DEPLOY --> PLACEMENT (place soldiers + defenses on battlefield)
+      --> FIGHT! --> BATTLE (watch it play out -- physics chaos)
+        --> SLOW-MO (last kill) --> CONFETTI --> RESULTS (stars, stats)
+          --> NEXT LEVEL / LEVEL SELECT / TRY AGAIN
 ```
 
-The BARRACKS is the hub. You always return here. It shows your army
-as real 3D toy soldiers standing on a surface.
+The LEVEL SELECT is the campaign hub. Angry Birds-style node map with
+6 levels, winding dirt path, military terrain decorations. Stars unlock
+the next level.
+
+The BARRACKS shows your army as real 3D toy soldiers. Tap to configure.
 
 TRAINING is launched from the soldier detail screen when tapping a
 locked weapon. It's where compute (the monetization currency) gets
 spent. Training is the entire business model.
 
-BATTLE uses the Intel objective from soldier-test: enemies march toward
-a TOP SECRET briefcase. If any enemy reaches it, you lose. Kill all
-enemies to win. Place soldiers and defenses strategically to block
-the advance.
+BATTLE uses multi-wave spawning from level JSON configs. Enemies scale
+with campaign progression -- later levels have enemy rockets, grenades,
+MG soldiers, jeeps, and tanks. Each level defines its own wave timing,
+enemy compositions, budget, and star criteria.
 
 ---
 
@@ -194,91 +154,82 @@ the advance.
 
 ### 5. BATTLE -- BUILT
 - Mutable-ref physics pattern (from soldier-test)
-- Enemy soldiers spawn and march toward Intel briefcase
-- Player soldiers auto-target and fire at enemies
-- Weapon-specific projectiles (bullets, rockets, grenades, MG)
-- Explosion system with blast radius + area knockback
+- Multi-wave spawning from level JSON (delay-based timing)
+- Enemy soldiers march toward Intel, fire weapon-specific projectiles
+- Enemy weapon variants: rifle, rocketLauncher, grenade, machineGun
+- Player soldiers auto-target and fire (trained NN or comedy chaos)
+- Explosion system with blast radius + area knockback + wall destruction
 - Death knockback + ragdoll (velocity, spin, ground bounce)
-- Win: all enemies dead. Lose: enemy reaches Intel
-- Trained NN used for aim corrections; untrained = comedy chaos
-- Round progression: escalating waves (infantry → jeeps → tanks)
-- Destructible walls with structural integrity + cascading collapse
+- Win: all waves spawned + all enemies dead. Lose: enemy reaches Intel
+- Slow-mo on last enemy death (1.5s at 0.2x time scale)
+- Bloom post-processing on explosions and muzzle flashes
+- Screen shake on every explosion
+- Explosion VFX: dual-sphere fireball + light flash + debris particles
+- Enhanced projectiles: bullet glow trails, rocket exhaust, grenade pulse
 
 ### 6. RESULTS -- BUILT
-- DEFEAT/VICTORY banner with overlay
+- DEFEAT/VICTORY banner with level name
+- Star criteria breakdown from level config (checked/unchecked)
 - Stats: enemies eliminated, soldiers surviving
-- Gold reward on victory (200 + round*50)
-- Stars (1-3 based on performance)
-- TRY AGAIN / NEXT ROUND button
+- Victory: confetti burst + camera sweep (fast orbit + zoom)
+- NEXT LEVEL / LEVEL SELECT buttons (victory)
+- TRY AGAIN / LEVEL SELECT buttons (defeat)
+- Training tip on defeat
 
 ### 7. TUTORIAL -- BUILT
 - 12-step guided onboarding with spotlight system
-- Welcome modals: gold + compute reveal (animated counters)
 - Walks through full core loop: recruit → train → deploy → fight → win
-- Buttons disabled during guided steps
-- Completion celebration with stars
 - localStorage persistence (plays once)
+- Auto-loads level-01 for tutorial battle
 
-### 8. MAP / LEVEL SELECT -- NOT BUILT
+### 8. LEVEL SELECT -- BUILT
+- Angry Birds-style node map with themed military terrain
+- 6 levels connected by winding dirt path
+- Beveled 3D node buttons, lock/unlock states, gold stars
+- Rich animations: staggered entrance, idle bob, pulsing glow, sparkles
+- Terrain decorations: flag, barbed wire, sandbags, ammo crates, compass
+
 ### 9. SHOP / STORE -- NOT BUILT
 
 ---
 
 ## WHAT'S NEXT (priority order)
 
-### TIER 1: Game feel + Campaign foundation
-Build the systems that make it feel like a real game, then give
-players a reason to keep playing.
+### TIER 1: Game feel + Campaign foundation -- COMPLETE
+1. ~~**Audio system** -- DONE~~
+2. ~~**Campaign / level progression** -- DONE (6 levels, multi-wave,
+   enemy weapon scaling, star progression, Angry Birds level select)~~
+3. ~~**Victory/defeat juice** -- DONE (slow-mo, confetti, camera sweep,
+   screen shake, explosions, bloom)~~
+4. ~~**Roster persistence** -- DONE (Zustand persist, campaign progress)~~
 
-1. ~~**Audio system (Web Audio API + SFX)** -- DONE~~
-
-2. **Campaign / level progression** -- Currently only sandbox-01.
-   The game needs a reason to keep playing. Build:
-   - 5-10 levels with escalating difficulty + different layouts
-   - Enemy army scales WITH the player (enemies get rockets, tanks,
-     grenade soldiers as player progresses -- mirror the player's
-     growth)
-   - Star progression (earn stars → unlock next level)
-   - Map / level select screen (Angry Birds style world map)
-   - Each level has unique terrain, placement zones, wave configs
-   - Level data already uses LevelConfig JSON format
-   - Boss levels with special enemy compositions
-
-3. **Victory/defeat juice** -- Results screen is flat. Needs:
-   - Camera sweep on victory (slow orbit around battlefield)
-   - Particle burst on victory (confetti / sparks)
-   - Screen shake on explosions during battle
-   - Slow-mo on last enemy death
-
-### TIER 2: Persistence + Economy
-Once there's content worth saving, make it persist.
-
-4. **Roster persistence (localStorage)** -- Progress resets on refresh.
-   Save soldiers, brains, gold, compute, campaign progress, stars.
-   Use Zustand persist middleware or manual localStorage sync.
+### TIER 2: Economy + Store
+Build the monetization loop and give players things to buy.
 
 5. **Store / shop screen** -- Browse and buy:
    - New soldier recruits (different ranks/stats)
    - Defense upgrades
    - Compute packs (the monetization point)
-   - Visual: card-based grid, Angry Birds style
+   - Visual: card-based grid, game-feel buttons
 
 6. **Compute economy tuning** -- Daily free drip, purchase flow,
    compute-to-gold conversion, premium training tiers.
 
 ### TIER 3: AI + Polish
-7. **Enemy AI improvements** -- Currently brain-dead march.
+7. **Enemy AI movement improvements** -- Enemies fire weapon variants
+   now but still march in a straight line. Needs:
    - Flanking: enemies approach from multiple angles
    - Cover-seeking: enemies hide behind obstacles
-   - Grenade throws: enemies with area attacks
    - Priority targeting: focus on towers/walls first
 
-8. **Post-processing** -- Bloom on explosions, vignette edges.
+8. **Soldier names + personality** -- Name plates in battle, stat growth,
+   veteran bonuses from surviving battles.
 
-9. **Screen shake + particles** -- Explosion impacts, dust clouds.
+9. **More campaign content** -- Expand beyond 6 levels. New themes
+   (kitchen table, bedroom floor). Boss levels with special mechanics.
 
-10. **Soldier names + personality** -- Name plates, stat growth,
-    veteran bonuses from surviving battles.
+10. **Additional polish** -- Vignette edges, dust clouds on movement,
+    impact sparks on bullet hits, damage numbers.
 
 ---
 
@@ -309,18 +260,25 @@ Training is where compute gets spent. It must be visually spectacular.
 **Architecture (BUILT -- soldier-test pattern):**
 - Mutable refs for per-frame updates (NOT Zustand store per frame)
 - BattleScene.tsx contains all battle logic in a single useFrame loop
-- Enemy AI: march toward Intel, stop to fire at nearby player soldiers
+- Multi-wave spawning from level JSON configs (delay-based timing)
+- Enemy AI: march toward Intel, fire weapon-specific projectiles
+- Enemy weapon variants: rifle, rocketLauncher, grenade, machineGun
+  - getEnemyStats() merges base type stats with weapon overrides
+  - Aim randomness per weapon type for fairness
 - Player AI: auto-target nearest enemy, fire when in range
 - Trained soldiers: NN provides aim/elevation/fire corrections
-- Untrained soldiers: comically bad random aim (±23 degrees)
+- Untrained soldiers: comically bad random aim (+-23 degrees)
 - Projectile physics: bullets (linear), rockets (arced), grenades (bounced)
-- Explosion system: blast radius + area damage + knockback physics
-- Collision: radius-based hit detection, damage application
+- Explosion system: blast radius + area damage + knockback + wall destruction
+- Collision: radius-based hit detection, projectile-wall collision
 - Ragdoll: velocity knockback, gravity, ground bounce, spin decay
 - Death: animation plays once and holds, body settles on ground
 - Intel objective: briefcase at [-7,0,0], enemies lose if they reach it
-- Walls: destructible brick grid with structural integrity + cascading collapse
-- Round progression: escalating waves from ROUND_WAVES config
+- Walls: destructible brick grid, explosions eject blocks with cascade
+- Victory slow-mo: 1.5s at 0.2x time scale on last enemy death
+- Visual effects: ExplosionEffect (fireball + debris), ConfettiEffect
+  (victory celebration), ScreenShake, Bloom post-processing,
+  enhanced ProjectileMesh (glow trails, exhaust), muzzle flash lights
 
 ---
 
@@ -371,25 +329,26 @@ src/
   engine/         -- Pure game logic. Zero rendering imports.
     ml/           -- NeuralNet, GeneticAlgorithm, simulationRunner
       scenarios/  -- rocketScenario, grenadeScenario, machineGunScenario, tankScenario
-    sim/          -- BattleManager (legacy, replaced by BattleScene inline logic)
 
   three/          -- All 3D rendering.
-    models/       -- flexSoldier (18 poses + rocket poses), SoldierUnit,
-                     SoldierPreview, BarracksScene, weaponMeshes, jeep,
-                     plasticWall, materials, sandboxProps, Intel,
-                     GhostPreview, ProjectileMesh, Defenses
-    camera/       -- CameraRig (orbit controls)
+    models/       -- flexSoldier, SoldierUnit, SoldierPreview, BarracksScene,
+                     weaponMeshes, jeep, plasticWall, materials, sandboxProps,
+                     Intel, GhostPreview, ProjectileMesh, Defenses
+    camera/       -- CameraRig (orbit controls + victory sweep)
+    effects/      -- ExplosionEffect, ConfettiEffect, ScreenShake
     physics/      -- SlotMarker
 
-  scenes/         -- Game.tsx (scene router), BattleScene.tsx (all battle
-                     logic + rendering), TrainingScene.tsx
-  ui/             -- BarracksScreen, SoldierDetail, PlacementTray,
-                     HUD, TrainingHUD, GraduationBanner, NeuralNetViz,
-                     ResultScreen, TutorialOverlay, ToyIcons
-  stores/         -- gameStore, rosterStore, trainingStore, tutorialStore
-  config/         -- types, units, roster, levels/sandbox-01.json
+  scenes/         -- Game.tsx (scene router + bloom), BattleScene.tsx
+                     (battle logic + rendering + slow-mo), TrainingScene.tsx
+  ui/             -- BarracksScreen, SoldierDetail, PlacementTray, HUD,
+                     TrainingHUD, GraduationBanner, NeuralNetViz,
+                     ResultScreen, LevelSelect, TutorialOverlay, ToyIcons
+  stores/         -- gameStore (+ campaign), rosterStore, trainingStore,
+                     tutorialStore (all with persist middleware)
+  config/         -- types, units, roster
+    levels/       -- index.ts (registry), level-01 through level-06 JSON
   pages/          -- HomePage
-  styles/         -- barracks.css, loadout.css, game-ui.css,
+  styles/         -- barracks.css, loadout.css, game-ui.css, levelselect.css,
                      training.css, tutorial.css, homepage.css, global.css
 ```
 
@@ -397,7 +356,7 @@ src/
 
 ## BUILD SEQUENCE
 
-### DONE (1-19)
+### DONE (1-30)
 1. ~~Project scaffolding~~
 2. ~~Homepage~~
 3. ~~3D models + materials~~
@@ -418,18 +377,25 @@ src/
 18. ~~Defense objects (walls, sandbags, towers)~~
 19. ~~Tutorial / Onboarding (12-step guided flow with spotlight system)~~
 20. ~~Audio system (Web Audio API, 17 synthesized sounds)~~
+21. ~~Roster + game persistence (Zustand persist middleware, localStorage)~~
+22. ~~Wall destruction wiring (explosion + projectile damage to walls)~~
+23. ~~Visual effects overhaul (explosions, bloom, screen shake, muzzle flash,
+    enhanced projectiles with glow trails + exhaust)~~
+24. ~~Campaign: 6 levels with multi-wave spawning from level JSON~~
+25. ~~Enemy weapon scaling (rocket, grenade, MG enemy variants)~~
+26. ~~Level Select screen (Angry Birds terrain map with animations)~~
+27. ~~Campaign persistence (stars, completed levels, progress)~~
+28. ~~Result screen campaign flow (NEXT LEVEL / LEVEL SELECT / star criteria)~~
+29. ~~Victory slow-mo (1.5s at 0.2x on last enemy death)~~
+30. ~~Victory confetti + camera sweep (45-60 particles, orbit ramp + zoom)~~
 
-### NEXT (21-30)
-21. Campaign / level progression (5-10 levels, enemy army scaling)
-22. Victory/defeat juice (camera sweeps, particles, screen shake)
-23. Roster persistence (localStorage)
-24. Store / shop screen (recruits, compute packs)
-25. Enemy AI improvements (flanking, cover, grenades)
-26. Post-processing (bloom, vignette)
-27. Screen shake + particles
-28. Soldier names + personality
-29. Compute economy tuning
-30. Map / level select screen (Angry Birds style world map)
+### NEXT (31-36)
+31. Store / shop screen (recruits, compute packs, defense upgrades)
+32. Compute economy tuning (daily drip, purchase flow, premium tiers)
+33. Enemy AI movement (flanking, cover-seeking, priority targeting)
+34. Soldier names + personality (name plates, veteran bonuses, stat growth)
+35. More campaign content (expand to 10+ levels, new themes)
+36. Additional polish (vignette, dust clouds, damage numbers)
 
 ---
 
@@ -443,7 +409,8 @@ src/
 | Physics   | Custom (mutable refs)     | soldier-test pattern, predictable comedy |
 | State     | Zustand                   | Lightweight, proven in prior builds     |
 | Styling   | CSS (scoped)              | No runtime cost                         |
-| Audio     | Howler.js                 | 7KB, spatial audio, mobile-ready        |
+| Audio     | Web Audio API (synth)     | Zero files, runtime oscillators         |
+| PostFX    | @react-three/postprocessing | Selective bloom, mipmapBlur          |
 
 ---
 
@@ -459,4 +426,4 @@ src/
 
 ---
 
-*Last updated: 2026-04-04*
+*Last updated: 2026-04-06*

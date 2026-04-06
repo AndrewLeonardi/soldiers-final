@@ -22,21 +22,5 @@ export const ENEMY_STATS: Record<EnemyType, UnitStats> = {
   tank: { health: 400, speed: 0.8, range: 8, damage: 50, fireRate: 3.0 },
 }
 
-export const PLACEMENT_COSTS: Record<string, number> = {
-  rifle_soldier: 100,
-  rocket_soldier: 200,
-  sandbag: 75,
-  wall: 50,
-}
-
-// Tutorial wave: trivially easy (2 infantry)
-export const TUTORIAL_WAVE = { soldiers: 2, jeeps: 0, tanks: 0 }
-
-// Escalating enemy waves per round
-export const ROUND_WAVES: { soldiers: number; jeeps: number; tanks: number }[] = [
-  { soldiers: 4, jeeps: 0, tanks: 0 },   // Round 1
-  { soldiers: 6, jeeps: 0, tanks: 0 },   // Round 2
-  { soldiers: 5, jeeps: 1, tanks: 0 },   // Round 3
-  { soldiers: 8, jeeps: 2, tanks: 0 },   // Round 4
-  { soldiers: 6, jeeps: 1, tanks: 1 },   // Round 5+
-]
+// Waves are defined per-level in src/config/levels/*.json
+// Tutorial battle uses a hardcoded 2-infantry wave in BattleScene.tsx

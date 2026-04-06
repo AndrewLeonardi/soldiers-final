@@ -6,13 +6,16 @@ import { useGameStore } from '@stores/gameStore'
 import { useRosterStore } from '@stores/rosterStore'
 import { NeuralNet } from '@engine/ml/neuralNet'
 import { SoldierUnit } from '@three/models/SoldierUnit'
-import { WallDefense, SandbagDefense, WatchTower } from '@three/models/Defenses'
+import { WallDefense, SandbagDefense, WatchTower, type WallBlock } from '@three/models/Defenses'
 import { ProjectileMesh } from '@three/models/ProjectileMesh'
 import { Intel } from '@three/models/Intel'
 import { GhostPreview } from '@three/models/GhostPreview'
 import { BattlefieldProps } from '@three/models/sandboxProps'
 import { CameraRig } from '@three/camera/CameraRig'
-import { ENEMY_STATS, ROUND_WAVES, TUTORIAL_WAVE } from '@config/units'
+import { ExplosionEffect } from '@three/effects/ExplosionEffect'
+import { ConfettiEffect } from '@three/effects/ConfettiEffect'
+import { triggerShake } from '@three/effects/ScreenShake'
+import { ENEMY_STATS, WEAPON_STATS } from '@config/units'
 import { useTutorialStore } from '@stores/tutorialStore'
 import * as sfx from '@audio/sfx'
 import type { GameUnit, Projectile, Wave, WaveEnemy, EnemyType, WeaponType } from '@config/types'
@@ -50,6 +53,14 @@ interface BattleUnit extends GameUnit {
 function idealElevation(dist: number): number {
   const arg = (ROCKET_GRAV * dist) / (ROCKET_SPEED * ROCKET_SPEED)
   return Math.abs(arg) <= 1 ? 0.5 * Math.asin(arg) : 0.6
+}
+
+/** Get enemy combat stats: base type stats + weapon overrides for range/damage/fireRate */
+function getEnemyStats(type: import('@config/types').EnemyType, weapon: WeaponType) {
+  const base = ENEMY_STATS[type]
+  if (weapon === 'rifle') return base
+  const ws = WEAPON_STATS[weapon]
+  return { ...base, range: ws.range, damage: ws.damage, fireRate: ws.fireRate }
 }
 
 function makeBattleUnit(unit: GameUnit): BattleUnit {
@@ -174,6 +185,20 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
   const [renderTick, setRenderTick] = useState(0)
   const renderTickTimer = useRef(0)
 
+  // Wall block refs for collision detection
+  const wallBlocksRef = useRef<Map<string, WallBlock[]>>(new Map())
+
+  // Explosion effects (visual only -- spawned at applyExplosion locations)
+  interface ExplosionData { id: string; position: [number, number, number]; scale: number }
+  const [explosions, setExplosions] = useState<ExplosionData[]>([])
+  const explosionIdRef = useRef(0)
+
+  // Victory slow-mo + confetti
+  const victorySlowMo = useRef(false)
+  const slowMoStartTime = useRef(0)
+  const pendingStars = useRef(0)
+  const [showConfetti, setShowConfetti] = useState(false)
+
   // Sync store → mutable refs on phase transitions
   useEffect(() => {
     if (phase === 'battle') {
@@ -188,6 +213,13 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
     } else {
       battleActive.current = false
     }
+    // Clear refs when leaving battle (prevents stale refs across rounds)
+    if (phase === 'placement' || phase === 'levelSelect') {
+      wallBlocksRef.current.clear()
+      setExplosions([])
+      setShowConfetti(false)
+      victorySlowMo.current = false
+    }
   }, [phase])
 
   // Also sync placement-phase units for rendering
@@ -200,7 +232,26 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
   // ── BATTLE TICK (all logic in one useFrame, mutable refs) ──
   useFrame((_, rawDelta) => {
     if (!battleActive.current) return
-    const delta = Math.min(rawDelta, 0.05)
+    const rawDeltaClamped = Math.min(rawDelta, 0.05)
+
+    // ── Slow-mo timer: after last enemy dies, play 1.5s of slow-mo before result ──
+    if (victorySlowMo.current) {
+      const elapsed = (performance.now() - slowMoStartTime.current) / 1000
+      if (elapsed >= 1.5) {
+        // Slow-mo complete: trigger result + confetti
+        victorySlowMo.current = false
+        const level = useGameStore.getState().level
+        useGameStore.getState().setResult('victory', pendingStars.current)
+        if (level) useGameStore.getState().completeLevel(level.id, pendingStars.current)
+        sfx.graduationFanfare()
+        setShowConfetti(true)
+        battleActive.current = false
+        return
+      }
+    }
+
+    // Apply slow-mo factor to delta (5x slower during victory slow-mo)
+    const delta = victorySlowMo.current ? rawDeltaClamped * 0.2 : rawDeltaClamped
     battleTimeRef.current += delta
     const time = battleTimeRef.current
 
@@ -208,51 +259,52 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
     const enemies = enemiesRef.current
     const projectiles = projectilesRef.current
 
-    // ── Spawn wave (one wave per round, from ROUND_WAVES config) ──
-    if (!wavesSpawned.current.has(0) && time >= 0.5) {
-      wavesSpawned.current.add(0)
-      const round = useGameStore.getState().round
-      const isTutorial = useTutorialStore.getState().isTutorialBattle()
-      const waveIdx = Math.min(round - 1, ROUND_WAVES.length - 1)
-      const wave = isTutorial ? TUTORIAL_WAVE : ROUND_WAVES[waveIdx]
+    // ── Spawn waves from level config (multi-wave support) ──
+    const level = useGameStore.getState().level
+    const isTutorial = useTutorialStore.getState().isTutorialBattle()
 
-      // Spawn infantry
-      for (let j = 0; j < wave.soldiers; j++) {
-        const z = (j - (wave.soldiers - 1) / 2) * 1.4
+    if (isTutorial) {
+      // Tutorial: simple 2-infantry wave
+      if (!wavesSpawned.current.has(0) && time >= 0.5) {
+        wavesSpawned.current.add(0)
         const stats = ENEMY_STATS.infantry
-        enemies.push(makeBattleUnit({
-          id: `e-${++_eid}`, type: 'soldier', team: 'tan',
-          position: [SPAWN_X + Math.random() * 1.5, 0, z],
-          rotation: Math.PI, health: stats.health, maxHealth: stats.health,
-          status: 'walking', weapon: 'rifle', lastFireTime: -10,
-          fireRate: stats.fireRate, range: stats.range,
-          damage: stats.damage, speed: stats.speed,
-        }))
+        for (let j = 0; j < 2; j++) {
+          const z = (j - 0.5) * 1.4
+          enemies.push(makeBattleUnit({
+            id: `e-${++_eid}`, type: 'soldier', team: 'tan',
+            position: [SPAWN_X + Math.random() * 1.5, 0, z],
+            rotation: Math.PI, health: stats.health, maxHealth: stats.health,
+            status: 'walking', weapon: 'rifle', lastFireTime: -10,
+            fireRate: stats.fireRate, range: stats.range,
+            damage: stats.damage, speed: stats.speed,
+          }))
+        }
       }
-      // Spawn jeeps
-      for (let j = 0; j < wave.jeeps; j++) {
-        const z = (j - (wave.jeeps - 1) / 2) * 2.5
-        const stats = ENEMY_STATS.jeep
-        enemies.push(makeBattleUnit({
-          id: `e-${++_eid}`, type: 'soldier', team: 'tan',
-          position: [SPAWN_X + 1 + Math.random(), 0, z],
-          rotation: Math.PI, health: stats.health, maxHealth: stats.health,
-          status: 'walking', weapon: 'rifle', lastFireTime: -10,
-          fireRate: stats.fireRate, range: stats.range,
-          damage: stats.damage, speed: stats.speed,
-        }))
-      }
-      // Spawn tanks
-      for (let j = 0; j < wave.tanks; j++) {
-        const stats = ENEMY_STATS.tank
-        enemies.push(makeBattleUnit({
-          id: `e-${++_eid}`, type: 'soldier', team: 'tan',
-          position: [SPAWN_X + 2, 0, j * 3],
-          rotation: Math.PI, health: stats.health, maxHealth: stats.health,
-          status: 'walking', weapon: 'rifle', lastFireTime: -10,
-          fireRate: stats.fireRate, range: stats.range,
-          damage: stats.damage, speed: stats.speed,
-        }))
+    } else if (level) {
+      for (let wi = 0; wi < level.waves.length; wi++) {
+        if (wavesSpawned.current.has(wi)) continue
+        const wave = level.waves[wi]
+        if (time >= wave.delay) {
+          wavesSpawned.current.add(wi)
+          for (const entry of wave.enemies) {
+            const enemyWeapon = (entry.weapon ?? 'rifle') as WeaponType
+            const stats = getEnemyStats(entry.type, enemyWeapon)
+            if (!stats) continue
+            const spacing = entry.spacing ?? 1.5
+            const xOffset = entry.type === 'tank' ? 2 : entry.type === 'jeep' ? 1 : 0
+            for (let j = 0; j < entry.count; j++) {
+              const z = (j - (entry.count - 1) / 2) * spacing
+              enemies.push(makeBattleUnit({
+                id: `e-${++_eid}`, type: 'soldier', team: 'tan',
+                position: [SPAWN_X + xOffset + Math.random() * 1.5, 0, z],
+                rotation: Math.PI, health: stats.health, maxHealth: stats.health,
+                status: 'walking', weapon: enemyWeapon, lastFireTime: -10,
+                fireRate: stats.fireRate, range: stats.range,
+                damage: stats.damage, speed: stats.speed,
+              }))
+            }
+          }
+        }
       }
     }
 
@@ -282,21 +334,69 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
           enemy.status = 'firing'
           enemy.stateAge = 0
 
-          // Spawn projectile
           const muzzle: [number, number, number] = [ePos.x, ePos.y + 0.8, ePos.z]
-          const tCenter = new THREE.Vector3(tPos.x, tPos.y + 0.5, tPos.z)
-          const dir = tCenter.sub(new THREE.Vector3(...muzzle)).normalize()
-          projectiles.push({
-            id: `p-${++_pid}`,
-            position: muzzle,
-            velocity: [dir.x * BULLET_SPEED, dir.y * BULLET_SPEED, dir.z * BULLET_SPEED],
-            type: 'bullet',
-            damage: enemy.damage,
-            ownerId: enemy.id,
-            team: 'tan',
-            age: 0,
-          })
-          sfx.rifleShot()
+          const ew = enemy.weapon as WeaponType
+          const baseAngle = Math.atan2(tPos.x - ePos.x, tPos.z - ePos.z)
+
+          if (ew === 'rocketLauncher') {
+            // Enemy rocket: ballistic arc with slight aim randomness
+            const aimError = (Math.random() - 0.5) * 0.3
+            const finalAngle = baseAngle + aimError
+            const elev = Math.max(0.05, idealElevation(nearestDist) + (Math.random() - 0.5) * 0.1)
+            const cosE = Math.cos(elev)
+            projectiles.push({
+              id: `p-${++_pid}`, position: muzzle,
+              velocity: [
+                Math.sin(finalAngle) * cosE * ROCKET_SPEED,
+                Math.sin(elev) * ROCKET_SPEED,
+                Math.cos(finalAngle) * cosE * ROCKET_SPEED,
+              ],
+              type: 'rocket', damage: enemy.damage,
+              ownerId: enemy.id, team: 'tan', age: 0,
+            })
+            sfx.rocketLaunch()
+          } else if (ew === 'grenade') {
+            // Enemy grenade: high arc throw with aim randomness
+            const aimError = (Math.random() - 0.5) * 0.3
+            const finalAngle = baseAngle + aimError
+            const cosE = Math.cos(0.5)
+            projectiles.push({
+              id: `p-${++_pid}`, position: muzzle,
+              velocity: [
+                Math.sin(finalAngle) * cosE * GRENADE_SPEED,
+                5.5 + (Math.random() - 0.5) * 1.0,
+                Math.cos(finalAngle) * cosE * GRENADE_SPEED,
+              ],
+              type: 'grenade' as any, damage: enemy.damage,
+              ownerId: enemy.id, team: 'tan', age: 0,
+            })
+            sfx.grenadeThrow()
+          } else if (ew === 'machineGun') {
+            // Enemy MG: rapid straight bullets with sweep
+            const aimError = (Math.random() - 0.5) * 0.4
+            const finalAngle = baseAngle + aimError
+            const dir = new THREE.Vector3(
+              Math.sin(finalAngle), 0.05, Math.cos(finalAngle)
+            ).normalize()
+            projectiles.push({
+              id: `p-${++_pid}`, position: muzzle,
+              velocity: [dir.x * MG_BULLET_SPEED, dir.y * MG_BULLET_SPEED, dir.z * MG_BULLET_SPEED],
+              type: 'bullet', damage: enemy.damage,
+              ownerId: enemy.id, team: 'tan', age: 0,
+            })
+            sfx.mgBurst()
+          } else {
+            // Rifle: direct aim bullet
+            const tCenter = new THREE.Vector3(tPos.x, tPos.y + 0.5, tPos.z)
+            const dir = tCenter.sub(new THREE.Vector3(...muzzle)).normalize()
+            projectiles.push({
+              id: `p-${++_pid}`, position: muzzle,
+              velocity: [dir.x * BULLET_SPEED, dir.y * BULLET_SPEED, dir.z * BULLET_SPEED],
+              type: 'bullet', damage: enemy.damage,
+              ownerId: enemy.id, team: 'tan', age: 0,
+            })
+            sfx.rifleShot()
+          }
         } else if (enemy.stateAge > 0.4) {
           enemy.status = 'idle'
         }
@@ -312,6 +412,9 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
         if (ePos.distanceTo(INTEL_POS) < LOSE_THRESHOLD) {
           useGameStore.getState().setResult('defeat', 0)
           sfx.explosionLarge()
+          triggerShake(0.3)
+          const expId = `exp-${++explosionIdRef.current}`
+          setExplosions((prev) => [...prev, { id: expId, position: [INTEL_POS.x, 0.5, INTEL_POS.z] as [number, number, number], scale: 1.5 }])
           battleActive.current = false
           return
         }
@@ -476,10 +579,12 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
       player.rotation = player.facingAngle
     }
 
-    // ── Explosion helper (blast radius damage + knockback) ──
+    // ── Explosion helper (blast radius damage + knockback + wall destruction + VFX) ──
     function applyExplosion(center: [number, number, number], blastRadius: number, blastDamage: number, team: string) {
       const allUnits = [...players, ...enemies]
       const cPos = new THREE.Vector3(...center)
+
+      // ── Damage units ──
       for (const unit of allUnits) {
         if (unit.status === 'dead') continue
         if (unit.team === team) continue // no friendly fire
@@ -509,6 +614,49 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
           }
         }
       }
+
+      // ── Damage wall blocks ──
+      const tempWorldPos = new THREE.Vector3()
+      for (const [, blocks] of wallBlocksRef.current) {
+        for (const block of blocks) {
+          if (!block.alive) continue
+          block.mesh.getWorldPosition(tempWorldPos)
+          const dist = cPos.distanceTo(tempWorldPos)
+          if (dist < blastRadius) {
+            const force = (blastRadius - dist) / blastRadius
+            if (force > 0.25) {
+              // Destroy block and launch it
+              block.alive = false
+              block.settled = false
+              block.mesh.visible = false
+              // Create ejection velocity (radial + upward)
+              const knockDir = tempWorldPos.clone().sub(cPos).normalize()
+              const knockForce = force * 5
+              block.velocity.set(
+                knockDir.x * knockForce + (Math.random() - 0.5) * 2,
+                1 + force * 4,
+                knockDir.z * knockForce + (Math.random() - 0.5) * 2,
+              )
+            } else if (force > 0.1) {
+              // Just shake the block (knock it loose so it cascades)
+              block.settled = false
+              block.velocity.add(new THREE.Vector3(
+                (Math.random() - 0.5) * 0.5,
+                force * 2,
+                (Math.random() - 0.5) * 0.5,
+              ))
+            }
+          }
+        }
+      }
+
+      // ── Screen shake ──
+      triggerShake(0.15)
+
+      // ── Spawn explosion visual effect ──
+      const expId = `exp-${++explosionIdRef.current}`
+      const expScale = blastRadius > 3.3 ? 1.2 : 0.9 // bigger for rockets
+      setExplosions((prev) => [...prev, { id: expId, position: [...center] as [number, number, number], scale: expScale }])
     }
 
     // ── Update projectiles ──
@@ -560,10 +708,13 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
     }
 
     // ── Collision detection (bullets = direct hit, rockets/grenades = explode) ──
+    const tempBlockPos = new THREE.Vector3()
     for (let i = projectiles.length - 1; i >= 0; i--) {
       const p = projectiles[i]
-      const allUnits = [...players, ...enemies]
+      let removed = false
 
+      // ── Check unit hits ──
+      const allUnits = [...players, ...enemies]
       for (const unit of allUnits) {
         if (unit.status === 'dead') continue
         if (unit.team === p.team) continue
@@ -575,15 +726,12 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
 
         if (dist < HIT_RADIUS) {
           if (p.type === 'rocket') {
-            // Rocket: explode on direct hit
             applyExplosion(p.position, 3.6, 90, p.team)
             sfx.explosionLarge()
           } else if (p.type === 'grenade') {
-            // Grenade: explode on direct hit
             applyExplosion(p.position, 3.0, 60, p.team)
             sfx.explosionLarge()
           } else {
-            // Bullet: direct damage only
             unit.health -= p.damage
             sfx.bulletImpact()
             if (unit.health <= 0) {
@@ -601,12 +749,42 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
               unit.stateAge = 0
             }
           }
-          // Track hits for accuracy stats
           const shooter = [...players, ...enemies].find((u) => u.id === p.ownerId)
           if (shooter && 'shotsHit' in shooter) shooter.shotsHit++
           projectiles.splice(i, 1)
+          removed = true
           break
         }
+      }
+      if (removed) continue
+
+      // ── Check wall block hits ──
+      for (const [, blocks] of wallBlocksRef.current) {
+        for (const block of blocks) {
+          if (!block.alive) continue
+          block.mesh.getWorldPosition(tempBlockPos)
+          const dx = p.position[0] - tempBlockPos.x
+          const dy = p.position[1] - tempBlockPos.y
+          const dz = p.position[2] - tempBlockPos.z
+          const dist = Math.sqrt(dx * dx + dy * dy + dz * dz)
+
+          if (dist < 0.3) { // Wall block hit radius (~half block width)
+            if (p.type === 'rocket') {
+              applyExplosion(p.position, 3.6, 90, p.team)
+              sfx.explosionLarge()
+            } else if (p.type === 'grenade') {
+              applyExplosion(p.position, 3.0, 60, p.team)
+              sfx.explosionLarge()
+            } else {
+              // Bullets absorbed by walls (walls are cover!)
+              sfx.bulletImpact()
+            }
+            projectiles.splice(i, 1)
+            removed = true
+            break
+          }
+        }
+        if (removed) break
       }
     }
 
@@ -655,18 +833,41 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
       }
     }
 
-    // ── Check victory ──
-    const waveSpawned = wavesSpawned.current.has(0)
+    // ── Check victory (all waves spawned + all enemies dead) ──
+    const totalWaves = isTutorial ? 1 : (level?.waves.length ?? 1)
+    const allWavesSpawned = wavesSpawned.current.size >= totalWaves
     const livingEnemies = enemies.filter((e) => e.status !== 'dead')
-    if (waveSpawned && enemies.length > 0 && livingEnemies.length === 0) {
+    if (allWavesSpawned && enemies.length > 0 && livingEnemies.length === 0) {
+      const store = useGameStore.getState()
       const livingPlayers = players.filter((p) => p.status !== 'dead')
       const allSurvived = livingPlayers.length === players.length
-      let stars = 1
-      if (useGameStore.getState().gold >= 200) stars = 2
-      if (allSurvived) stars = 3
-      useGameStore.getState().setResult('victory', stars)
-      sfx.graduationFanfare()
-      battleActive.current = false
+
+      // Evaluate star criteria from level config
+      let stars = 0
+      const sc = level?.stars
+      if (sc) {
+        // Star 1: survive (always granted on victory)
+        if (sc.one.type === 'survive') stars = 1
+        // Star 2
+        if (stars >= 1) {
+          if (sc.two.type === 'budget_remaining' && store.gold >= (sc.two.threshold ?? 0)) stars = 2
+          else if (sc.two.type === 'objective' && sc.two.desc === 'No soldiers lost' && allSurvived) stars = 2
+        }
+        // Star 3
+        if (stars >= 2) {
+          if (sc.three.type === 'objective' && sc.three.desc === 'No soldiers lost' && allSurvived) stars = 3
+          else if (sc.three.type === 'budget_remaining' && store.gold >= (sc.three.threshold ?? 0)) stars = 3
+        }
+      } else {
+        stars = 1 // fallback
+      }
+
+      // Start slow-mo instead of immediate result (unless already in slow-mo)
+      if (!victorySlowMo.current) {
+        pendingStars.current = stars
+        victorySlowMo.current = true
+        slowMoStartTime.current = performance.now()
+      }
     }
 
     // Trigger React re-render every ~100ms so new enemies/projectiles appear in JSX
@@ -728,7 +929,15 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
 
       {/* Player units: soldiers + defenses */}
       {renderPlayers.map((unit) => {
-        if (unit.type === 'wall') return <WallDefense key={unit.id} position={unit.position} rotation={unit.rotation} />
+        if (unit.type === 'wall') return (
+          <WallDefense
+            key={unit.id}
+            position={unit.position}
+            rotation={unit.rotation}
+            wallBlocksRef={wallBlocksRef}
+            wallId={unit.id}
+          />
+        )
         if (unit.type === 'sandbag') return <SandbagDefense key={unit.id} position={unit.position} rotation={unit.rotation} />
         if (unit.type === 'tower') return <WatchTower key={unit.id} position={unit.position} rotation={unit.rotation} />
         return <SoldierUnit key={unit.id} unit={unit} />
@@ -741,6 +950,24 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
       {renderProjectiles.map((p) => (
         <ProjectileMesh key={p.id} projectile={p} />
       ))}
+
+      {/* Explosion effects */}
+      {explosions.map((exp) => (
+        <ExplosionEffect
+          key={exp.id}
+          position={exp.position}
+          scale={exp.scale}
+          onComplete={() => setExplosions((prev) => prev.filter((e) => e.id !== exp.id))}
+        />
+      ))}
+
+      {/* Victory confetti */}
+      {showConfetti && (
+        <ConfettiEffect
+          position={[0, 5, 0]}
+          onComplete={() => setShowConfetti(false)}
+        />
+      )}
     </>
   )
 }

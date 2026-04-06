@@ -251,8 +251,8 @@ export const useTrainingStore = create<TrainingState>((set, get) => ({
   },
 }))
 
-// DEBUG: expose stores on window for testing
-if (typeof window !== 'undefined') {
+// Dev testing helper
+if (typeof window !== 'undefined' && import.meta.env.DEV) {
   ;(window as any).__trainingStore = useTrainingStore
   ;(window as any).__gameStore = useGameStore
   ;(window as any).__rosterStore = useRosterStore

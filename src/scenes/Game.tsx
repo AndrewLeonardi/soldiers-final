@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useRef, Suspense } from 'react'
 import { Canvas, useThree, useFrame } from '@react-three/fiber'
 import { Physics } from '@react-three/rapier'
+import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import type { WebGLRenderer } from 'three'
 import { useGameStore } from '@stores/gameStore'
@@ -18,9 +19,9 @@ import { NeuralNetViz } from '@ui/NeuralNetViz'
 import { ResultScreen } from '@ui/ResultScreen'
 import { TutorialOverlay } from '@ui/TutorialOverlay'
 import { useTutorialStore } from '@stores/tutorialStore'
+import { ScreenShake } from '@three/effects/ScreenShake'
+import { LevelSelect } from '@ui/LevelSelect'
 import { resumeOnInteraction } from '@audio/context'
-import levelData from '@config/levels/sandbox-01.json'
-import type { LevelConfig } from '@config/types'
 
 // Camera controller for training arena
 function TrainingCamera() {
@@ -81,6 +82,10 @@ function SceneRouter({ orbitingRef }: { orbitingRef: React.MutableRefObject<bool
     return <TrainingCamera />
   }
 
+  if (phase === 'levelSelect') {
+    return <color attach="background" args={[0x0c1a0c]} />
+  }
+
   return (
     <Physics gravity={[0, -15, 0]}>
       <BattleScene orbitingRef={orbitingRef} />
@@ -89,25 +94,25 @@ function SceneRouter({ orbitingRef }: { orbitingRef: React.MutableRefObject<bool
 }
 
 export default function Game() {
-  const loadLevel = useGameStore((s) => s.loadLevel)
   const phase = useGameStore((s) => s.phase)
+  const selectLevel = useGameStore((s) => s.selectLevel)
+  const setPhase = useGameStore((s) => s.setPhase)
   const orbitingRef = useRef(false)
   const tutorialCompleted = useTutorialStore((s) => s.completed)
   const startTutorial = useTutorialStore((s) => s.startTutorial)
 
   useEffect(() => {
-    loadLevel(levelData as LevelConfig)
     resumeOnInteraction()
-  }, [loadLevel])
-
-  // Start tutorial on first play
-  useEffect(() => {
     if (!tutorialCompleted) {
-      // Small delay to let loadLevel finish
+      // First-time player: auto-select level 1 and start tutorial
+      selectLevel('level-01')
       const t = setTimeout(() => startTutorial(), 100)
       return () => clearTimeout(t)
+    } else {
+      // Returning player: go to level select
+      setPhase('levelSelect')
     }
-  }, [tutorialCompleted, startTutorial])
+  }, [])
 
   const onCreated = useCallback(({ gl }: { gl: WebGLRenderer }) => {
     gl.toneMapping = THREE.ACESFilmicToneMapping
@@ -138,10 +143,21 @@ export default function Game() {
       >
         <Suspense fallback={null}>
           <SceneRouter orbitingRef={orbitingRef} />
+          <ScreenShake />
+          {/* Selective bloom: only very bright things glow (muzzle flashes, projectiles, explosions) */}
+          <EffectComposer>
+            <Bloom
+              luminanceThreshold={0.9}
+              luminanceSmoothing={0.3}
+              intensity={0.35}
+              mipmapBlur
+            />
+          </EffectComposer>
         </Suspense>
       </Canvas>
 
       {/* HTML UI overlay */}
+      <LevelSelect />
       <BarracksScreen />
       <SoldierDetail />
       <TrainingHUD />

@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import type { WeaponType, SoldierProfile } from '@config/types'
 import { STARTER_ROSTER, SOLDIER_RECRUIT_COST, WEAPON_UNLOCK_COST, randomSoldierName } from '@config/roster'
 import { useGameStore } from './gameStore'
@@ -17,7 +18,9 @@ interface RosterState {
   getSelectedSoldier: () => SoldierProfile
 }
 
-export const useRosterStore = create<RosterState>((set, get) => ({
+export const useRosterStore = create<RosterState>()(
+  persist(
+    (set, get) => ({
   soldiers: STARTER_ROSTER,
   selectedSoldierId: STARTER_ROSTER[0].id,
   detailSoldierId: null,
@@ -67,6 +70,7 @@ export const useRosterStore = create<RosterState>((set, get) => ({
       unlockedWeapons: ['rifle'],
       starRating: 1,
       team: 'green',
+      trainedBrains: {},
     }
     set((s) => ({
       soldiers: [...s.soldiers, newSoldier],
@@ -79,4 +83,14 @@ export const useRosterStore = create<RosterState>((set, get) => ({
     const { soldiers, selectedSoldierId } = get()
     return soldiers.find((s) => s.id === selectedSoldierId) ?? soldiers[0]
   },
-}))
+    }),
+    {
+      name: 'toy-soldiers-roster',
+      version: 1,
+      partialize: (state) => ({
+        soldiers: state.soldiers,
+        selectedSoldierId: state.selectedSoldierId,
+      }),
+    }
+  )
+)
