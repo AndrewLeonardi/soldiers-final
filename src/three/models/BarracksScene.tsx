@@ -1,8 +1,10 @@
 import { useRef, useMemo, useEffect, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
+import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { createFlexSoldier, poseIdle } from './flexSoldier'
 import { applyWeaponToSoldier } from './weaponMeshes'
+import { WEAPON_DISPLAY } from '@config/roster'
 import { TOY } from './materials'
 import type { SoldierProfile } from '@config/types'
 
@@ -52,9 +54,46 @@ function BarracksSoldier({ soldier, positionX, onClick }: BarracksSoldierProps) 
     return () => { gl.domElement.style.cursor = 'auto' }
   }, [hovered, gl])
 
+  const weaponName = WEAPON_DISPLAY[soldier.equippedWeapon]?.name ?? 'Rifle'
+
   return (
-    <group ref={outerRef} position={[positionX, 0, 0]}>
+    <group ref={outerRef} position={[positionX, 0, 0]} scale={0.85}>
       <group ref={groupRef} />
+      {/* Floating name label */}
+      <Html
+        position={[0, 1.35, 0]}
+        center
+        distanceFactor={4}
+        style={{ pointerEvents: 'none' }}
+      >
+        <div style={{
+          background: 'rgba(10, 15, 10, 0.75)',
+          border: '1px solid rgba(100, 140, 100, 0.3)',
+          borderRadius: '4px',
+          padding: '2px 8px',
+          textAlign: 'center',
+          whiteSpace: 'nowrap',
+        }}>
+          <div style={{
+            fontFamily: "'Black Ops One', Impact, sans-serif",
+            fontSize: '10px',
+            color: '#d4c8a0',
+            letterSpacing: '0.5px',
+            textTransform: 'uppercase',
+          }}>
+            {soldier.name}
+          </div>
+          <div style={{
+            fontFamily: "'Share Tech Mono', monospace",
+            fontSize: '8px',
+            color: '#6a8a5a',
+            letterSpacing: '0.5px',
+            textTransform: 'uppercase',
+          }}>
+            {weaponName}
+          </div>
+        </div>
+      </Html>
       {/* Large invisible click/hover target */}
       <mesh
         position={[0, 0.4, 0]}

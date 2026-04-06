@@ -12,6 +12,7 @@ export type TutorialStep =
   | 'watch-training'
   | 'save-training'
   | 'deploy'
+  | 'explain-intel'
   | 'place-soldier'
   | 'fight'
   | 'complete'

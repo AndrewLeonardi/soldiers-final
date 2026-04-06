@@ -14,7 +14,7 @@ interface RosterState {
   closeDetail: () => void
   equipWeapon: (soldierId: string, weapon: WeaponType) => void
   unlockWeapon: (soldierId: string, weapon: WeaponType) => boolean
-  recruitSoldier: () => boolean
+  recruitSoldier: (chosenName?: string) => boolean
   getSelectedSoldier: () => SoldierProfile
 }
 
@@ -56,11 +56,11 @@ export const useRosterStore = create<RosterState>()(
     return true
   },
 
-  recruitSoldier: () => {
+  recruitSoldier: (chosenName) => {
     const gameStore = useGameStore.getState()
     if (!gameStore.spendGold(SOLDIER_RECRUIT_COST)) return false
     const id = `soldier-${Date.now()}`
-    const name = randomSoldierName()
+    const name = chosenName || randomSoldierName()
     const rank = name.split(' ')[0]
     const newSoldier: SoldierProfile = {
       id,

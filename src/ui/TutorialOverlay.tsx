@@ -4,7 +4,6 @@ import type { TutorialStep } from '@stores/tutorialStore'
 import { useGameStore } from '@stores/gameStore'
 import { useRosterStore } from '@stores/rosterStore'
 import { useTrainingStore } from '@stores/trainingStore'
-import { STARTER_ROSTER } from '@config/roster'
 import * as sfx from '@audio/sfx'
 import { GoldCoinIcon, MicrochipIcon, StarIcon } from './ToyIcons'
 import '@styles/tutorial.css'
@@ -211,12 +210,15 @@ export function TutorialOverlay() {
   }, [active, step])
 
   // deploy: wait until detail is closed AND we're on the barracks,
-  // then show spotlight. Detect transition to placement.
+  // then show spotlight. Detect transition to placement → show Intel explanation.
   useEffect(() => {
     if (active && step === 'deploy' && phase === 'placement') {
-      advanceTo('place-soldier')
+      advanceTo('explain-intel')
     }
   }, [active, step, phase, advanceTo])
+
+  // explain-intel: after player reads the modal, advance to place-soldier
+  // (handled by the Continue button in the modal below)
 
   // place-soldier: detect unit placed
   useEffect(() => {
@@ -303,6 +305,36 @@ export function TutorialOverlay() {
     )
   }
 
+  if (step === 'explain-intel') {
+    return (
+      <div className="tutorial-overlay blocking">
+        <div className="tutorial-backdrop" />
+        <div className="tutorial-card">
+          <div className="tutorial-icon" style={{ fontSize: '44px' }}>
+            <svg width="52" height="52" viewBox="0 0 24 24" fill="none">
+              <rect x="9" y="3" width="6" height="4" rx="1" fill="#b8922e" />
+              <rect x="3" y="7" width="18" height="12" rx="2" fill="#d4aa40" stroke="#b8922e" strokeWidth="1.5" />
+              <path d="M3 9h18" stroke="#b8922e" strokeWidth="0.8" />
+              <circle cx="12" cy="14" r="2" fill="#b8922e" />
+              <rect x="11.5" y="14" width="1" height="2" fill="#b8922e" />
+            </svg>
+          </div>
+          <div className="tutorial-title">Defend the Intelligence!</div>
+          <div className="tutorial-body">
+            The enemy is marching toward your <strong>intelligence briefcase</strong>.
+            If they reach it, you lose! Place soldiers and defenses to stop them.
+          </div>
+          <button
+            className="tutorial-continue-btn"
+            onPointerDown={() => advanceTo('place-soldier')}
+          >
+            Got it!
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   if (step === 'complete') {
     return (
       <div className="tutorial-overlay blocking">
@@ -321,13 +353,10 @@ export function TutorialOverlay() {
             className="tutorial-continue-btn"
             onPointerDown={() => {
               completeTutorial()
-              // Restore default roster and resources for normal play
-              useRosterStore.setState({
-                soldiers: STARTER_ROSTER,
-                selectedSoldierId: STARTER_ROSTER[0].id,
-                detailSoldierId: null,
-              })
-              useGameStore.getState().resetLevel()
+              // Keep the soldiers the player recruited during the tutorial
+              // Give them proper starting resources for campaign
+              useGameStore.setState({ compute: 500 })
+              useGameStore.getState().goToLevelSelect()
             }}
           >
             Let's Go!

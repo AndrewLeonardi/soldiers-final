@@ -34,6 +34,12 @@ const PROJECTILE_MAX_AGE = 4
 const HIT_RADIUS = 0.5
 const GRAVITY = -15
 
+// Reusable temp vectors (avoids GC pressure in hot loops)
+const _tA = new THREE.Vector3()
+const _tB = new THREE.Vector3()
+const _tC = new THREE.Vector3()
+const _tD = new THREE.Vector3()
+
 let _eid = 1000
 let _pid = 5000
 
@@ -313,30 +319,30 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
       if (enemy.status === 'dead') { enemy.stateAge += delta; continue }
       enemy.stateAge += delta
 
-      const ePos = new THREE.Vector3(...enemy.position)
+      _tA.set(enemy.position[0], enemy.position[1], enemy.position[2])
 
       // Find nearest living player
       let nearestPlayer: BattleUnit | null = null
       let nearestDist = Infinity
       for (const p of players) {
         if (p.status === 'dead') continue
-        const d = ePos.distanceTo(new THREE.Vector3(...p.position))
+        const d = _tA.distanceTo(_tB.set(p.position[0], p.position[1], p.position[2]))
         if (d < nearestDist) { nearestDist = d; nearestPlayer = p }
       }
 
       if (nearestPlayer && nearestDist <= enemy.range) {
         // Stop and fire
-        const tPos = new THREE.Vector3(...nearestPlayer.position)
-        enemy.facingAngle = Math.atan2(tPos.x - ePos.x, tPos.z - ePos.z)
+        _tB.set(nearestPlayer.position[0], nearestPlayer.position[1], nearestPlayer.position[2])
+        enemy.facingAngle = Math.atan2(_tB.x - _tA.x, _tB.z - _tA.z)
 
         if (time - enemy.lastFireTime >= enemy.fireRate) {
           enemy.lastFireTime = time
           enemy.status = 'firing'
           enemy.stateAge = 0
 
-          const muzzle: [number, number, number] = [ePos.x, ePos.y + 0.8, ePos.z]
+          const muzzle: [number, number, number] = [_tA.x, _tA.y + 0.8, _tA.z]
           const ew = enemy.weapon as WeaponType
-          const baseAngle = Math.atan2(tPos.x - ePos.x, tPos.z - ePos.z)
+          const baseAngle = Math.atan2(_tB.x - _tA.x, _tB.z - _tA.z)
 
           if (ew === 'rocketLauncher') {
             // Enemy rocket: ballistic arc with slight aim randomness
@@ -387,8 +393,8 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
             sfx.mgBurst()
           } else {
             // Rifle: direct aim bullet
-            const tCenter = new THREE.Vector3(tPos.x, tPos.y + 0.5, tPos.z)
-            const dir = tCenter.sub(new THREE.Vector3(...muzzle)).normalize()
+            _tC.set(_tB.x, _tB.y + 0.5, _tB.z)
+            const dir = _tC.sub(_tD.set(muzzle[0], muzzle[1], muzzle[2])).normalize()
             projectiles.push({
               id: `p-${++_pid}`, position: muzzle,
               velocity: [dir.x * BULLET_SPEED, dir.y * BULLET_SPEED, dir.z * BULLET_SPEED],
@@ -402,14 +408,14 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
         }
       } else {
         // March toward Intel
-        const toIntel = INTEL_POS.clone().sub(ePos).normalize()
-        enemy.position[0] += toIntel.x * enemy.speed * delta
-        enemy.position[2] += toIntel.z * enemy.speed * delta
-        enemy.facingAngle = Math.atan2(toIntel.x, toIntel.z)
+        _tC.copy(INTEL_POS).sub(_tA).normalize()
+        enemy.position[0] += _tC.x * enemy.speed * delta
+        enemy.position[2] += _tC.z * enemy.speed * delta
+        enemy.facingAngle = Math.atan2(_tC.x, _tC.z)
         enemy.status = 'walking'
 
         // Check defeat condition
-        if (ePos.distanceTo(INTEL_POS) < LOSE_THRESHOLD) {
+        if (_tA.distanceTo(INTEL_POS) < LOSE_THRESHOLD) {
           useGameStore.getState().setResult('defeat', 0)
           sfx.explosionLarge()
           triggerShake(0.3)
@@ -428,19 +434,19 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
       if (player.status === 'dead') { player.stateAge += delta; continue }
       player.stateAge += delta
 
-      const pPos = new THREE.Vector3(...player.position)
-      const aliveEnemies = enemies.filter((e) => e.status !== 'dead')
+      _tA.set(player.position[0], player.position[1], player.position[2])
       let nearestEnemy: BattleUnit | null = null
       let nearestDist = Infinity
-      for (const e of aliveEnemies) {
-        const d = pPos.distanceTo(new THREE.Vector3(...e.position))
+      for (const e of enemies) {
+        if (e.status === 'dead') continue
+        const d = _tA.distanceTo(_tB.set(e.position[0], e.position[1], e.position[2]))
         if (d < nearestDist) { nearestDist = d; nearestEnemy = e }
       }
 
       if (nearestEnemy && nearestDist <= player.range) {
-        const ePos = new THREE.Vector3(...nearestEnemy.position)
-        const dx = ePos.x - pPos.x
-        const dz = ePos.z - pPos.z
+        _tB.set(nearestEnemy.position[0], nearestEnemy.position[1], nearestEnemy.position[2])
+        const dx = _tB.x - _tA.x
+        const dz = _tB.z - _tA.z
         const baseAngle = Math.atan2(dx, dz)
         player.facingAngle = baseAngle
 
@@ -451,12 +457,12 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
         const cooldownRatio = Math.min(1, (time - player.lastFireTime) / player.fireRate)
         const elevation = idealElevation(nearestDist)
         const nnInputs = [
-          ePos.x / 10,
-          ePos.z / 5,
+          _tB.x / 10,
+          _tB.z / 5,
           Math.min(1, nearestDist / 10),
           elevation / 0.8,
           1.0 - cooldownRatio, // 0 = ready, 1 = full cooldown
-          aliveEnemies.length / 5,
+          enemies.filter((e) => e.status !== 'dead').length / 5,
         ]
 
         // Get aim corrections from trained NN or random chaos
@@ -496,7 +502,7 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
           player.stateAge = 0
           player.shotsFired++
 
-          const muzzle: [number, number, number] = [pPos.x, pPos.y + 0.8, pPos.z]
+          const muzzle: [number, number, number] = [_tA.x, _tA.y + 0.8, _tA.z]
           const finalAngle = baseAngle + aimCorrection
 
           if (weapon === 'rocketLauncher') {
@@ -555,9 +561,8 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
             sfx.mgBurst()
           } else {
             // Rifle: direct aim
-            const tCenter = ePos.clone()
-            tCenter.y += 0.5
-            const dir = tCenter.sub(new THREE.Vector3(...muzzle)).normalize()
+            _tC.set(_tB.x, _tB.y + 0.5, _tB.z)
+            const dir = _tC.sub(_tD.set(muzzle[0], muzzle[1], muzzle[2])).normalize()
             projectiles.push({
               id: `p-${++_pid}`,
               position: muzzle,
@@ -582,13 +587,13 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
     // ── Explosion helper (blast radius damage + knockback + wall destruction + VFX) ──
     function applyExplosion(center: [number, number, number], blastRadius: number, blastDamage: number, team: string) {
       const allUnits = [...players, ...enemies]
-      const cPos = new THREE.Vector3(...center)
+      const cPos = _tC.set(center[0], center[1], center[2])
 
       // ── Damage units ──
       for (const unit of allUnits) {
         if (unit.status === 'dead') continue
         if (unit.team === team) continue // no friendly fire
-        const uPos = new THREE.Vector3(...unit.position)
+        const uPos = _tD.set(unit.position[0], unit.position[1], unit.position[2])
         uPos.y += 0.4
         const dist = cPos.distanceTo(uPos)
         if (dist < blastRadius) {
@@ -596,7 +601,7 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
           const dmg = Math.round(blastDamage * force)
           unit.health -= dmg
           // Knockback
-          const knockDir = uPos.clone().sub(cPos).normalize()
+          const knockDir = _tA.set(uPos.x - cPos.x, uPos.y - cPos.y, uPos.z - cPos.z).normalize()
           const knockForce = force * 6
           unit.velocity[0] += knockDir.x * knockForce
           unit.velocity[1] += 0.4 + force * 3
@@ -630,7 +635,7 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
               block.settled = false
               block.mesh.visible = false
               // Create ejection velocity (radial + upward)
-              const knockDir = tempWorldPos.clone().sub(cPos).normalize()
+              const knockDir = _tA.set(tempWorldPos.x - cPos.x, tempWorldPos.y - cPos.y, tempWorldPos.z - cPos.z).normalize()
               const knockForce = force * 5
               block.velocity.set(
                 knockDir.x * knockForce + (Math.random() - 0.5) * 2,

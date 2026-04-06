@@ -1,0 +1,323 @@
+/* ══════════════════════════════════════════════
+   COMPUTE STORE -- Military Supply Shop
+   ══════════════════════════════════════════════ */
+
+.store-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  background: linear-gradient(
+    180deg,
+    #0a1218 0%,
+    #0e1e2e 30%,
+    #142838 60%,
+    #0e1e2e 100%
+  );
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  animation: storeSlideUp 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes storeSlideUp {
+  0% { opacity: 0; transform: translateY(40px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.store-container {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ── Header ── */
+
+.store-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.store-back {
+  background: none;
+  border: none;
+  color: #8a9aaa;
+  padding: 8px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+
+.store-back:active {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.store-title {
+  flex: 1;
+  font-family: 'Black Ops One', 'Impact', sans-serif;
+  font-size: 1.3rem;
+  color: #4ADE80;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  text-shadow: 0 0 20px rgba(74, 222, 128, 0.3);
+}
+
+.store-balance {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(180deg, #1e3048 0%, #162840 100%);
+  border: 2px solid #3a5a6a;
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 15px;
+  font-weight: 700;
+  color: #4ADE80;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Featured Pack ── */
+
+.store-featured {
+  position: relative;
+  background: linear-gradient(180deg, #2a4a3a 0%, #1a3a2a 100%);
+  border: 2px solid #d4aa40;
+  border-bottom: 5px solid #8a6a20;
+  border-radius: 14px;
+  padding: 18px 16px;
+  cursor: pointer;
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.4),
+    0 0 15px rgba(212, 170, 64, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: transform 0.1s ease;
+}
+
+.store-featured:active {
+  transform: scale(0.97) translateY(3px);
+  border-bottom-width: 2px;
+}
+
+.store-best-badge {
+  position: absolute;
+  top: -8px;
+  right: 16px;
+  background: linear-gradient(180deg, #d4aa40 0%, #b8922e 100%);
+  color: #1a1a0a;
+  font-family: 'Black Ops One', 'Impact', sans-serif;
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  padding: 4px 12px;
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  text-transform: uppercase;
+}
+
+.store-featured-content {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.store-featured-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: -4px;
+  opacity: 0.9;
+}
+
+.store-featured-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.store-featured-name {
+  font-family: 'Black Ops One', 'Impact', sans-serif;
+  font-size: 1.1rem;
+  color: #d4aa40;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.store-featured-amount {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 20px;
+  font-weight: 700;
+  color: #4ADE80;
+}
+
+.store-featured-desc {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: #8a9a7a;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* ── Pack Grid ── */
+
+.store-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.store-card {
+  background: linear-gradient(180deg, #2a3d58 0%, #1e3048 100%);
+  border: 2px solid #3a5a70;
+  border-bottom: 5px solid #1a2a3a;
+  border-radius: 12px;
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: transform 0.1s ease;
+}
+
+.store-card:active {
+  transform: scale(0.95) translateY(3px);
+  border-bottom-width: 2px;
+}
+
+.store-card-icon {
+  padding: 4px;
+}
+
+.store-card-amount {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: #4ADE80;
+}
+
+.store-card-desc {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  color: #6a7a8a;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 1.3;
+}
+
+/* ── Buy Buttons ── */
+
+.store-buy-btn {
+  width: 100%;
+  padding: 8px 16px;
+  background: linear-gradient(180deg, #4ADE80 0%, #22863a 100%);
+  border: 2px solid rgba(74, 222, 128, 0.5);
+  border-bottom: 4px solid #1a5a2a;
+  border-radius: 8px;
+  color: white;
+  font-family: 'Black Ops One', 'Impact', sans-serif;
+  font-size: 14px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  box-shadow:
+    0 3px 10px rgba(34, 134, 58, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: transform 0.1s ease;
+}
+
+.store-buy-btn:active {
+  transform: scale(0.95) translateY(2px);
+  border-bottom-width: 2px;
+}
+
+.store-buy-featured {
+  width: auto;
+  padding: 10px 20px;
+  font-size: 16px;
+  background: linear-gradient(180deg, #d4aa40 0%, #b8922e 100%);
+  border-color: rgba(212, 170, 64, 0.5);
+  border-bottom-color: #8a6a20;
+  box-shadow:
+    0 3px 10px rgba(212, 170, 64, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* ── Daily Drip Section ── */
+
+.store-daily {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(74, 222, 128, 0.15);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.store-daily-label {
+  font-family: 'Black Ops One', 'Impact', sans-serif;
+  font-size: 11px;
+  color: #6a8a7a;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+}
+
+.store-claim-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 28px;
+  background: linear-gradient(180deg, #4ADE80 0%, #22863a 100%);
+  border: 2px solid rgba(74, 222, 128, 0.6);
+  border-bottom: 4px solid #1a5a2a;
+  border-radius: 10px;
+  color: white;
+  font-family: 'Black Ops One', 'Impact', sans-serif;
+  font-size: 15px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  box-shadow:
+    0 4px 16px rgba(74, 222, 128, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  animation: claimPulse 2s ease-in-out infinite;
+}
+
+@keyframes claimPulse {
+  0%, 100% { box-shadow: 0 4px 16px rgba(74, 222, 128, 0.3); }
+  50% { box-shadow: 0 4px 24px rgba(74, 222, 128, 0.6), 0 0 30px rgba(74, 222, 128, 0.15); }
+}
+
+.store-claim-btn:active {
+  transform: scale(0.95) translateY(2px);
+  border-bottom-width: 2px;
+  animation: none;
+}
+
+.store-countdown {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px;
+  color: #5a7a6a;
+  letter-spacing: 0.1em;
+}
+
+/* ── Responsive ── */
+
+@media (max-width: 360px) {
+  .store-grid { gap: 8px; }
+  .store-card { padding: 10px 8px; }
+  .store-card-amount { font-size: 16px; }
+  .store-featured-amount { font-size: 18px; }
+}

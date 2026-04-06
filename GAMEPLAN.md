@@ -11,63 +11,51 @@ All game-feel and campaign foundation items are done.
 
 - [x] Everything from build steps 1-20 (scaffolding through audio)
 - [x] **Roster + game persistence (localStorage)** -- Zustand persist
-      middleware on rosterStore (soldiers, trained brains, weapons) and
-      gameStore (gold, compute, campaign progress). Survives page refresh.
-      Version-migrated persist (v1→v2) for campaign schema.
-- [x] **Wall destruction wired up** -- Explosions damage wall blocks
-      (blast radius knockback + cascade collapse). Bullets absorbed by
-      walls (walls = cover). Projectile-wall collision detection.
-- [x] **Visual effects overhaul:**
-      - ExplosionEffect: dual-sphere fireball + point light flash + 8-12
-        debris particles (radial velocity, gravity, ground bounce, fade)
-      - ScreenShake: dampened oscillation camera shake, triggerShake()
-        callable from anywhere, fires on every explosion
-      - Enhanced ProjectileMesh: bullets have glow sphere + trailing
-        cylinder (team-colored green/red), rockets have nose cone +
-        exhaust trail + smoke puff, grenades pulse emissive glow
-      - Bloom post-processing (EffectComposer + Bloom, luminanceThreshold
-        0.9, mipmapBlur) -- muzzle flashes and explosions glow naturally
-      - Muzzle flash: per-soldier pointLight that fires on weapon discharge
-- [x] **6-level campaign with multi-wave battles:**
-      - Level 1 "First Contact": 1 wave, 4 infantry, budget 500
-      - Level 2 "Armored Advance": 2 waves, infantry + jeep, budget 800
-      - Level 3 "Heavy Metal": 3 waves, infantry + jeeps + tank, budget 1200
-      - Level 4 "Rocket Rain": 2 waves, enemy rocket soldiers, budget 1000
-      - Level 5 "Grenades & Glory": 3 waves, enemy grenades + rockets, budget 1500
-      - Level 6 "Full Assault": 4 waves, ALL enemy weapons + tanks, budget 2000
-      - Multi-wave spawning from level JSON (delay-based, not round-based)
-      - Star criteria from level config (survive / budget threshold / no losses)
-      - Campaign progress persists to localStorage
-- [x] **Enemy weapon scaling** -- enemies can fire rockets (ballistic arc),
-      grenades (bounce + fuse), and MG (rapid sweep). WaveEnemy type has
-      optional `weapon` field. getEnemyStats() merges base type stats with
-      weapon overrides. Aim randomness for fairness.
-- [x] **Level Select (Angry Birds node map):**
-      - Full themed terrain map: layered background, winding dirt path,
-        military decorations (flag, barbed wire, sandbags, ammo crates,
-        compass rose, footprints, rocks)
-      - Beveled 3D node buttons with gradient fills, drop shadows, inner
-        bevel highlights, name plates, gold stars
-      - Animations: staggered node entrance (pop), current-level idle bob,
-        pulsing gold glow rings, completed sparkles, flag wave
-      - Level N+1 unlocks when N completed with >= 1 star
-- [x] **Victory juice:**
-      - Slow-mo on last enemy death (1.5s at 0.2x time scale)
-      - Confetti burst (45-60 gold/green/white particles with flutter,
-        tumble, light gravity, fade)
-      - Victory camera sweep (auto-rotate ramps 0.5→2.5, subtle zoom,
-        eases back after 3s)
-      - Result screen shows level name + star criteria breakdown
-      - NEXT LEVEL / LEVEL SELECT / TRY AGAIN buttons
-- [x] **Audio system (Web Audio API)** -- 17 synthesized sounds, zero files
+      middleware on rosterStore and gameStore. Version-migrated (v1→v2→v3).
+- [x] **Wall destruction** -- Explosions damage wall blocks with cascade.
+      Bullets absorbed by walls (walls = cover).
+- [x] **Visual effects** -- ExplosionEffect (fireball + debris), ScreenShake,
+      enhanced ProjectileMesh (glow trails, exhaust), Bloom, muzzle flash
+- [x] **6-level campaign** -- multi-wave spawning from level JSON, star
+      criteria, enemy weapon scaling (rocket/grenade/MG), campaign persist
+- [x] **Level Select** -- Angry Birds terrain map with animations, 6 nodes
+- [x] **Victory juice** -- slow-mo, confetti, camera sweep
+
+### TIER 2 -- COMPLETE
+- [x] **Compute Store** -- 5 compute pack tiers (Spark $0.99 to War Chest
+      $24.99), featured "Arsenal" pack with BEST VALUE badge, beveled
+      military-themed card UI, BUY buttons (placeholder for real IAP)
+- [x] **Daily free compute drip** -- 50 compute/day, 3-day accumulation
+      cap (150 max), pulsing CLAIM button, countdown timer, green
+      notification dot on barracks STORE button when claimable
+- [x] **Economy state** -- addCompute(), claimDailyCompute() with 24h
+      cooldown, lastDailyClaimTime persisted, persist v3 migration
+
+### CLEANUP SPRINT -- COMPLETE
+- [x] **Tutorial two-soldier bug fixed** -- roster reset synchronously
+      before level load; tutorial completion keeps recruited soldiers
+      (no longer overwrites with STARTER_ROSTER)
+- [x] **Tutorial explains Intel objective** -- new "Defend the Intelligence!"
+      step with modal and briefcase icon before placement phase
+- [x] **Structure rotation UI** -- rotate button appears when defense
+      selected in placement tray, calls rotatePlacement()
+- [x] **Battle performance optimized** -- 4 reusable temp Vector3s replace
+      ~20+ allocations per frame in hot loops (enemy AI, player AI,
+      collision detection, explosions)
+- [x] **Barracks soldier names** -- floating Html labels above each soldier
+      showing name + weapon type, soldiers scaled to 0.85, camera pulled back
+- [x] **Recruit name selection** -- modal with 3 randomized name options,
+      expanded name pool to 20 soldiers, Cancel option
+- [x] **Dead code removed** -- BattleManager.ts, BattleLoop.tsx,
+      MissionBriefing.tsx, sandbox-01.json, nextRound(), PLACEMENT_COSTS
+- [x] **Window globals dev-only** -- gated behind import.meta.env.DEV
 
 ### NEEDS WORK (known issues)
 - [ ] **Enemy AI movement too simple** -- enemies march in a straight line
       to Intel. No flanking, cover-seeking, or tactical grouping.
-      (Enemies DO now fire rockets/grenades/MG, but movement is basic.)
-- [ ] **No store / shop screen** -- can't buy recruits or compute packs
-- [ ] **No compute economy tuning** -- no daily drip, no purchase flow
-- [ ] **Soldier names/personality** -- no name plates in battle, no veteran
+      (Enemies DO fire rockets/grenades/MG, but movement is basic.)
+- [ ] **No real payment integration** -- store BUY buttons are placeholders
+- [ ] **Soldier personality** -- no name plates in battle, no veteran
       bonuses, no stat growth from surviving battles
 
 ---
@@ -151,6 +139,7 @@ enemy compositions, budget, and star criteria.
 - Green zone highlights valid placement area (x <= 2)
 - "PLACE TROOPS" becomes "FIGHT!" when soldiers are placed
 - Defense cards: wall ($50), sandbags ($75), tower ($200)
+- Rotate button appears when defense selected (90-degree increments)
 
 ### 5. BATTLE -- BUILT
 - Mutable-ref physics pattern (from soldier-test)
@@ -177,10 +166,12 @@ enemy compositions, budget, and star criteria.
 - Training tip on defeat
 
 ### 7. TUTORIAL -- BUILT
-- 12-step guided onboarding with spotlight system
-- Walks through full core loop: recruit → train → deploy → fight → win
+- 13-step guided onboarding with spotlight system
+- Walks through: recruit → train → deploy → explain Intel → place → fight → win
+- "Defend the Intelligence!" modal explains objective before placement
 - localStorage persistence (plays once)
 - Auto-loads level-01 for tutorial battle
+- Completes with recruited soldiers intact (no roster overwrite)
 
 ### 8. LEVEL SELECT -- BUILT
 - Angry Birds-style node map with themed military terrain
@@ -189,47 +180,46 @@ enemy compositions, budget, and star criteria.
 - Rich animations: staggered entrance, idle bob, pulsing glow, sparkles
 - Terrain decorations: flag, barbed wire, sandbags, ammo crates, compass
 
-### 9. SHOP / STORE -- NOT BUILT
+### 9. COMPUTE STORE -- BUILT
+- 5 compute pack tiers: Spark (100/$0.99), Charge (300/$2.99),
+  Surge (600/$4.99), Arsenal (1500/$9.99), War Chest (5000/$24.99)
+- Featured Arsenal pack with gold border + "BEST VALUE" ribbon
+- 2x2 grid of regular packs with beveled military cards
+- Daily free compute: 50/day, 3-day accumulation, CLAIM button
+- Countdown timer when cooling down
+- Accessed via STORE button in barracks (green dot notification)
+- BUY buttons are placeholders (real IAP integration later)
 
 ---
 
 ## WHAT'S NEXT (priority order)
 
 ### TIER 1: Game feel + Campaign foundation -- COMPLETE
-1. ~~**Audio system** -- DONE~~
-2. ~~**Campaign / level progression** -- DONE (6 levels, multi-wave,
-   enemy weapon scaling, star progression, Angry Birds level select)~~
-3. ~~**Victory/defeat juice** -- DONE (slow-mo, confetti, camera sweep,
-   screen shake, explosions, bloom)~~
-4. ~~**Roster persistence** -- DONE (Zustand persist, campaign progress)~~
+1. ~~Audio, campaign, VFX, persistence -- all done~~
 
-### TIER 2: Economy + Store
-Build the monetization loop and give players things to buy.
-
-5. **Store / shop screen** -- Browse and buy:
-   - New soldier recruits (different ranks/stats)
-   - Defense upgrades
-   - Compute packs (the monetization point)
-   - Visual: card-based grid, game-feel buttons
-
-6. **Compute economy tuning** -- Daily free drip, purchase flow,
-   compute-to-gold conversion, premium training tiers.
+### TIER 2: Economy + Store -- COMPLETE
+2. ~~Compute store (5 pack tiers, featured card, BUY placeholders)~~
+3. ~~Daily free compute drip (50/day, 3-day accumulation, CLAIM button)~~
+4. ~~Economy state (addCompute, claimDailyCompute, persist v3)~~
 
 ### TIER 3: AI + Polish
-7. **Enemy AI movement improvements** -- Enemies fire weapon variants
+5. **Enemy AI movement improvements** -- Enemies fire weapon variants
    now but still march in a straight line. Needs:
    - Flanking: enemies approach from multiple angles
    - Cover-seeking: enemies hide behind obstacles
    - Priority targeting: focus on towers/walls first
 
-8. **Soldier names + personality** -- Name plates in battle, stat growth,
-   veteran bonuses from surviving battles.
+6. **Soldier personality in battle** -- Name plates above soldiers
+   during combat, stat growth, veteran bonuses from surviving.
 
-9. **More campaign content** -- Expand beyond 6 levels. New themes
+7. **More campaign content** -- Expand beyond 6 levels. New themes
    (kitchen table, bedroom floor). Boss levels with special mechanics.
 
-10. **Additional polish** -- Vignette edges, dust clouds on movement,
-    impact sparks on bullet hits, damage numbers.
+8. **Real payment integration** -- Stripe or mobile IAP for compute
+   packs. Replace placeholder BUY buttons with real purchase flow.
+
+9. **Additional polish** -- Vignette edges, dust clouds on movement,
+   impact sparks on bullet hits, damage numbers.
 
 ---
 
@@ -342,14 +332,16 @@ src/
                      (battle logic + rendering + slow-mo), TrainingScene.tsx
   ui/             -- BarracksScreen, SoldierDetail, PlacementTray, HUD,
                      TrainingHUD, GraduationBanner, NeuralNetViz,
-                     ResultScreen, LevelSelect, TutorialOverlay, ToyIcons
-  stores/         -- gameStore (+ campaign), rosterStore, trainingStore,
-                     tutorialStore (all with persist middleware)
-  config/         -- types, units, roster
+                     ResultScreen, LevelSelect, Store, TutorialOverlay,
+                     ToyIcons
+  stores/         -- gameStore (+ campaign + economy), rosterStore,
+                     trainingStore, tutorialStore (all with persist)
+  config/         -- types, units, roster, store (compute pack defs)
     levels/       -- index.ts (registry), level-01 through level-06 JSON
   pages/          -- HomePage
   styles/         -- barracks.css, loadout.css, game-ui.css, levelselect.css,
-                     training.css, tutorial.css, homepage.css, global.css
+                     store.css, training.css, tutorial.css, homepage.css,
+                     global.css
 ```
 
 ---
@@ -389,13 +381,22 @@ src/
 29. ~~Victory slow-mo (1.5s at 0.2x on last enemy death)~~
 30. ~~Victory confetti + camera sweep (45-60 particles, orbit ramp + zoom)~~
 
-### NEXT (31-36)
-31. Store / shop screen (recruits, compute packs, defense upgrades)
-32. Compute economy tuning (daily drip, purchase flow, premium tiers)
-33. Enemy AI movement (flanking, cover-seeking, priority targeting)
-34. Soldier names + personality (name plates, veteran bonuses, stat growth)
-35. More campaign content (expand to 10+ levels, new themes)
-36. Additional polish (vignette, dust clouds, damage numbers)
+### DONE (31-37)
+31. ~~Compute Store (5 pack tiers, featured card, military-themed UI)~~
+32. ~~Daily free compute drip (50/day, 3-day cap, CLAIM + countdown)~~
+33. ~~Tutorial bug fix (two-soldier race condition, Intel explanation step)~~
+34. ~~Structure rotation UI (rotate button in placement tray)~~
+35. ~~Battle performance optimization (reusable temp vectors, ~20 fewer
+    allocations per frame in hot loops)~~
+36. ~~Barracks polish (floating name labels, soldier scale 0.85, camera pullback)~~
+37. ~~Recruit name selection (3-choice modal, 20-name pool, cancel option)~~
+
+### NEXT (38-42)
+38. Enemy AI movement (flanking, cover-seeking, priority targeting)
+39. Soldier personality in battle (name plates, stat growth, veterans)
+40. More campaign content (expand to 10+ levels, new themes)
+41. Real payment integration (Stripe / mobile IAP)
+42. Additional polish (vignette, dust clouds, damage numbers)
 
 ---
 

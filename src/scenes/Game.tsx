@@ -21,6 +21,7 @@ import { TutorialOverlay } from '@ui/TutorialOverlay'
 import { useTutorialStore } from '@stores/tutorialStore'
 import { ScreenShake } from '@three/effects/ScreenShake'
 import { LevelSelect } from '@ui/LevelSelect'
+import { Store } from '@ui/Store'
 import { resumeOnInteraction } from '@audio/context'
 
 // Camera controller for training arena
@@ -44,7 +45,7 @@ function BarracksCamera({ soldierCount }: { soldierCount: number }) {
   useFrame(() => {
     const aspect = gl.domElement.clientWidth / gl.domElement.clientHeight
     const countBonus = Math.max(0, (soldierCount - 2) * 0.25)
-    const z = (aspect < 1 ? 6.0 : 4.5) + countBonus
+    const z = (aspect < 1 ? 7.0 : 5.5) + countBonus
     const y = aspect < 1 ? 0.9 : 0.9
     camera.position.set(0, y, z)
     camera.lookAt(0, 0.3, 0)
@@ -104,7 +105,10 @@ export default function Game() {
   useEffect(() => {
     resumeOnInteraction()
     if (!tutorialCompleted) {
-      // First-time player: auto-select level 1 and start tutorial
+      // First-time player: reset roster synchronously before anything else
+      // (prevents persist hydration from showing stale soldiers)
+      useRosterStore.getState().selectSoldier('')
+      useRosterStore.setState({ soldiers: [], selectedSoldierId: '', detailSoldierId: null })
       selectLevel('level-01')
       const t = setTimeout(() => startTutorial(), 100)
       return () => clearTimeout(t)
@@ -158,6 +162,7 @@ export default function Game() {
 
       {/* HTML UI overlay */}
       <LevelSelect />
+      <Store />
       <BarracksScreen />
       <SoldierDetail />
       <TrainingHUD />

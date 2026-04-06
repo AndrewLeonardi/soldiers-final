@@ -252,6 +252,28 @@
 
 /* ── Fight Button ──────────────────────────────────────── */
 
+.rotate-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(180deg, #4a6a5a 0%, #3a5a4a 100%);
+  border: 2px solid #6a8a6a;
+  border-bottom: 4px solid #2a4a3a;
+  border-radius: 10px;
+  color: #c0e0a0;
+  cursor: pointer;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+  transition: transform 0.1s ease;
+  flex-shrink: 0;
+}
+
+.rotate-btn:active {
+  transform: scale(0.9) translateY(2px);
+  border-bottom-width: 2px;
+}
+
 .battle-btn {
   padding: 14px 32px;
   background: linear-gradient(180deg, #ff5555 0%, #cc2222 100%);

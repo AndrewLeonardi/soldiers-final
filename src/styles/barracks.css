@@ -120,6 +120,59 @@
   color: var(--gold-text);
 }
 
+/* Store button */
+.barracks-store-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 14px;
+  border: 2px solid #4a7a8a;
+  border-bottom: 5px solid #1a3a4a;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, #2a4a5a 0%, #1e3a4a 50%, #142a3a 100%);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.4),
+    inset 0 2px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+  color: #4ADE80;
+  font-family: var(--font-display);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-shadow: 0 0 8px rgba(74, 222, 128, 0.3);
+  cursor: pointer;
+  transition: transform 0.1s var(--ease-spring);
+  touch-action: none;
+}
+
+.barracks-store-btn:active {
+  transform: scale(0.95) translateY(3px);
+  border-bottom-width: 2px;
+}
+
+.barracks-store-btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.store-notify-dot {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 10px;
+  height: 10px;
+  background: #4ADE80;
+  border-radius: 50%;
+  border: 2px solid #142a3a;
+  animation: dotPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes dotPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.7; }
+}
+
 /* Deploy button */
 .barracks-deploy {
   flex: 1;
@@ -137,4 +190,102 @@
 .barracks-deploy svg {
   width: 22px;
   height: 22px;
+}
+
+/* ── Recruit Name Selection Modal ── */
+
+.recruit-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.7);
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.recruit-modal {
+  background: linear-gradient(180deg, #2a3d58 0%, #1c2e48 100%);
+  border: 2px solid #4a6888;
+  border-radius: var(--radius-xl);
+  padding: 20px 20px 16px;
+  width: 90%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.6),
+    inset 0 2px 0 rgba(255, 255, 255, 0.1);
+  animation: modalPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes modalPop {
+  0% { transform: scale(0.8); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.recruit-modal-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  color: var(--gold-text);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.recruit-modal-subtitle {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: #6a7a8a;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.recruit-name-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.recruit-name-btn {
+  width: 100%;
+  padding: 12px 16px;
+  background: linear-gradient(180deg, #3a5a4a 0%, #2d4a3d 100%);
+  border: 2px solid #5a8a6a;
+  border-bottom: 4px solid #2a4a3a;
+  border-radius: var(--radius-md);
+  color: var(--text-white);
+  font-family: var(--font-display);
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  cursor: pointer;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+  transition: transform 0.1s ease;
+}
+
+.recruit-name-btn:active {
+  transform: scale(0.96) translateY(2px);
+  border-bottom-width: 2px;
+}
+
+.recruit-cancel-btn {
+  padding: 8px 20px;
+  background: none;
+  border: 1px solid #4a5a6a;
+  border-radius: var(--radius-md);
+  color: #6a7a8a;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
 }

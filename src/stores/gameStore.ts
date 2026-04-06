@@ -16,6 +16,10 @@ interface GameState {
   // Campaign
   campaignProgress: CampaignProgress
 
+  // Store / Economy
+  lastDailyClaimTime: number  // Unix timestamp (ms)
+  showStore: boolean
+
   level: LevelConfig | null
   slots: PlacementSlot[]
   playerUnits: GameUnit[]
@@ -46,6 +50,10 @@ interface GameState {
   spendGold: (amount: number) => boolean
   spendCompute: (amount: number) => boolean
   addGold: (amount: number) => void
+  addCompute: (amount: number) => void
+  claimDailyCompute: () => boolean
+  openStore: () => void
+  closeStore: () => void
   setResult: (result: 'victory' | 'defeat', stars: number) => void
   startBattle: () => void
   resetLevel: () => void
@@ -72,6 +80,9 @@ export const useGameStore = create<GameState>()(
     currentLevelId: 'level-01',
     levels: {},
   },
+
+  lastDailyClaimTime: 0,
+  showStore: false,
 
   level: null,
   slots: [],
@@ -161,6 +172,24 @@ export const useGameStore = create<GameState>()(
   },
 
   addGold: (amount) => set((s) => ({ gold: s.gold + amount })),
+
+  addCompute: (amount) => set((s) => ({ compute: s.compute + amount })),
+
+  claimDailyCompute: () => {
+    const now = Date.now()
+    const last = get().lastDailyClaimTime
+    const DAY_MS = 24 * 60 * 60 * 1000
+    const elapsed = now - last
+    if (elapsed < DAY_MS) return false
+    // Award 50 per unclaimed day, capped at 3 days (150 max)
+    const daysMissed = Math.min(Math.floor(elapsed / DAY_MS), 3)
+    const reward = daysMissed * 50
+    set((s) => ({ compute: s.compute + reward, lastDailyClaimTime: now }))
+    return true
+  },
+
+  openStore: () => set({ showStore: true }),
+  closeStore: () => set({ showStore: false }),
 
   setResult: (result, stars) => set({ result, starsEarned: stars, phase: 'result' }),
 
@@ -303,17 +332,20 @@ export const useGameStore = create<GameState>()(
     }),
     {
       name: 'toy-soldiers-game',
-      version: 2,
+      version: 3,
       migrate: (persisted: any, version: number) => {
         if (version < 2) {
-          // Migrate from v1 (had gold, compute, round) to v2 (has campaignProgress)
           return {
             gold: persisted?.gold ?? 0,
             compute: persisted?.compute ?? 500,
-            campaignProgress: {
-              currentLevelId: 'level-01',
-              levels: {},
-            },
+            campaignProgress: { currentLevelId: 'level-01', levels: {} },
+            lastDailyClaimTime: 0,
+          }
+        }
+        if (version < 3) {
+          return {
+            ...persisted,
+            lastDailyClaimTime: 0,
           }
         }
         return persisted as any
@@ -322,6 +354,7 @@ export const useGameStore = create<GameState>()(
         gold: state.gold,
         compute: state.compute,
         campaignProgress: state.campaignProgress,
+        lastDailyClaimTime: state.lastDailyClaimTime,
       }),
     }
   )

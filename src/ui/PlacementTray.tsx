@@ -21,8 +21,11 @@ export function PlacementTray() {
   const playerUnits = useGameStore((s) => s.playerUnits)
   const selectedPlacement = useGameStore((s) => s.selectedPlacement)
   const selectPlacement = useGameStore((s) => s.selectPlacement)
+  const rotatePlacement = useGameStore((s) => s.rotatePlacement)
   const placedSoldierIds = useGameStore((s) => s.placedSoldierIds)
   const soldiers = useRosterStore((s) => s.soldiers)
+
+  const isDefenseSelected = selectedPlacement === 'wall' || selectedPlacement === 'sandbag' || selectedPlacement === 'tower'
 
   if (phase !== 'placement') return null
 
@@ -92,6 +95,23 @@ export function PlacementTray() {
           </div>
         )
       })}
+
+      {/* Rotate button (visible when defense is selected) */}
+      {isDefenseSelected && (
+        <button
+          className="rotate-btn"
+          onPointerDown={(e) => {
+            e.stopPropagation()
+            rotatePlacement()
+            sfx.buttonTap()
+          }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="1 4 1 10 7 10" />
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+          </svg>
+        </button>
+      )}
 
       {/* Fight button */}
       <button

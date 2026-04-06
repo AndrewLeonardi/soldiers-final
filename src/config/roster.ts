@@ -47,7 +47,9 @@ export const WEAPON_TRAINING: Partial<Record<WeaponType, {
 const SOLDIER_NAMES = [
   'CPL DUKE', 'PVT BLAZE', 'SGT IRON', 'PVT GRIT',
   'CPL HAWK', 'PVT STORM', 'SGT FLINT', 'PVT BOLT',
-  'CPL TANK', 'PVT WOLF', 'SGT STEEL', 'PVT ACE',
+  'CPL TANK', 'PVT WOLF', 'SGT STEEL', 'PVT RAZOR',
+  'CPL VIPER', 'PVT GHOST', 'SGT COBRA', 'PVT RAVEN',
+  'CPL FANG', 'PVT SPARK', 'SGT TITAN', 'PVT SHADE',
 ]
 
 let _nameIdx = 0
@@ -56,6 +58,12 @@ export function randomSoldierName(): string {
   const name = SOLDIER_NAMES[_nameIdx % SOLDIER_NAMES.length]
   _nameIdx++
   return name
+}
+
+/** Get 3 random name options for recruit selection */
+export function getRecruitNameOptions(): string[] {
+  const shuffled = [...SOLDIER_NAMES].sort(() => Math.random() - 0.5)
+  return shuffled.slice(0, 3)
 }
 
 export const STARTER_ROSTER: SoldierProfile[] = [
