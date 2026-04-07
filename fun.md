@@ -230,12 +230,66 @@ All three should get 3 stars on the same level through different paths.
 
 ## The Three Worlds
 
+Each world must feel FUNDAMENTALLY different to play — not just
+different props on the same tan rectangle. The difference comes
+from three axes:
+
+### What makes worlds feel different:
+
+**1. The table itself changes**
+- Kitchen: warm wood, flat, bright morning light
+- Workshop: dark metal/concrete, elevated platforms, harsh overhead lamp
+- Backyard: weathered wood, TILTED (book under one leg), outdoor
+  ambient light with clouds
+
+Different ground color, different lighting, different table frame
+material, different sky. When you enter Workshop, it should feel
+like a completely different room — not a reskin.
+
+**2. The physics rules change**
+- Kitchen: flat table, standard gravity. The "tutorial" physics.
+- Workshop: elevated platforms create HIGH GROUND advantage. Soldiers
+  on a raised block of wood shoot over walls. Falling off a platform
+  doesn't kill (you land on the lower bench) but repositions you.
+- Backyard: SLOPE changes everything. Grenades roll downhill. Soldiers
+  drift toward the low side. Wind gusts periodically push everyone
+  sideways. The physics itself feels different, not just the scenery.
+
+**3. The enemy composition escalates**
+- Kitchen (World 1): Infantry only. Rifles. Maybe one grenadier.
+  The player is learning the basics. Enemies are simple.
+- Workshop (World 2): Jeeps appear (FAST, hard to hit, flank around
+  walls). Enemy rocket soldiers appear. First tanks in Battle 2-2.
+  The player needs trained soldiers to compete.
+- Backyard (World 3): Full enemy arsenal. Tanks, rocket squads,
+  grenade clusters, jeep flanks. Multiple spawn directions.
+  The player needs a fully trained army AND smart placement.
+
+This creates the research's "sawtooth difficulty" — each world
+introduces a new MECHANIC (platforms, slopes/wind) while also
+escalating ENEMY POWER. New mechanic = breathing room to learn.
+Then enemy escalation = challenge spike.
+
+**Balance note:** enemy escalation must be tested carefully. The
+player's army grows too (more trained soldiers, better weapons).
+The goal: World 1 is beatable with untrained riflemen. World 2
+REQUIRES at least one trained specialist. World 3 requires a
+fully trained squad with smart composition.
+
+---
+
 ### World 1: Kitchen Table
 *Teaches: placement, knockback, edges, basic props*
+
+**Visual identity:** Warm tan wood. Morning sunlight. Blue sky.
+Cheerful. This is where you learn the game.
 
 **Props:** Cereal box (destructible cover), coffee mug (knockable,
 rolls when hit), syrup bottle (breaks into sticky zone), spoon
 (launcher at table edge)
+
+**Enemies:** Infantry with rifles. Simple, predictable marchers.
+One grenadier in Battle 1-2 to teach splash damage awareness.
 
 **What the player learns:**
 - Edges are dangerous AND useful
@@ -249,16 +303,29 @@ cereal boxes. Teach placement and edge awareness.
 Enemies from the side. Teach prop interactions and chain reactions.
 
 ### World 2: Workshop Bench
-*Teaches: prop chains, multiple threat types, elevation*
+*Teaches: prop chains, elevation, faster enemies*
+
+**Visual identity:** Dark grey metal bench. Harsh white overhead
+lamp with hard shadows. Scattered sawdust. Industrial. This feels
+HARDER just from the aesthetics.
 
 **Props:** Tape measure (wall/cover), hammer (knockable, area crush
 when toppled), rolling dowel (rolls across bench when hit), scattered
 nuts/bolts (small knockable debris)
 
+**Enemies:** Infantry + JEEPS (fast flankers) in 2-1. Infantry +
+jeeps + TANKS in 2-2. Enemy rocket soldiers appear for the first
+time. The player discovers their untrained soldiers can't keep up.
+
+**Unique mechanic:** ELEVATED PLATFORMS. Blocks of wood create high
+ground. Soldiers placed on platforms have better range and can shoot
+over low cover. But they're exposed and can be knocked off.
+
 **What the player learns:**
-- Heavy props are weapons (hammer)
-- Rolling objects create moving hazards
-- Faster enemies require different strategies
+- Heavy props are weapons (hammer topple = area kill)
+- Fast enemies (jeeps) require different strategies
+- Elevation = advantage but also vulnerability
+- Trained soldiers are no longer optional
 
 **Battle 2-1: "Nuts and Bolts"** -- Jeeps appear (fast enemies).
 Spinning ruler hazard. Nuts/bolts as mini-props.
@@ -270,14 +337,29 @@ placement elevations.
 ### World 3: Backyard Picnic Table
 *Teaches: slopes, wind, advanced multi-hazard management*
 
+**Visual identity:** Weathered grey-brown wood. Outdoor light with
+cloud shadows drifting across the table. Green grass visible below
+the table edges. Feels open and exposed.
+
 **Props:** Flower pot (destructible, shatters into chunks), soda can
 (explosive, accumulates shake), garden hose (pushes soldiers when
 "on"), book under one leg (creates slope)
 
+**Enemies:** EVERYTHING. Full arsenal: infantry, jeeps, tanks,
+rocket squads, grenadier clusters. Multiple spawn directions (right
+AND back). This is the final test.
+
+**Unique mechanic:** SLOPE + WIND. The table is tilted (book under
+one leg). Grenades roll downhill. Soldiers slowly drift toward the
+low side. Periodic wind gusts push everyone sideways. The physics
+itself is different — you have to account for drift in every
+placement decision.
+
 **What the player learns:**
-- Slopes change everything (grenades roll, soldiers drift)
-- Multiple hazards can chain together
-- Wind adds a layer of prediction to every shot
+- Slopes change every calculation (grenades roll, aim compensates)
+- Wind adds unpredictability to projectile paths
+- Multiple hazards chaining together is the only way to survive
+- This is where fully trained, smartly composed armies matter
 
 **Battle 3-1: "Garden Party"** -- Tilted table. Grenades roll
 downhill. Soda can as timed explosive.
