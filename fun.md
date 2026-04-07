@@ -163,6 +163,11 @@ the enemy cluster and push them all toward the edge."
 
 ## How Training Creates Fun
 
+**Training is the business model.** The entire monetization comes
+from selling compute. If training feels like a chore, the business
+fails. Training must feel like entertainment — not a loading bar
+you skip through, but a SHOW you want to watch.
+
 ### Training Happens In The Real World
 
 Training arenas should NOT be flat empty rooms. They should be
@@ -186,16 +191,66 @@ is ALWAYS terrible. Every training session starts with comedy:
 - Rocket soldiers firing straight up
 - Grenadiers dropping grenades at their own feet
 - Machine gunners spraying in circles
-- Tanks driving into walls
+- Tanks driving into walls and spinning in circles
 
 And then it gets better. Watching a neural net go from "fires at the
 sky" to "precision strikes" in real time is genuinely satisfying.
-It's the same dopamine hit as watching a speedrun -- witnessing
+It's the same dopamine hit as watching a speedrun — witnessing
 mastery develop.
 
-**Key insight:** we should show the BEST and WORST of each generation.
-"Gen 5 MVP: 3 target hits, 2 edge kills" vs "Gen 5 WORST: 0 hits,
-fell off table." The contrast is comedy AND motivation.
+### Make Progress VISIBLE and CELEBRATED
+
+Research on gamified training shows people don't enjoy watching
+random processes — they enjoy watching THEIR creation improve.
+
+**Every 10% improvement: small celebration**
+- Sound cue (ascending chime)
+- Visual flash on the fitness bar
+- Quick text: "GETTING BETTER!"
+
+**Milestone moments:**
+- 25%: "SHOWING PROMISE" + particle burst
+- 50%: "HALFWAY THERE" + fitness graph highlight
+- 75%: "ALMOST READY" + soldier pose changes
+- 100% (graduation): Full fanfare + "GRADUATED!" banner + stats
+
+**Best/worst contrast each generation:**
+- "Gen 5 MVP: 3 hits, 2 edge kills" vs "Gen 5 WORST: 0 hits"
+- The contrast is comedy AND motivation
+- Shows the RANGE of the population, not just the average
+
+**Live hit counter during each attempt:**
+- "TARGETS: 2/5" visible in real time
+- Pops/sparkles on each hit
+- Near-miss indicators ("so close!")
+- This makes each 6-second sim feel like a mini-game to watch
+
+### Speed Controls That Respect Attention
+
+**Default: 10x speed** (not 1x). Nobody wants to watch 90 minutes
+of training at real-time speed. But the OPTION to slow down and
+watch individual attempts should exist for curious players.
+
+Speed options: 1x (watch), 10x (default), 50x (rush)
+
+At 10x, a full rocket training session takes ~9 minutes. That's
+the sweet spot for a mobile session. At 50x it's ~2 minutes for
+players who just want the result.
+
+### Training Creates Ownership
+
+The research says parasocial attachment (Tamagotchi effect) is what
+makes players care about their units. Training IS the attachment
+mechanism:
+
+- **You named this soldier** (SGT RICO)
+- **You watched him fail** (Gen 1: rockets at the sky)
+- **You watched him improve** (Gen 15: first triple hit)
+- **You graduated him** (Gen 22: 0.85 fitness)
+- **When he dies in battle, it HURTS** (because you invested)
+
+This emotional investment is what drives compute purchases:
+"I need to train my grenadier too — he's terrible right now."
 
 ### Training Informs Battle Decisions
 
@@ -203,6 +258,15 @@ Because the player WATCHES training, they learn what their soldiers
 can do. They saw SGT RICO figure out the perfect rocket angle for
 edge-pushing during Gen 15. Now in battle, they KNOW to place Rico
 near the right edge. The training loop TEACHES the battle loop.
+
+### Current Critical Bugs
+
+1. **Tank doesn't render in battle** — trained tank units are
+   invisible. Player sees bullets from nowhere. Must fix.
+2. **Trained brains not persisted** — closing the browser loses
+   all training progress. Must use localStorage.
+3. **Training arena is a flat empty room** — no connection to the
+   battle worlds. Must use world geometry.
 
 ---
 
