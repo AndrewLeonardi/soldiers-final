@@ -220,12 +220,13 @@ export function TutorialOverlay() {
   // explain-intel: after player reads the modal, advance to place-soldier
   // (handled by the Continue button in the modal below)
 
-  // place-soldier: detect unit placed
+  // place-soldier: detect SOLDIER placed (not walls/defenses)
   useEffect(() => {
-    if (active && step === 'place-soldier' && playerUnits.length > 0) {
+    const hasSoldier = playerUnits.some(u => u.type === 'soldier')
+    if (active && step === 'place-soldier' && hasSoldier) {
       advanceTo('fight')
     }
-  }, [active, step, playerUnits.length, advanceTo])
+  }, [active, step, playerUnits, advanceTo])
 
   // Detect victory → show completion
   useEffect(() => {

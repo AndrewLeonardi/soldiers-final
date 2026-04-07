@@ -35,7 +35,12 @@ export function TrainingHUD() {
 
   const weaponName = weapon ? WEAPON_DISPLAY[weapon]?.name ?? weapon : ''
   const threshold = weapon ? (WEAPON_TRAINING[weapon]?.fitnessThreshold ?? 0.6) : 0.6
-  const progress = Math.min(100, (bestFitness / threshold) * 100)
+  const fitnessProgress = bestFitness / threshold
+  // Graduation requires BOTH fitness >= threshold AND generation >= 5
+  // Weight: 80% fitness, 20% generation requirement
+  const genProgress = Math.min(1, generation / 5)
+  const progress = Math.min(100, (fitnessProgress * 0.8 + genProgress * 0.2) * 100)
+  const fitnessReady = fitnessProgress >= 1.0
   const popSize = 30
 
   // Live hit counter from sim state
@@ -144,7 +149,10 @@ export function TrainingHUD() {
         <div className="thud-progress-bar">
           <div className="thud-progress-fill" style={{ width: `${progress}%` }} />
           <div className="thud-progress-label">
-            {progress.toFixed(0)}% to graduation
+            {fitnessReady && generation < 5
+              ? `Calibrating... (Gen ${generation}/5)`
+              : `${progress.toFixed(0)}% to graduation`
+            }
           </div>
         </div>
         <div className="thud-controls">

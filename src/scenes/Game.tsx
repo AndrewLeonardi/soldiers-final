@@ -28,8 +28,8 @@ import { resumeOnInteraction } from '@audio/context'
 function TrainingCamera() {
   const { camera } = useThree()
   useEffect(() => {
-    camera.position.set(4, 8, 14)
-    camera.lookAt(5, 0, 0)
+    camera.position.set(0, 12, 14)
+    camera.lookAt(2, 0, 0)
   }, [camera])
   return <TrainingScene />
 }

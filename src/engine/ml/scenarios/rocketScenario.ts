@@ -53,8 +53,8 @@ export function initRocketSim(): RocketSimState {
   const targets: Target[] = []
   for (let i = 0; i < targetCount; i++) {
     targets.push({
-      x: 3 + Math.random() * 7,       // 3-10 units ahead
-      z: (Math.random() - 0.5) * 6,   // spread across width
+      x: 2 + Math.random() * 4,       // 2-6 units ahead (within table bounds)
+      z: (Math.random() - 0.5) * 6,   // spread across width (-3 to +3)
       alive: true,
     })
   }

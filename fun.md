@@ -526,18 +526,16 @@ This is NOT a simple grid of buttons. It's a visual journey.
 - It creates anticipation ("what's that locked node with the tank icon?")
 - It makes the 6 battles feel like a JOURNEY, not a menu
 
-**Implementation note:** The old LevelSelect component (deleted) was
-this pattern. The new WorldSelect component is a placeholder — it
-needs to be rebuilt as a proper campaign map with the path visual,
-world-themed sections, and node progression. This is ship-critical
-polish, not a nice-to-have.
+**Status:** BUILT. SVG path map with beveled nodes, star progress,
+lock icons, terrain decorations, animated glow on current level.
+Data-driven from worldRegistry — adding worlds auto-extends the path.
 
 ---
 
 ## The Retry Loop
 
 - **Instant:** death-to-gameplay under 1 second
-- **Reframed:** button says "TRY DIFFERENT ARMY?" not "Retry"
+- **Reframed:** button says "TRY AGAIN" (simple, clear)
 - **No punishment:** losing costs nothing
 - **Short battles:** 2-3 minutes max
 - **Near-miss feedback:** "ENEMIES REMAINING: 1" not "YOU LOST"
@@ -561,39 +559,58 @@ the game because they want to train THEIR soldier to do that.
 
 ---
 
-## Implementation Priority (updated post-audit)
+## What's Built (as of 2026-04-07)
 
-### P0: Make the surprise engine WORK (unblocks everything)
-- [ ] Battle explosions (rockets/grenades) affect ALL Rapier bodies,
-      not just soldiers — props fly, mugs roll, chain reactions happen
-- [ ] Prop tags actually do things: destructible shatters, explosive
-      chains, sticky creates slow zones
-- [ ] Table edge fall scream sound (sfx.fallScream already exists)
+### Engine
+- [x] Rapier physics: soldiers, props, explosions, knockback, edge falls
+- [x] Collision groups: soldiers, walls, props all interact
+- [x] Physics test page (/physics-test) proving everything works
+- [x] Battle explosions affect ALL Rapier bodies (surprise engine)
+- [x] Prop state system: destructible, explosive (chain reactions), sticky
+- [x] Enemy steering behaviors: spread, flank, wounded wobble
+- [x] Star criteria evaluation: all types (edge_kills, chain_reactions, etc.)
+- [x] Battle HUD: enemy count, wave progress, timer
 
-### P1: Soldiers interact with the world
-- [ ] Layer A: verify Rapier collision pathfinding works naturally
-- [ ] Layer B: cover seeking + spread + survival steering behaviors
-- [ ] Different enemy types use different behaviors
+### Worlds (4 battles across 2 worlds)
+- [x] Kitchen Table: cereal box, coffee mug, syrup bottle, mines
+- [x] Workshop Bench: hammer, tape measure, nuts/bolts, wood block platform
+- [x] Campaign map: Angry Birds-style SVG path with nodes + stars
+- [x] World engine: config-driven, add world = add 1 file
 
-### P2: Training becomes entertainment
-- [ ] Training arena uses simplified world geometry (Kitchen Table
-      with edges + 1-2 props instead of flat room)
-- [ ] Fitness rewards edge-push kills and prop interactions
-- [ ] Show best/worst of each generation for comedy contrast
+### Training
+- [x] Training arena renders actual world geometry (not flat room)
+- [x] Live hit counter ("TARGETS: 2/5") during each attempt
+- [x] Milestone celebrations (25%, 50%, 75%)
+- [x] Default speed 10x (rocket training ~9 min not 90)
+- [x] In-progress training persists to localStorage
+- [x] Tank units visible in battle (TankUnit component)
 
-### P3: Workshop + Backyard worlds
-- [ ] Workshop config + props (hammer, dowel, tape measure)
-- [ ] Backyard config + props (soda can, flower pot, garden hose)
-- [ ] Slope + wind mechanics for Backyard
+### Game Flow
+- [x] Tutorial: recruit → train → deploy → battle → victory
+- [x] Tutorial retry on defeat (resets to placement)
+- [x] World select → barracks → deploy → placement → battle → result
+- [x] Next battle / play again / back to map navigation
+- [x] Persistence: roster, brains, gold, compute, world progress
 
-### P4: Campaign map + ship polish
-- [ ] Replace WorldSelect placeholder with Angry Birds-style campaign
-      map (path with nodes, world-themed sections, star progress)
+## What's Next
+
+### Content
+- [ ] Backyard world (3rd world, 2 battles, slopes + wind)
+- [ ] Enemy spawn sides (multi-directional waves)
+- [ ] More star criteria variety per battle
+
+### Polish
 - [ ] Kill feed messages ("SGT RICO fell off the table!")
 - [ ] Near-miss feedback (visual + audio)
 - [ ] Soldier stat tracking across battles
-- [ ] Victory celebration improvements
-- [ ] Sound variety (death sounds, impact variation)
+- [ ] Per-enemy-type steering (jeeps flank, tanks ignore cover)
+- [ ] Training fitness rewards for edge-push kills
+
+### Advanced
+- [ ] Layer C: NN world awareness (expand inputs for trained soldiers)
+- [ ] Prop shattering into block chunks (visual destruction)
+- [ ] Launcher mechanic (spoon catapult)
+- [ ] Slope + wind physics for Backyard world
 
 ---
 
