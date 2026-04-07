@@ -32,7 +32,7 @@ import {
 } from '@engine/physics/battlePhysics'
 import { triggerHitpause, getHitpauseScale } from '@engine/physics/hitpause'
 import { perfMonitor } from '@engine/physics/perfMonitor'
-import type { GameUnit, Projectile, Wave, WaveEnemy, EnemyType, WeaponType, HazardConfig } from '@config/types'
+import type { GameUnit, Projectile, Wave, WaveEnemy, EnemyType, WeaponType } from '@config/types'
 
 // ── Battle constants (derived from physics module) ──────
 const INTEL_POS = new THREE.Vector3(...INTEL_POS_ARRAY)
