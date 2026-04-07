@@ -9,18 +9,21 @@
  */
 import type { PropConfig } from '@config/worlds/types'
 import { CerealBox, CoffeeMug, SyrupBottle, Mine } from './KitchenProps'
+import { TapeMeasure, Hammer, NutsAndBolts, WoodBlock } from './WorkshopProps'
 
 // Registry: prop type string -> React component
 const PROP_COMPONENTS: Record<string, React.FC<{ config: PropConfig }>> = {
+  // Kitchen
   cereal_box: CerealBox,
   coffee_mug: CoffeeMug,
   syrup_bottle: SyrupBottle,
   mine: Mine,
-  // workshop props (Phase 2):
-  // tape_measure: TapeMeasure,
-  // hammer: Hammer,
-  // rolling_dowel: RollingDowel,
-  // backyard props (Phase 2):
+  // Workshop
+  tape_measure: TapeMeasure,
+  hammer: Hammer,
+  nuts_bolts: NutsAndBolts,
+  wood_block: WoodBlock,
+  // Backyard (Phase 3):
   // flower_pot: FlowerPot,
   // soda_can: SodaCan,
   // garden_hose: GardenHose,

@@ -4,20 +4,22 @@
  */
 import type { WorldConfig, BattleConfig, WorldRegistry } from './types'
 import { kitchenWorld, kitchenBattle1, kitchenBattle2 } from './kitchen'
+import { workshopWorld, workshopBattle1, workshopBattle2 } from './workshop'
 
 // ── All worlds and battles ───────────────────────────
 
 const WORLDS: WorldConfig[] = [
   kitchenWorld,
-  // workshopWorld,   -- Phase 2
-  // backyardWorld,   -- Phase 2
+  workshopWorld,
+  // backyardWorld,   -- Phase 3
 ]
 
 const BATTLES: BattleConfig[] = [
   kitchenBattle1,
   kitchenBattle2,
-  // workshopBattle1, workshopBattle2,   -- Phase 2
-  // backyardBattle1, backyardBattle2,   -- Phase 2
+  workshopBattle1,
+  workshopBattle2,
+  // backyardBattle1, backyardBattle2,   -- Phase 3
 ]
 
 // ── Lookup maps (built once) ─────────────────────────
