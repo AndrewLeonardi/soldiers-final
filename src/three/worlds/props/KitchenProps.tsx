@@ -8,11 +8,12 @@
  *
  * These aren't scenery — they're weapons, hazards, and punchlines.
  */
-import { useRef, useCallback } from 'react'
+import { useRef, useCallback, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { RigidBody, CuboidCollider, CylinderCollider, useRapier, type RapierRigidBody } from '@react-three/rapier'
 import * as THREE from 'three'
 import { GROUP_PROP, GROUP_ENV } from '@three/physics/collisionGroups'
+import { registerProp, unregisterProp, getProp } from '@engine/physics/propState'
 import { triggerShake } from '@three/effects/ScreenShake'
 import type { PropConfig } from '@config/worlds/types'
 
@@ -24,9 +25,47 @@ export function CerealBox({ config }: { config: PropConfig }) {
   const boxW = 1.2
   const boxH = 2.0
   const boxD = 0.4
+  const groupRef = useRef<THREE.Group>(null!)
+  const bodyRef = useRef<RapierRigidBody>(null!)
+  const destroyed = useRef(false)
+
+  // Register with prop state system for explosion damage
+  useEffect(() => {
+    registerProp({
+      id: config.id,
+      position: [...config.position],
+      tags: config.tags,
+      health: config.health ?? 80,
+      maxHealth: config.health ?? 80,
+      destroyed: false,
+    })
+    return () => unregisterProp(config.id)
+  }, [config.id])
+
+  // Check for destruction each frame
+  useFrame(() => {
+    if (destroyed.current) return
+    const prop = getProp(config.id)
+    if (prop?.destroyed) {
+      destroyed.current = true
+      // Hide the mesh — prop is destroyed
+      if (groupRef.current) groupRef.current.visible = false
+      // Remove the rigid body from simulation
+      if (bodyRef.current) {
+        bodyRef.current.setEnabled(false)
+      }
+    } else if (prop && bodyRef.current) {
+      // Sync position back to propState (so explosion distance checks work after being knocked)
+      const pos = bodyRef.current.translation()
+      prop.position[0] = pos.x
+      prop.position[1] = pos.y
+      prop.position[2] = pos.z
+    }
+  })
 
   return (
     <RigidBody
+      ref={bodyRef}
       type="dynamic"
       position={config.position}
       rotation={config.rotation ?? [0, 0, 0]}
@@ -37,21 +76,23 @@ export function CerealBox({ config }: { config: PropConfig }) {
       restitution={0.1}
       friction={0.7}
     >
-      <CuboidCollider args={[boxW / 2, boxH / 2, boxD / 2]} position={[0, boxH / 2, 0]} />
-      <mesh position={[0, boxH / 2, 0]} castShadow receiveShadow>
-        <boxGeometry args={[boxW, boxH, boxD]} />
-        <meshStandardMaterial color={0xdd8833} roughness={0.6} />
-      </mesh>
-      {/* Label stripe */}
-      <mesh position={[0, boxH * 0.65, boxD / 2 + 0.001]} castShadow>
-        <planeGeometry args={[boxW * 0.8, boxH * 0.25]} />
-        <meshStandardMaterial color={0xcc2222} roughness={0.5} />
-      </mesh>
-      {/* Top flap */}
-      <mesh position={[0, boxH + 0.02, 0]} castShadow>
-        <boxGeometry args={[boxW, 0.04, boxD]} />
-        <meshStandardMaterial color={0xcc7722} roughness={0.6} />
-      </mesh>
+      <group ref={groupRef}>
+        <CuboidCollider args={[boxW / 2, boxH / 2, boxD / 2]} position={[0, boxH / 2, 0]} />
+        <mesh position={[0, boxH / 2, 0]} castShadow receiveShadow>
+          <boxGeometry args={[boxW, boxH, boxD]} />
+          <meshStandardMaterial color={0xdd8833} roughness={0.6} />
+        </mesh>
+        {/* Label stripe */}
+        <mesh position={[0, boxH * 0.65, boxD / 2 + 0.001]} castShadow>
+          <planeGeometry args={[boxW * 0.8, boxH * 0.25]} />
+          <meshStandardMaterial color={0xcc2222} roughness={0.5} />
+        </mesh>
+        {/* Top flap */}
+        <mesh position={[0, boxH + 0.02, 0]} castShadow>
+          <boxGeometry args={[boxW, 0.04, boxD]} />
+          <meshStandardMaterial color={0xcc7722} roughness={0.6} />
+        </mesh>
+      </group>
     </RigidBody>
   )
 }
@@ -174,7 +215,24 @@ export function Mine({ config }: { config: PropConfig }) {
   const blastRadius = config.params?.blastRadius ?? 4.0
   const blastForce = config.params?.blastForce ?? 10.0
 
-  const handleClick = useCallback(() => {
+  // Register as explosive prop — can be chain-detonated by other explosions
+  useEffect(() => {
+    registerProp({
+      id: config.id,
+      position: [...config.position],
+      tags: config.tags,
+      health: 1, // mines explode from any damage
+      maxHealth: 1,
+      destroyed: false,
+      onExplode: (pos, radius, force) => {
+        // This is called by applyExplosion when a chain reaction triggers this mine
+        detonate()
+      },
+    })
+    return () => unregisterProp(config.id)
+  }, [config.id])
+
+  const detonate = useCallback(() => {
     if (state.current.exploded) return
     state.current.exploded = true
     state.current.flashAge = 0
@@ -210,8 +268,14 @@ export function Mine({ config }: { config: PropConfig }) {
     })
   }, [world, config.position, blastRadius, blastForce])
 
-  // Animate flash using refs only (zero React re-renders)
+  // Check for chain-detonation from external explosions
   useFrame((_, delta) => {
+    if (!state.current.exploded) {
+      const prop = getProp(config.id)
+      if (prop?.destroyed) detonate()
+    }
+
+    // Animate flash (zero React re-renders)
     const s = state.current
     if (s.flashAge < 0) return
     s.flashAge += delta
@@ -234,7 +298,7 @@ export function Mine({ config }: { config: PropConfig }) {
         <mesh
           position={[0, 0.08, 0]}
           castShadow
-          onClick={(e) => { e.stopPropagation(); handleClick() }}
+          onClick={(e) => { e.stopPropagation(); detonate() }}
           onPointerOver={() => { document.body.style.cursor = 'pointer' }}
           onPointerOut={() => { document.body.style.cursor = 'default' }}
         >

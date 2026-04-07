@@ -1,6 +1,6 @@
 import { useRef, useMemo, useEffect, useCallback, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { RigidBody, CuboidCollider } from '@react-three/rapier'
+import { RigidBody, CuboidCollider, useRapier } from '@react-three/rapier'
 import type { RapierRigidBody } from '@react-three/rapier'
 import * as THREE from 'three'
 import { useGameStore } from '@stores/gameStore'
@@ -12,6 +12,7 @@ import { GROUP_ENV } from '@three/physics/collisionGroups'
 import { SoldierBody } from '@three/physics/SoldierBody'
 import { WorldRenderer } from '@three/worlds/WorldRenderer'
 import { worldRegistry } from '@config/worlds'
+import { damagePropsInRadius } from '@engine/physics/propState'
 import { ProjectileMesh } from '@three/models/ProjectileMesh'
 import { Intel } from '@three/models/Intel'
 import { GhostPreview } from '@three/models/GhostPreview'
@@ -215,6 +216,7 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
 
   // ── BATTLE TICK (all logic in one useFrame, mutable refs) ──
   const { gl } = useThree()
+  const { world: rapierWorld } = useRapier()
   useFrame((_, rawDelta) => {
     if (!battleActive.current) return
     perfMonitor.beginFrame()
@@ -714,9 +716,51 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
         }
       }
 
+      // ── Blast ALL other Rapier dynamic bodies (props, loose objects) ──
+      // This is what makes cereal boxes fly, coffee mugs roll, and
+      // chain reactions happen. The soldier + wall loops above handle
+      // game-specific damage/health. This loop handles pure physics impulse
+      // on everything else in the world.
+      const cx = center[0], cy = center[1] + 0.2, cz = center[2]
+      rapierWorld.bodies.forEach((body) => {
+        if (!body.isDynamic()) return
+        // Skip soldier bodies (already handled above with damage logic)
+        // Soldier bodies are in bodyMapRef — check by handle comparison
+        let isSoldierBody = false
+        for (const [, soldierBody] of bodyMapRef.current) {
+          if (body.handle === soldierBody.handle) { isSoldierBody = true; break }
+        }
+        if (isSoldierBody) return
+
+        const pos = body.translation()
+        const dx = pos.x - cx
+        const dy = pos.y - cy
+        const dz = pos.z - cz
+        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz)
+        if (dist < blastRadius && dist > 0.01) {
+          const force = ((blastRadius - dist) / blastRadius) * blastConfig.unitForce
+          const invD = 1 / dist
+          body.applyImpulse({
+            x: dx * invD * force,
+            y: Math.max(0.3, dy * invD + 0.5) * force * 0.6,
+            z: dz * invD * force,
+          }, true)
+          body.wakeUp()
+        }
+      })
+
+      // ── Damage props + chain reactions ──
+      const destroyedProps = damagePropsInRadius(center, blastRadius, blastDamage)
+      for (const prop of destroyedProps) {
+        // Explosive props trigger chain reaction!
+        if (prop.tags.includes('explosive') && prop.onExplode) {
+          prop.onExplode(prop.position, 4.0, 10.0)
+        }
+      }
+
       // ── Hitpause on big impacts ──
-      if (killCount > 0 || blocksDestroyed >= 3) {
-        triggerHitpause(killCount >= 2 ? 5 : 3)
+      if (killCount > 0 || blocksDestroyed >= 3 || destroyedProps.length > 0) {
+        triggerHitpause(killCount >= 2 ? 5 : destroyedProps.length > 0 ? 4 : 3)
       }
 
       // ── Calibrated screen shake ──
