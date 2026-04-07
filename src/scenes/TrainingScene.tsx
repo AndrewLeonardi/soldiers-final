@@ -117,7 +117,7 @@ function TrainingSoldier() {
     while (soldierRef.current.children.length) {
       soldierRef.current.remove(soldierRef.current.children[0])
     }
-    const result = createFlexSoldier('green')
+    const result = createFlexSoldier()
     partsRef.current = result.parts
     soldierRef.current.add(result.group)
 

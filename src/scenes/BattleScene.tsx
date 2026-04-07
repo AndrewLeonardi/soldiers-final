@@ -1,16 +1,18 @@
 import { useRef, useMemo, useEffect, useCallback, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
+import type { RapierRigidBody } from '@react-three/rapier'
 import * as THREE from 'three'
 import { useGameStore } from '@stores/gameStore'
 import { useRosterStore } from '@stores/rosterStore'
 import { NeuralNet } from '@engine/ml/neuralNet'
 import { SoldierUnit } from '@three/models/SoldierUnit'
 import { WallDefense, SandbagDefense, WatchTower, type WallBlock } from '@three/models/Defenses'
+import { GROUP_ENV } from '@three/physics/collisionGroups'
+import { SoldierBody } from '@three/physics/SoldierBody'
 import { ProjectileMesh } from '@three/models/ProjectileMesh'
 import { Intel } from '@three/models/Intel'
 import { GhostPreview } from '@three/models/GhostPreview'
-import { BattlefieldProps } from '@three/models/sandboxProps'
 import { CameraRig } from '@three/camera/CameraRig'
 import { ExplosionEffect } from '@three/effects/ExplosionEffect'
 import { ConfettiEffect } from '@three/effects/ConfettiEffect'
@@ -21,19 +23,15 @@ import { ENEMY_STATS, WEAPON_STATS } from '@config/units'
 import { useTutorialStore } from '@stores/tutorialStore'
 import * as sfx from '@audio/sfx'
 import {
-  GRAVITY, PROJECTILE_GRAVITY, BULLET_SPEED, ROCKET_SPEED, GRENADE_SPEED,
+  PROJECTILE_GRAVITY, BULLET_SPEED, ROCKET_SPEED, GRENADE_SPEED,
   MG_BULLET_SPEED, ROCKET_GRAV, PROJECTILE_MAX_AGE, HIT_RADIUS, WALL_HIT_RADIUS,
   INTEL_POS_ARRAY, LOSE_THRESHOLD, SPAWN_X, FALL_DEATH_Y,
   TABLE_EDGE_X, TABLE_EDGE_Z, TABLE_EDGE_LEFT,
-  BLAST, SHAKE, RAGDOLL, DEBRIS,
+  BLAST, SHAKE, RAGDOLL,
   idealElevation, randRange, randomDeathType,
 } from '@engine/physics/battlePhysics'
 import { triggerHitpause, getHitpauseScale } from '@engine/physics/hitpause'
 import { perfMonitor } from '@engine/physics/perfMonitor'
-import { createHazardState, type HazardState } from '@engine/hazards/hazardTypes'
-import { ExplosiveBarrelMesh } from '@three/hazards/ExplosiveBarrel'
-import { SweepingArmMesh, SWEEP_ARM_LENGTH, SWEEP_ARM_HEIGHT } from '@three/hazards/SweepingArm'
-import { SpringLauncherMesh, TRIGGER_RADIUS, COOLDOWN as SPRING_COOLDOWN, LAUNCH_VELOCITY } from '@three/hazards/SpringLauncher'
 import type { GameUnit, Projectile, Wave, WaveEnemy, EnemyType, WeaponType, HazardConfig } from '@config/types'
 
 // ── Battle constants (derived from physics module) ──────
@@ -141,8 +139,9 @@ function SandboxGround() {
       <mesh geometry={geometry} rotation-x={-Math.PI / 2} receiveShadow>
         <meshStandardMaterial color={0xd2b48c} roughness={0.9} metalness={0} />
       </mesh>
-      <RigidBody type="fixed" position={[0, -0.05, 0]}>
-        <CuboidCollider args={[10, 0.05, 7]} />
+      {/* Ground collider sized to table edges — soldiers past the edge fall off */}
+      <RigidBody type="fixed" position={[-0.25, -0.05, 0]} collisionGroups={GROUP_ENV}>
+        <CuboidCollider args={[8.75, 0.05, 6]} />
       </RigidBody>
     </>
   )
@@ -193,8 +192,15 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
   // Wall block refs for collision detection
   const wallBlocksRef = useRef<Map<string, WallBlock[]>>(new Map())
 
-  // Hazard state (initialized from level config)
-  const hazardsRef = useRef<HazardState[]>([])
+  // Rapier rigid body handles for all soldiers (keyed by unit ID)
+  const bodyMapRef = useRef<Map<string, RapierRigidBody>>(new Map())
+  const handleBodyReady = useCallback((id: string, body: RapierRigidBody) => {
+    bodyMapRef.current.set(id, body)
+  }, [])
+  const handleBodyRemoved = useCallback((id: string) => {
+    bodyMapRef.current.delete(id)
+  }, [])
+
 
   // Explosion effects (visual only -- spawned at applyExplosion locations)
   interface ExplosionData { id: string; position: [number, number, number]; scale: number }
@@ -228,14 +234,11 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
       battleActive.current = true
       _eid = 1000
       _pid = 5000
-      // Initialize hazards from level config
-      const levelHazards = useGameStore.getState().level?.hazards ?? []
-      hazardsRef.current = levelHazards.map(createHazardState)
     } else {
       battleActive.current = false
     }
     // Clear refs when leaving battle (prevents stale refs across rounds)
-    if (phase === 'placement' || phase === 'levelSelect') {
+    if (phase === 'placement' || phase === 'worldSelect') {
       wallBlocksRef.current.clear()
       setExplosions([])
       setSparks([])
@@ -243,7 +246,6 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
       setShowConfetti(false)
       victorySlowMo.current = false
       perfMonitor.reset()
-      hazardsRef.current = []
     }
   }, [phase])
 
@@ -269,7 +271,7 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
         victorySlowMo.current = false
         const level = useGameStore.getState().level
         useGameStore.getState().setResult('victory', pendingStars.current)
-        if (level) useGameStore.getState().completeLevel(level.id, pendingStars.current)
+        // TODO: world engine — completeBattle(level.id, pendingStars.current)
         sfx.graduationFanfare()
         setShowConfetti(true)
         battleActive.current = false
@@ -293,6 +295,21 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
     const allUnits: BattleUnit[] = []
     for (let i = 0; i < players.length; i++) allUnits.push(players[i])
     for (let i = 0; i < enemies.length; i++) allUnits.push(enemies[i])
+
+    // ── Sync positions from Rapier -> BattleUnit (before AI reads positions) ──
+    for (const unit of allUnits) {
+      const body = bodyMapRef.current.get(unit.id)
+      if (body) {
+        const pos = body.translation()
+        unit.position[0] = pos.x
+        unit.position[1] = pos.y
+        unit.position[2] = pos.z
+        const vel = body.linvel()
+        unit.velocity[0] = vel.x
+        unit.velocity[1] = vel.y
+        unit.velocity[2] = vel.z
+      }
+    }
 
     // ── Spawn waves from level config (multi-wave support) ──
     const level = useGameStore.getState().level
@@ -354,19 +371,27 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
 
       _tA.set(enemy.position[0], enemy.position[1], enemy.position[2])
 
-      // Find nearest living player
+      // Find nearest living SOLDIER (skip defenses — enemies march past/through defenses)
       let nearestPlayer: BattleUnit | null = null
       let nearestDist = Infinity
       for (const p of players) {
         if (p.status === 'dead') continue
+        if (p.type !== 'soldier') continue // skip walls, sandbags, towers
         const d = _tA.distanceTo(_tB.set(p.position[0], p.position[1], p.position[2]))
         if (d < nearestDist) { nearestDist = d; nearestPlayer = p }
       }
 
       if (nearestPlayer && nearestDist <= enemy.range) {
-        // Stop and fire
+        // Stop and fire — zero horizontal velocity via Rapier
         _tB.set(nearestPlayer.position[0], nearestPlayer.position[1], nearestPlayer.position[2])
         enemy.facingAngle = Math.atan2(_tB.x - _tA.x, _tB.z - _tA.z)
+        {
+          const body = bodyMapRef.current.get(enemy.id)
+          if (body && enemy.status !== 'hit') {
+            const curVel = body.linvel()
+            body.setLinvel({ x: 0, y: curVel.y, z: 0 }, true)
+          }
+        }
 
         if (time - enemy.lastFireTime >= enemy.fireRate) {
           enemy.lastFireTime = time
@@ -440,12 +465,16 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
           enemy.status = 'idle'
         }
       } else {
-        // March toward Intel
+        // March toward Intel — Rapier handles wall collision automatically
         _tC.copy(INTEL_POS).sub(_tA).normalize()
-        enemy.position[0] += _tC.x * enemy.speed * delta
-        enemy.position[2] += _tC.z * enemy.speed * delta
         enemy.facingAngle = Math.atan2(_tC.x, _tC.z)
         enemy.status = 'walking'
+
+        const body = bodyMapRef.current.get(enemy.id)
+        if (body) {
+          const curVel = body.linvel()
+          body.setLinvel({ x: _tC.x * enemy.speed, y: curVel.y, z: _tC.z * enemy.speed }, true)
+        }
 
         // Check defeat condition
         if (_tA.distanceTo(INTEL_POS) < LOSE_THRESHOLD) {
@@ -614,6 +643,15 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
       } else {
         if (player.status !== 'idle') { player.status = 'idle'; player.stateAge = 0 }
       }
+      // Player soldiers are stationary — zero horizontal velocity unless knocked back
+      // (dead players already skipped via continue above)
+      if (player.status !== 'hit') {
+        const body = bodyMapRef.current.get(player.id)
+        if (body) {
+          const curVel = body.linvel()
+          body.setLinvel({ x: 0, y: curVel.y, z: 0 }, true)
+        }
+      }
       player.rotation = player.facingAngle
     }
 
@@ -636,16 +674,16 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
           const dmg = Math.round(blastDamage * force)
           unit.health -= dmg
 
-          // Knockback with VARIATION for comedy
+          // Knockback via Rapier impulse for comedy physics
           const knockDir = _tA.set(uPos.x - cPos.x, uPos.y - cPos.y, uPos.z - cPos.z).normalize()
           const forceVariance = randRange(RAGDOLL.FORCE_VARIANCE_MIN, RAGDOLL.FORCE_VARIANCE_MAX)
           const knockForce = force * blastConfig.unitForce * forceVariance
 
-          // Add random lateral offset for unpredictable trajectories
+          // Random lateral offset for unpredictable trajectories
           const lateralAngle = Math.random() * Math.PI * 2
           const lateralKick = Math.random() * RAGDOLL.LATERAL_OFFSET_MAX
-          unit.velocity[0] += knockDir.x * knockForce + Math.cos(lateralAngle) * lateralKick
-          unit.velocity[2] += knockDir.z * knockForce + Math.sin(lateralAngle) * lateralKick
+          const impulseX = knockDir.x * knockForce + Math.cos(lateralAngle) * lateralKick
+          const impulseZ = knockDir.z * knockForce + Math.sin(lateralAngle) * lateralKick
 
           if (unit.health <= 0) {
             unit.health = 0
@@ -656,23 +694,30 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
 
             // Death type determines trajectory character
             const deathType = randomDeathType()
+            let impulseY: number
             if (deathType === 'launch') {
-              // High arc, less spin — soldier flies dramatically
-              unit.velocity[1] += randRange(RAGDOLL.LAUNCH_Y_MIN, RAGDOLL.LAUNCH_Y_MAX) * force
+              impulseY = randRange(RAGDOLL.LAUNCH_Y_MIN, RAGDOLL.LAUNCH_Y_MAX) * force
               unit.spinSpeed = randRange(1, 3)
             } else {
-              // Low tumble, lots of spin — soldier rolls and bounces
-              unit.velocity[1] += 0.4 + force * 2
+              impulseY = 0.4 + force * 2
               unit.spinSpeed = randRange(RAGDOLL.TUMBLE_SPIN_MIN, RAGDOLL.TUMBLE_SPIN_MAX)
             }
 
-            // Spawn dust at death position
+            const body = bodyMapRef.current.get(unit.id)
+            if (body) {
+              body.applyImpulse({ x: impulseX, y: impulseY, z: impulseZ }, true)
+            }
+
             const dustId = `dust-${++dustIdRef.current}`
             setDustClouds(prev => [...prev, { id: dustId, position: [...unit.position] as [number, number, number], intensity: 0.8 }])
           } else {
             unit.status = 'hit'
             unit.stateAge = 0
-            unit.velocity[1] += 0.4 + force * blastConfig.unitYBias * 0.3
+            const hitImpulseY = 0.4 + force * blastConfig.unitYBias * 0.3
+            const body = bodyMapRef.current.get(unit.id)
+            if (body) {
+              body.applyImpulse({ x: impulseX, y: hitImpulseY, z: impulseZ }, true)
+            }
           }
         }
       }
@@ -717,27 +762,6 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
         triggerHitpause(killCount >= 2 ? 5 : 3)
       }
 
-      // ── Chain reaction: check if any barrels are in blast radius ──
-      for (const hazard of hazardsRef.current) {
-        if (hazard.triggered || hazard.config.type !== 'explosive_barrel') continue
-        const bPos = hazard.config.position
-        const dx = bPos[0] - center[0]
-        const dy = (bPos[1] + 0.3) - center[1]
-        const dz = bPos[2] - center[2]
-        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz)
-        if (dist < blastRadius) {
-          hazard.health -= 999
-          if (hazard.health <= 0) {
-            hazard.triggered = true
-            // Chain reaction: explode immediately (hitpause gives the visual stagger)
-            applyExplosion(bPos, 4.0, 80, '')
-            sfx.barrelExplosion()
-            triggerShake(SHAKE.BARREL)
-            triggerHitpause(5)
-          }
-        }
-      }
-
       // ── Calibrated screen shake ──
       const shakeAmount = isRocket ? SHAKE.ROCKET : SHAKE.GRENADE
       triggerShake(killCount >= 2 ? SHAKE.MULTI_KILL : shakeAmount)
@@ -746,124 +770,6 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
       const expId = `exp-${++explosionIdRef.current}`
       const expScale = isRocket ? 1.2 : 0.9
       setExplosions((prev) => [...prev, { id: expId, position: [...center] as [number, number, number], scale: expScale }])
-    }
-
-    // ── Hazard interactions ──
-    for (let hi = 0; hi < hazardsRef.current.length; hi++) {
-      const hazard = hazardsRef.current[hi]
-      if (hazard.triggered && hazard.config.type === 'explosive_barrel') continue
-      hazard.age += delta
-      if (hazard.cooldown > 0) hazard.cooldown -= delta
-
-      switch (hazard.config.type) {
-        case 'sweeping_arm': {
-          const speed = hazard.config.params?.speed ?? 0.8
-          const armAngle = hazard.age * speed
-          const hx = hazard.config.position[0]
-          const hz = hazard.config.position[2]
-
-          // Arm direction matches Three.js rotation.y convention
-          const armDirX = Math.sin(armAngle)
-          const armDirZ = Math.cos(armAngle)
-
-          for (const unit of allUnits) {
-            if (unit.status === 'dead') continue
-            if (unit.position[1] > SWEEP_ARM_HEIGHT + 0.5) continue
-            // Per-unit cooldown: skip if this unit was recently hit by ANY arm
-            // (reuse stateAge — if status is 'hit' and stateAge < 1s, skip)
-            if (unit.status === 'hit' && unit.stateAge < 1.0) continue
-
-            const ux = unit.position[0] - hx
-            const uz = unit.position[2] - hz
-
-            // Project onto arm direction
-            const dot = ux * armDirX + uz * armDirZ
-            if (dot < 0.5 || dot > SWEEP_ARM_LENGTH) continue
-
-            // Perpendicular distance from unit to arm line
-            const perpDist = Math.abs(ux * armDirZ - uz * armDirX)
-
-            if (perpDist < 0.45) {
-              // WHACK! Single hit, then the unit is immune for 1s
-              const crossSign = (ux * armDirZ - uz * armDirX) > 0 ? 1 : -1
-              const perpX = armDirZ * crossSign
-              const perpZ = -armDirX * crossSign
-              const launchForce = 6 + Math.random() * 3
-              unit.velocity[0] = perpX * launchForce
-              unit.velocity[1] = 4 + Math.random() * 2
-              unit.velocity[2] = perpZ * launchForce
-              unit.spinSpeed = 3 + Math.random() * 3
-              unit.health -= 15
-              if (unit.health <= 0) {
-                unit.health = 0
-                unit.status = 'dead'
-                unit.stateAge = 0
-                sfx.deathThud()
-              } else {
-                unit.status = 'hit'
-                unit.stateAge = 0 // starts the 1s immunity window
-              }
-              sfx.sweepWhoosh()
-              triggerShake(SHAKE.GRENADE)
-              triggerHitpause(3)
-            }
-          }
-          break
-        }
-
-        case 'spring_launcher': {
-          if (hazard.cooldown > 0) break
-          const hPos = hazard.config.position
-
-          for (const unit of allUnits) {
-            if (unit.status === 'dead') continue
-            if (unit.position[1] > 0.3) continue // must be on ground
-            const dx = unit.position[0] - hPos[0]
-            const dz = unit.position[2] - hPos[2]
-            const dist = Math.sqrt(dx * dx + dz * dz)
-            if (dist < TRIGGER_RADIUS) {
-              // BOING! Launch straight up
-              unit.velocity[1] += LAUNCH_VELOCITY
-              unit.velocity[0] += (Math.random() - 0.5) * 2
-              unit.velocity[2] += (Math.random() - 0.5) * 2
-              unit.spinSpeed = 2 + Math.random() * 3
-              hazard.cooldown = SPRING_COOLDOWN
-              sfx.springBoing()
-              triggerShake(SHAKE.GRENADE)
-              triggerHitpause(3)
-              break // only launch one unit per trigger
-            }
-          }
-          break
-        }
-
-        case 'explosive_barrel': {
-          // Check if any projectile hit the barrel
-          const hPos = hazard.config.position
-          for (let pi = projectiles.length - 1; pi >= 0; pi--) {
-            const p = projectiles[pi]
-            const dx = p.position[0] - hPos[0]
-            const dy = p.position[1] - (hPos[1] + 0.3)
-            const dz = p.position[2] - hPos[2]
-            const dist = Math.sqrt(dx * dx + dy * dy + dz * dz)
-            if (dist < 0.5) {
-              hazard.health -= p.type === 'bullet' ? p.damage : 999
-              projectiles.splice(pi, 1)
-              if (hazard.health <= 0) {
-                hazard.triggered = true
-                applyExplosion(hPos, 4.0, 80, '')
-                sfx.barrelExplosion()
-                triggerShake(SHAKE.BARREL)
-                triggerHitpause(5)
-              }
-              break
-            }
-          }
-          // Also check if caught in another explosion's radius
-          // (handled by applyExplosion checking barrel positions)
-          break
-        }
-      }
     }
 
     // ── Update projectiles ──
@@ -949,13 +855,18 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
               unit.status = 'dead'
               unit.stateAge = 0
               sfx.deathThud()
-              // Varied ragdoll: random perpendicular offset + death type
+              // Varied ragdoll via Rapier impulse
               const knockDir = new THREE.Vector3(dx, 0, dz).normalize()
               const perpAngle = Math.atan2(knockDir.z, knockDir.x) + (Math.random() - 0.5) * 1.2
               const forceVar = randRange(RAGDOLL.FORCE_VARIANCE_MIN, RAGDOLL.FORCE_VARIANCE_MAX)
-              unit.velocity[0] += knockDir.x * 1.5 * forceVar + Math.cos(perpAngle) * 0.5
-              unit.velocity[1] += randRange(1.0, 2.5)
-              unit.velocity[2] += knockDir.z * 1.5 * forceVar + Math.sin(perpAngle) * 0.5
+              const bulletBody = bodyMapRef.current.get(unit.id)
+              if (bulletBody) {
+                bulletBody.applyImpulse({
+                  x: knockDir.x * 1.5 * forceVar + Math.cos(perpAngle) * 0.5,
+                  y: randRange(1.0, 2.5),
+                  z: knockDir.z * 1.5 * forceVar + Math.sin(perpAngle) * 0.5,
+                }, true)
+              }
               unit.spinSpeed = randRange(1, RAGDOLL.TUMBLE_SPIN_MAX * 0.5)
               triggerHitpause(3)
             } else {
@@ -1015,81 +926,27 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
       }
     }
 
-    // ── Ragdoll physics for all units ──
+    // ── Post-physics checks (positions already synced from Rapier at top of loop) ──
     for (const unit of allUnits) {
-      // ── Check table boundaries: units past the edge fall and die ──
-      const pastEdge = unit.position[0] > TABLE_EDGE_X || unit.position[0] < TABLE_EDGE_LEFT ||
-                       Math.abs(unit.position[2]) > TABLE_EDGE_Z
-      if (pastEdge && unit.status !== 'dead') {
-        // Instant death + start falling
+      // Dust cloud on heavy landing
+      if (unit.position[1] < 0.1 && unit.velocity[1] < -2) {
+        const dId = `dust-${++dustIdRef.current}`
+        const intensity = Math.min(1.0, Math.abs(unit.velocity[1]) / 8)
+        setDustClouds(prev => [...prev, { id: dId, position: [...unit.position] as [number, number, number], intensity }])
+      }
+
+      // Spin damping for dead soldiers on ground
+      if (unit.status === 'dead' && unit.position[1] < 0.1) {
+        unit.spinSpeed *= 0.8
+        if (unit.spinSpeed < 0.05) unit.spinSpeed = 0
+      }
+
+      // Fall-off-table death: Rapier's finite ground = soldiers past edge fall
+      if (unit.position[1] < FALL_DEATH_Y && unit.status !== 'dead') {
         unit.health = 0
         unit.status = 'dead'
         unit.stateAge = 0
-        unit.velocity[1] = Math.min(unit.velocity[1], -3)
         sfx.fallScream()
-      }
-
-      const hasVel = Math.abs(unit.velocity[0]) > 0.01 || Math.abs(unit.velocity[1]) > 0.01 || Math.abs(unit.velocity[2]) > 0.01
-      const isAboveGround = unit.position[1] > 0.01
-      if (!hasVel && !isAboveGround && !pastEdge) continue
-
-      // ── Fall off table edge: instant death ──
-      if (unit.position[1] < FALL_DEATH_Y) {
-        if (unit.status !== 'dead') {
-          unit.health = 0
-          unit.status = 'dead'
-          unit.stateAge = 0
-          sfx.fallScream()
-        }
-        // Keep falling (don't clamp) — they disappear off screen
-        unit.velocity[1] += GRAVITY * delta * 0.5
-        unit.position[1] += unit.velocity[1] * delta
-        continue
-      }
-
-      // Gravity (always apply if past edge — no invisible floor in the sky)
-      if (unit.position[1] > 0 || unit.velocity[1] > 0 || pastEdge) {
-        unit.velocity[1] += GRAVITY * delta
-      }
-
-      // Integrate
-      unit.position[0] += unit.velocity[0] * delta
-      unit.position[1] += unit.velocity[1] * delta
-      unit.position[2] += unit.velocity[2] * delta
-
-      // Ground clamp + dust on heavy landing (but NOT if past table edge — let them fall)
-      if (unit.position[1] <= 0 && !pastEdge) {
-        const wasAirborne = unit.velocity[1] < -2
-        unit.position[1] = 0
-        if (unit.velocity[1] < -0.5) {
-          unit.velocity[1] *= RAGDOLL.GROUND_BOUNCE_VY
-          // Spawn dust cloud on heavy landing
-          if (wasAirborne) {
-            const dId = `dust-${++dustIdRef.current}`
-            const intensity = Math.min(1.0, Math.abs(unit.velocity[1]) / 8)
-            setDustClouds(prev => [...prev, { id: dId, position: [...unit.position] as [number, number, number], intensity }])
-          }
-        } else {
-          unit.velocity[1] = 0
-        }
-        unit.velocity[0] *= RAGDOLL.GROUND_FRICTION
-        unit.velocity[2] *= RAGDOLL.GROUND_FRICTION
-        unit.spinSpeed *= RAGDOLL.SPIN_DAMPING
-      }
-
-      // Air drag
-      unit.velocity[0] *= RAGDOLL.AIR_DRAG
-      unit.velocity[2] *= RAGDOLL.AIR_DRAG
-
-      // Stop when slow on ground (but not if past edge)
-      if (unit.position[1] <= 0 && !pastEdge && Math.abs(unit.velocity[0]) < 0.05 && Math.abs(unit.velocity[2]) < 0.05) {
-        unit.velocity[0] = 0
-        unit.velocity[1] = 0
-        unit.velocity[2] = 0
-      }
-      if (unit.status === 'dead' && unit.position[1] <= 0) {
-        unit.spinSpeed *= 0.8
-        if (unit.spinSpeed < 0.05) unit.spinSpeed = 0
       }
     }
 
@@ -1158,7 +1015,6 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
       <Lights />
       <CameraRig orbitingRef={orbitingRef} />
       <SandboxGround />
-      <BattlefieldProps />
       <Intel />
 
       <color attach="background" args={[0x88bbdd]} />
@@ -1205,10 +1061,18 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
         )
         if (unit.type === 'sandbag') return <SandbagDefense key={unit.id} position={unit.position} rotation={unit.rotation} />
         if (unit.type === 'tower') return <WatchTower key={unit.id} position={unit.position} rotation={unit.rotation} />
-        return <SoldierUnit key={unit.id} unit={unit} />
+        return (
+          <SoldierBody key={unit.id} unitId={unit.id} position={unit.position}
+            isDead={unit.status === 'dead'} onBodyReady={handleBodyReady} onBodyRemoved={handleBodyRemoved}>
+            <SoldierUnit unit={unit} physicsControlled />
+          </SoldierBody>
+        )
       })}
       {renderEnemies.map((unit) => (
-        <SoldierUnit key={unit.id} unit={unit} />
+        <SoldierBody key={unit.id} unitId={unit.id} position={unit.position}
+          isDead={unit.status === 'dead'} onBodyReady={handleBodyReady} onBodyRemoved={handleBodyRemoved}>
+          <SoldierUnit unit={unit} physicsControlled />
+        </SoldierBody>
       ))}
 
       {/* Projectiles */}
@@ -1225,21 +1089,6 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
           onComplete={() => setExplosions((prev) => prev.filter((e) => e.id !== exp.id))}
         />
       ))}
-
-      {/* Hazards */}
-      {hazardsRef.current.map((h, i) => {
-        const cfg = h.config
-        switch (cfg.type) {
-          case 'explosive_barrel':
-            return <ExplosiveBarrelMesh key={`hazard-${i}`} position={cfg.position} rotation={cfg.rotation} alive={!h.triggered} />
-          case 'sweeping_arm':
-            return <SweepingArmMesh key={`hazard-${i}`} position={cfg.position} speed={cfg.params?.speed ?? 0.8} angle={h.age * (cfg.params?.speed ?? 0.8)} />
-          case 'spring_launcher':
-            return <SpringLauncherMesh key={`hazard-${i}`} position={cfg.position} fireProgress={h.cooldown > SPRING_COOLDOWN - 0.3 ? 1 - (SPRING_COOLDOWN - h.cooldown) / 0.3 : 0} />
-          default:
-            return null
-        }
-      })}
 
       {/* Impact sparks */}
       {sparks.map((s) => (

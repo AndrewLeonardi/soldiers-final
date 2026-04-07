@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { GamePhase, GameUnit, PlacementSlot, Projectile, LevelConfig, CampaignProgress } from '@config/types'
-import { LEVEL_MAP, getNextLevelId } from '@config/levels'
+import type { GamePhase, GameUnit, PlacementSlot, Projectile, LevelConfig } from '@config/types'
 import { useRosterStore } from './rosterStore'
 import { WEAPON_STATS } from '@config/units'
 
@@ -12,9 +11,6 @@ interface GameState {
   phase: GamePhase
   gold: number
   compute: number
-
-  // Campaign
-  campaignProgress: CampaignProgress
 
   // Store / Economy
   lastDailyClaimTime: number  // Unix timestamp (ms)
@@ -62,24 +58,16 @@ interface GameState {
   placeSoldier: (soldierId: string, position: [number, number, number]) => void
   placeDefense: (type: 'wall' | 'sandbag' | 'tower', position: [number, number, number]) => void
   removePlayerUnit: (unitId: string) => void
-  // Campaign actions
-  selectLevel: (levelId: string) => void
-  completeLevel: (levelId: string, stars: number) => void
-  goToLevelSelect: () => void
-  nextLevel: () => void
+  // Navigation
+  goToWorldSelect: () => void
 }
 
 export const useGameStore = create<GameState>()(
   persist(
     (set, get) => ({
-  phase: 'levelSelect' as GamePhase,
+  phase: 'worldSelect' as GamePhase,
   gold: 0,
   compute: 500,
-
-  campaignProgress: {
-    currentLevelId: 'level-01',
-    levels: {},
-  },
 
   lastDailyClaimTime: 0,
   showStore: false,
@@ -290,45 +278,8 @@ export const useGameStore = create<GameState>()(
     }
   }),
 
-  // ── Campaign actions ──
-
-  selectLevel: (levelId) => {
-    const config = LEVEL_MAP[levelId]
-    if (!config) return
-    set((s) => ({
-      campaignProgress: { ...s.campaignProgress, currentLevelId: levelId },
-    }))
-    get().loadLevel(config)
-  },
-
-  completeLevel: (levelId, stars) => set((s) => {
-    const prev = s.campaignProgress.levels[levelId]
-    return {
-      campaignProgress: {
-        ...s.campaignProgress,
-        levels: {
-          ...s.campaignProgress.levels,
-          [levelId]: {
-            completed: true,
-            bestStars: Math.max(prev?.bestStars ?? 0, stars),
-          },
-        },
-      },
-    }
-  }),
-
-  goToLevelSelect: () => set({ phase: 'levelSelect' }),
-
-  nextLevel: () => {
-    const { campaignProgress } = get()
-    const nextId = getNextLevelId(campaignProgress.currentLevelId)
-    if (nextId) {
-      get().selectLevel(nextId)
-    } else {
-      // Final level completed -- go back to level select
-      set({ phase: 'levelSelect' })
-    }
-  },
+  // ── Navigation ──
+  goToWorldSelect: () => set({ phase: 'worldSelect' }),
     }),
     {
       name: 'toy-soldiers-game',
@@ -338,7 +289,6 @@ export const useGameStore = create<GameState>()(
           return {
             gold: persisted?.gold ?? 0,
             compute: persisted?.compute ?? 500,
-            campaignProgress: { currentLevelId: 'level-01', levels: {} },
             lastDailyClaimTime: 0,
           }
         }
@@ -353,7 +303,6 @@ export const useGameStore = create<GameState>()(
       partialize: (state) => ({
         gold: state.gold,
         compute: state.compute,
-        campaignProgress: state.campaignProgress,
         lastDailyClaimTime: state.lastDailyClaimTime,
       }),
     }

@@ -20,7 +20,6 @@ import { ResultScreen } from '@ui/ResultScreen'
 import { TutorialOverlay } from '@ui/TutorialOverlay'
 import { useTutorialStore } from '@stores/tutorialStore'
 import { ScreenShake } from '@three/effects/ScreenShake'
-import { LevelSelect } from '@ui/LevelSelect'
 import { Store } from '@ui/Store'
 import { resumeOnInteraction } from '@audio/context'
 
@@ -83,7 +82,7 @@ function SceneRouter({ orbitingRef }: { orbitingRef: React.MutableRefObject<bool
     return <TrainingCamera />
   }
 
-  if (phase === 'levelSelect') {
+  if (phase === 'worldSelect') {
     return <color attach="background" args={[0x0c1a0c]} />
   }
 
@@ -96,7 +95,6 @@ function SceneRouter({ orbitingRef }: { orbitingRef: React.MutableRefObject<bool
 
 export default function Game() {
   const phase = useGameStore((s) => s.phase)
-  const selectLevel = useGameStore((s) => s.selectLevel)
   const setPhase = useGameStore((s) => s.setPhase)
   const orbitingRef = useRef(false)
   const tutorialCompleted = useTutorialStore((s) => s.completed)
@@ -109,12 +107,12 @@ export default function Game() {
       // (prevents persist hydration from showing stale soldiers)
       useRosterStore.getState().selectSoldier('')
       useRosterStore.setState({ soldiers: [], selectedSoldierId: '', detailSoldierId: null })
-      selectLevel('level-01')
+      // TODO: world engine — load first battle for tutorial
       const t = setTimeout(() => startTutorial(), 100)
       return () => clearTimeout(t)
     } else {
       // Returning player: go to level select
-      setPhase('levelSelect')
+      setPhase('worldSelect')
     }
   }, [])
 
@@ -161,7 +159,6 @@ export default function Game() {
       </Canvas>
 
       {/* HTML UI overlay */}
-      <LevelSelect />
       <Store />
       <BarracksScreen />
       <SoldierDetail />

@@ -21,9 +21,11 @@ interface UnitLike {
 
 interface SoldierUnitProps {
   unit: UnitLike
+  /** When true, a RigidBody parent handles positioning. SoldierUnit only does rotation/animation. */
+  physicsControlled?: boolean
 }
 
-export function SoldierUnit({ unit }: SoldierUnitProps) {
+export function SoldierUnit({ unit, physicsControlled = false }: SoldierUnitProps) {
   const groupRef = useRef<THREE.Group>(null!)
   const weaponRef = useRef<THREE.Group | null>(null)
   const tumbleRef = useRef({ rx: 0, rz: 0 })
@@ -66,16 +68,19 @@ export function SoldierUnit({ unit }: SoldierUnitProps) {
       }
     }
 
-    // Position -- lerp to unit position, clamp above ground
-    const isAirborne = unit.position[1] > 0.1 || (unit.velocity && Math.abs(unit.velocity[1]) > 0.5)
-    const lerpSpeed = isAirborne ? 20 : 10
-    const target = new THREE.Vector3(
-      unit.position[0],
-      Math.max(0, unit.position[1]),
-      unit.position[2],
-    )
-    groupRef.current.position.lerp(target, Math.min(1, delta * lerpSpeed))
-    if (groupRef.current.position.y < 0) groupRef.current.position.y = 0
+    // Position — when physics-controlled, RigidBody parent handles this.
+    // Only set position manually when NOT inside a RigidBody (barracks, placement).
+    if (!physicsControlled) {
+      const isAirborne = unit.position[1] > 0.1 || (unit.velocity && Math.abs(unit.velocity[1]) > 0.5)
+      const lerpSpeed = isAirborne ? 20 : 10
+      const target = new THREE.Vector3(
+        unit.position[0],
+        Math.max(0, unit.position[1]),
+        unit.position[2],
+      )
+      groupRef.current.position.lerp(target, Math.min(1, delta * lerpSpeed))
+      if (groupRef.current.position.y < 0) groupRef.current.position.y = 0
+    }
 
     // Rotation
     const isGrounded = unit.position[1] < 0.05

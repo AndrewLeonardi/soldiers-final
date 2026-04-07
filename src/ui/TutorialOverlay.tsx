@@ -356,7 +356,7 @@ export function TutorialOverlay() {
               // Keep the soldiers the player recruited during the tutorial
               // Give them proper starting resources for campaign
               useGameStore.setState({ compute: 500 })
-              useGameStore.getState().goToLevelSelect()
+              useGameStore.getState().goToWorldSelect()
             }}
           >
             Let's Go!

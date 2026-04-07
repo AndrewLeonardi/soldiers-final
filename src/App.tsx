@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react'
 
 const HomePage = lazy(() => import('./pages/HomePage'))
 const Game = lazy(() => import('./scenes/Game'))
+const PhysicsTest = lazy(() => import('./pages/PhysicsTest'))
 
 function LoadingFallback() {
   return (
@@ -31,6 +32,7 @@ export function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/play" element={<Game />} />
+        <Route path="/physics-test" element={<PhysicsTest />} />
       </Routes>
     </Suspense>
   )

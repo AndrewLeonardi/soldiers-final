@@ -106,6 +106,21 @@ export const SHAKE = {
   DEFEAT: 0.3,
 } as const
 
+// ── Rapier material properties ────────────────────────────
+// Tuned for comedy physics, not realism
+export const RAPIER_SOLDIER = {
+  RESTITUTION: 0.3,       // bouncy ragdolls
+  FRICTION: 0.8,          // grip the ground
+  LINEAR_DAMPING: 2.0,    // stops sliding quickly
+  ANGULAR_DAMPING: 1.5,   // ragdoll spin decays
+} as const
+
+export const RAPIER_BLOCK = {
+  RESTITUTION: 0.15,      // low bounce for wall chunks
+  FRICTION: 0.6,
+  LINEAR_DAMPING: 0.5,
+} as const
+
 // ── Helpers ───────────────────────────────────────────────
 
 /** Compute ideal ballistic elevation for a given distance */

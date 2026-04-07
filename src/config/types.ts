@@ -4,7 +4,7 @@ export type EnemyType = 'infantry' | 'jeep' | 'tank'
 
 export type SlotType = 'ground' | 'elevated'
 
-export type GamePhase = 'loadout' | 'placement' | 'battle' | 'result' | 'training' | 'levelSelect'
+export type GamePhase = 'loadout' | 'placement' | 'battle' | 'result' | 'training' | 'worldSelect'
 
 export type Team = 'green' | 'tan'
 

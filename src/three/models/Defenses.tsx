@@ -1,5 +1,6 @@
-import { useRef, useMemo } from 'react'
+import { useRef, useMemo, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
+import { RigidBody, CuboidCollider, type RapierRigidBody } from '@react-three/rapier'
 import * as THREE from 'three'
 import {
   BLOCK_W, BLOCK_H, BLOCK_D, WALL_COLS, WALL_ROWS,
@@ -7,6 +8,7 @@ import {
   BLOCK_GROUND_FRICTION, BLOCK_SETTLE_SPEED, BLOCK_SUPPORT_OVERLAP,
   ROW_COLLAPSE_THRESHOLD,
 } from '@engine/physics/battlePhysics'
+import { GROUP_WALL } from '@three/physics/collisionGroups'
 
 // ── Wall Segment (destructible brick grid — denser, punchier) ──
 const blockGeo = new THREE.BoxGeometry(BLOCK_W, BLOCK_H, BLOCK_D)
@@ -184,7 +186,44 @@ export function WallDefense({ position, rotation = 0, wallBlocksRef, wallId }: W
     }
   })
 
-  return <group ref={groupRef} />
+  // Track how many blocks remain alive for collider sizing
+  const [wallIntact, setWallIntact] = useState(true)
+  const wallCheckTimer = useRef(0)
+
+  // Check periodically if wall is mostly destroyed (remove collider)
+  useFrame((_, rawDelta) => {
+    wallCheckTimer.current += Math.min(rawDelta, 0.05)
+    if (wallCheckTimer.current > 0.3) {
+      wallCheckTimer.current = 0
+      const aliveCount = blocks.filter(b => b.alive).length
+      const totalCount = WALL_COLS * WALL_ROWS
+      if (aliveCount < totalCount * 0.3 && wallIntact) {
+        setWallIntact(false)
+      }
+    }
+  })
+
+  // Wall dimensions: WALL_COLS * BLOCK_W wide, WALL_ROWS * BLOCK_H tall, BLOCK_D deep
+  const wallHalfW = (WALL_COLS * BLOCK_W) / 2
+  const wallHalfH = (WALL_ROWS * BLOCK_H) / 2
+  const wallHalfD = BLOCK_D / 2
+
+  return (
+    <>
+      <group ref={groupRef} />
+      {wallIntact && (
+        <RigidBody
+          type="fixed"
+          position={[position[0], position[1] + wallHalfH, position[2]]}
+          rotation={[0, rotation, 0]}
+          collisionGroups={GROUP_WALL}
+          colliders={false}
+        >
+          <CuboidCollider args={[wallHalfW, wallHalfH, wallHalfD + 0.1]} />
+        </RigidBody>
+      )}
+    </>
+  )
 }
 
 // ── Sandbag Bunker ──────────────────────────────────────
@@ -193,44 +232,49 @@ const sandbagMat = new THREE.MeshStandardMaterial({ color: 0xA89070, roughness: 
 
 export function SandbagDefense({ position, rotation = 0 }: DefenseProps) {
   return (
-    <group position={position} rotation-y={rotation}>
-      {/* Front row */}
-      {[...Array(5)].map((_, i) => (
-        <mesh key={`f-${i}`} geometry={sandbagGeo} material={sandbagMat}
-          position={[(i - 2) * 0.32, 0.07, 0.3]}
-          rotation={[0, (i % 2) * 0.1, 0]}
-          castShadow receiveShadow
-        />
-      ))}
-      {/* Second row offset */}
-      {[...Array(4)].map((_, i) => (
-        <mesh key={`s-${i}`} geometry={sandbagGeo} material={sandbagMat}
-          position={[(i - 1.5) * 0.32, 0.21, 0.3]}
-          rotation={[0, (i % 2) * -0.1, 0]}
-          castShadow receiveShadow
-        />
-      ))}
-      {/* Side walls */}
-      {[-0.65, 0.65].map((x, idx) => (
-        <group key={`side-${idx}`}>
-          <mesh geometry={sandbagGeo} material={sandbagMat}
-            position={[x, 0.07, 0]} rotation={[0, Math.PI / 2, 0]}
+    <>
+      <group position={position} rotation-y={rotation}>
+        {/* Front row */}
+        {[...Array(5)].map((_, i) => (
+          <mesh key={`f-${i}`} geometry={sandbagGeo} material={sandbagMat}
+            position={[(i - 2) * 0.32, 0.07, 0.3]}
+            rotation={[0, (i % 2) * 0.1, 0]}
             castShadow receiveShadow
           />
-          <mesh geometry={sandbagGeo} material={sandbagMat}
-            position={[x, 0.21, 0]} rotation={[0, Math.PI / 2, 0]}
+        ))}
+        {/* Second row offset */}
+        {[...Array(4)].map((_, i) => (
+          <mesh key={`s-${i}`} geometry={sandbagGeo} material={sandbagMat}
+            position={[(i - 1.5) * 0.32, 0.21, 0.3]}
+            rotation={[0, (i % 2) * -0.1, 0]}
             castShadow receiveShadow
           />
-        </group>
-      ))}
-      {/* Top row */}
-      {[...Array(3)].map((_, i) => (
-        <mesh key={`t-${i}`} geometry={sandbagGeo} material={sandbagMat}
-          position={[(i - 1) * 0.32, 0.35, 0.3]}
-          castShadow receiveShadow
-        />
-      ))}
-    </group>
+        ))}
+        {/* Side walls */}
+        {[-0.65, 0.65].map((x, idx) => (
+          <group key={`side-${idx}`}>
+            <mesh geometry={sandbagGeo} material={sandbagMat}
+              position={[x, 0.07, 0]} rotation={[0, Math.PI / 2, 0]}
+              castShadow receiveShadow
+            />
+            <mesh geometry={sandbagGeo} material={sandbagMat}
+              position={[x, 0.21, 0]} rotation={[0, Math.PI / 2, 0]}
+              castShadow receiveShadow
+            />
+          </group>
+        ))}
+        {/* Top row */}
+        {[...Array(3)].map((_, i) => (
+          <mesh key={`t-${i}`} geometry={sandbagGeo} material={sandbagMat}
+            position={[(i - 1) * 0.32, 0.35, 0.3]}
+            castShadow receiveShadow
+          />
+        ))}
+      </group>
+      <RigidBody type="fixed" position={position} rotation={[0, rotation, 0]} collisionGroups={GROUP_WALL} colliders={false}>
+        <CuboidCollider args={[0.55, 0.25, 0.25]} position={[0, 0.2, 0.15]} />
+      </RigidBody>
+    </>
   )
 }
 
