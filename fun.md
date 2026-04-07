@@ -287,6 +287,62 @@ Multiple soda cans for chain eruptions. All enemy types.
 
 ---
 
+## Soldiers Interact With The World
+
+Right now soldiers walk in straight lines. That's boring and
+predictable — the opposite of what the research says creates fun.
+Soldiers need to USE the world, not just walk through it.
+
+### The Scaling Path (lean, each layer builds on the last):
+
+**Layer A: Physics IS pathfinding (FREE — already built)**
+Soldiers are Rapier dynamic bodies. Props are Rapier dynamic bodies.
+They already collide. When an enemy marches toward Intel and there's
+a cereal box in the way, Rapier pushes them around it. No pathfinding
+code needed. The physics engine IS the navigation system.
+
+**Layer B: Steering behaviors (thin, ~30 lines per behavior)**
+Simple rules layered on top of the march-to-Intel velocity:
+- **Cover seeking:** "If being shot at and a prop is within 3 units,
+  move behind it." Enemies duck behind cereal boxes under fire.
+- **Spread:** "If within 1 unit of another soldier, nudge apart."
+  Prevents clumping (and makes explosions less devastating).
+- **Survival:** "If health < 30%, prefer paths near cover."
+  Wounded enemies play smarter, creating tension.
+- **Flanking:** "If blocked by a wall for >2 seconds, try going
+  around." Enemies route around defenses instead of stacking up.
+
+These modify the desired velocity before calling setLinvel(). They
+don't replace Rapier — they guide it. Each behavior is independent,
+stackable, and trivially cheap (distance checks, no pathfinding grid).
+
+**Layer C: NN world awareness (expands training)**
+The same sensors steering behaviors use (nearest prop, nearest edge,
+cover direction) become neural net inputs for player soldiers:
+- Current 6 inputs → expand to 10-12
+- Add: edge distance, nearest prop distance, prop direction, cover angle
+- Trained soldiers learn to USE the world (stand near edges for
+  knockback kills, bounce grenades off props, take cover)
+- This makes TRAINING more fun — you watch them discover environment
+  tactics, not just learn to aim
+
+**Why this scales:**
+- Layer A is free (already have it)
+- Layer B is additive (doesn't replace A)
+- Layer C reuses B's sensor data (doesn't replace B)
+- Each layer makes soldiers feel smarter without throwing away work
+- Enemy types can mix layers: infantry gets B, tanks ignore B (they
+  just drive through everything), jeeps get B with "flanking" only
+
+**The payoff for fun.md goals:**
+- Enemies hiding behind your own cereal boxes = interesting placement
+  decisions (do you destroy the cover to hit them?)
+- Trained soldiers learning edge-push tactics = training is MORE fun
+- Enemies spreading out = explosions require better aim
+- Different enemy behaviors per type = each wave feels different
+
+---
+
 ## Restrictions = Creativity
 
 The research is clear: restrictions force creative thinking. Each
@@ -330,4 +386,38 @@ the game because they want to train THEIR soldier to do that.
 
 ---
 
-*Written: 2026-04-06*
+## Implementation Priority (updated post-audit)
+
+### P0: Make the surprise engine WORK (unblocks everything)
+- [ ] Battle explosions (rockets/grenades) affect ALL Rapier bodies,
+      not just soldiers — props fly, mugs roll, chain reactions happen
+- [ ] Prop tags actually do things: destructible shatters, explosive
+      chains, sticky creates slow zones
+- [ ] Table edge fall scream sound (sfx.fallScream already exists)
+
+### P1: Soldiers interact with the world
+- [ ] Layer A: verify Rapier collision pathfinding works naturally
+- [ ] Layer B: cover seeking + spread + survival steering behaviors
+- [ ] Different enemy types use different behaviors
+
+### P2: Training becomes entertainment
+- [ ] Training arena uses simplified world geometry (Kitchen Table
+      with edges + 1-2 props instead of flat room)
+- [ ] Fitness rewards edge-push kills and prop interactions
+- [ ] Show best/worst of each generation for comedy contrast
+
+### P3: Workshop + Backyard worlds
+- [ ] Workshop config + props (hammer, dowel, tape measure)
+- [ ] Backyard config + props (soda can, flower pot, garden hose)
+- [ ] Slope + wind mechanics for Backyard
+
+### P4: Polish + juice
+- [ ] Kill feed messages ("SGT RICO fell off the table!")
+- [ ] Near-miss feedback (visual + audio)
+- [ ] Soldier stat tracking across battles
+- [ ] Victory celebration improvements
+- [ ] Sound variety (death sounds, impact variation)
+
+---
+
+*Written: 2026-04-06, updated 2026-04-07*
