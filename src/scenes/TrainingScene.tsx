@@ -26,11 +26,28 @@ import type { SoldierParts } from '@three/models/flexSoldier'
 import { createWeaponMesh, applyWeaponToSoldier } from '@three/models/weaponMeshes'
 import { getPlasticMat, TOY } from '@three/models/materials'
 import type { TankSimState } from '@engine/ml/scenarios/tankScenario'
+import { WorldRenderer } from '@three/worlds/WorldRenderer'
+import { worldRegistry } from '@config/worlds'
+import { useGameStore } from '@stores/gameStore'
 
 const TARGET_RED = '#cc3333'
 const EXPLOSION_COLOR = '#ff8800'
 
-// ── Arena Ground ─────────────────────────────────────
+// ── Training World (uses battle world geometry or fallback) ──
+
+function TrainingWorld() {
+  const currentWorldId = useGameStore((s) => s.currentWorldId)
+  const worldConfig = currentWorldId
+    ? worldRegistry.getWorld(currentWorldId)
+    : worldRegistry.getWorld('kitchen') // default to Kitchen
+
+  if (worldConfig) {
+    return <WorldRenderer worldConfig={worldConfig} />
+  }
+  return <ArenaGround />
+}
+
+// ── Arena Ground (fallback if no world loaded) ──────
 
 function ArenaGround() {
   return (
@@ -480,7 +497,7 @@ export function TrainingScene() {
         enablePan={false}
       />
 
-      <ArenaGround />
+      <TrainingWorld />
 
       {isTank ? <TrainingTank /> : <TrainingSoldier />}
       <ProjectileTrails />

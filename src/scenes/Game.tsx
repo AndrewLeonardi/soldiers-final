@@ -80,7 +80,11 @@ function SceneRouter({ orbitingRef }: { orbitingRef: React.MutableRefObject<bool
   }
 
   if (phase === 'training') {
-    return <TrainingCamera />
+    return (
+      <Physics gravity={[0, -15, 0]}>
+        <TrainingCamera />
+      </Physics>
+    )
   }
 
   if (phase === 'worldSelect') {
