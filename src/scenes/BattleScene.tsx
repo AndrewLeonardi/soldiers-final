@@ -13,6 +13,7 @@ import { SoldierBody } from '@three/physics/SoldierBody'
 import { WorldRenderer } from '@three/worlds/WorldRenderer'
 import { worldRegistry } from '@config/worlds'
 import { damagePropsInRadius } from '@engine/physics/propState'
+import { applySteering, detectStuck } from '@engine/ai/steering'
 import { ProjectileMesh } from '@three/models/ProjectileMesh'
 import { Intel } from '@three/models/Intel'
 import { GhostPreview } from '@three/models/GhostPreview'
@@ -59,6 +60,7 @@ interface BattleUnit extends GameUnit {
   isTrained: boolean
   shotsFired: number
   shotsHit: number
+  stuckTime: number // for flanking behavior (how long blocked by obstacle)
 }
 
 /** Get enemy combat stats: base type stats + weapon overrides for range/damage/fireRate */
@@ -98,6 +100,7 @@ function makeBattleUnit(unit: GameUnit): BattleUnit {
     isTrained,
     shotsFired: 0,
     shotsHit: 0,
+    stuckTime: 0,
   }
 }
 
@@ -424,15 +427,32 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
           enemy.status = 'idle'
         }
       } else {
-        // March toward Intel — Rapier handles wall collision automatically
+        // March toward Intel with steering behaviors
         _tC.copy(INTEL_POS).sub(_tA).normalize()
-        enemy.facingAngle = Math.atan2(_tC.x, _tC.z)
         enemy.status = 'walking'
 
         const body = bodyMapRef.current.get(enemy.id)
         if (body) {
           const curVel = body.linvel()
-          body.setLinvel({ x: _tC.x * enemy.speed, y: curVel.y, z: _tC.z * enemy.speed }, true)
+
+          // Detect if stuck (blocked by wall/prop) and track duration
+          if (detectStuck(curVel.x, curVel.z, enemy.speed)) {
+            enemy.stuckTime += delta
+          } else {
+            enemy.stuckTime = 0
+          }
+
+          // Apply steering behaviors (spread, flanking, wounded wobble)
+          const steered = applySteering(_tC.x, _tC.z, enemy, {
+            allUnits: enemies,
+            underFire: enemy.stateAge < 1.0, // recently took damage
+            stuckTime: enemy.stuckTime,
+          })
+
+          enemy.facingAngle = Math.atan2(steered.x, steered.z)
+          body.setLinvel({ x: steered.x * enemy.speed, y: curVel.y, z: steered.z * enemy.speed }, true)
+        } else {
+          enemy.facingAngle = Math.atan2(_tC.x, _tC.z)
         }
 
         // Check defeat condition
