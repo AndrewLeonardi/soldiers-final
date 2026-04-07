@@ -7,6 +7,7 @@ import { useGameStore } from '@stores/gameStore'
 import { useRosterStore } from '@stores/rosterStore'
 import { NeuralNet } from '@engine/ml/neuralNet'
 import { SoldierUnit } from '@three/models/SoldierUnit'
+import { TankUnit } from '@three/models/TankUnit'
 import { WallDefense, SandbagDefense, WatchTower, type WallBlock } from '@three/models/Defenses'
 import { GROUP_ENV } from '@three/physics/collisionGroups'
 import { SoldierBody } from '@three/physics/SoldierBody'
@@ -1125,19 +1126,31 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
         )
         if (unit.type === 'sandbag') return <SandbagDefense key={unit.id} position={unit.position} rotation={unit.rotation} />
         if (unit.type === 'tower') return <WatchTower key={unit.id} position={unit.position} rotation={unit.rotation} />
+        const isTank = unit.weapon === 'tank'
         return (
           <SoldierBody key={unit.id} unitId={unit.id} position={unit.position}
-            isDead={unit.status === 'dead'} onBodyReady={handleBodyReady} onBodyRemoved={handleBodyRemoved}>
-            <SoldierUnit unit={unit} physicsControlled />
+            isDead={unit.status === 'dead'} colliderType={isTank ? 'box' : 'capsule'}
+            onBodyReady={handleBodyReady} onBodyRemoved={handleBodyRemoved}>
+            {isTank
+              ? <TankUnit unit={unit} physicsControlled />
+              : <SoldierUnit unit={unit} physicsControlled />
+            }
           </SoldierBody>
         )
       })}
-      {renderEnemies.map((unit) => (
-        <SoldierBody key={unit.id} unitId={unit.id} position={unit.position}
-          isDead={unit.status === 'dead'} onBodyReady={handleBodyReady} onBodyRemoved={handleBodyRemoved}>
-          <SoldierUnit unit={unit} physicsControlled />
-        </SoldierBody>
-      ))}
+      {renderEnemies.map((unit) => {
+        const isTank = unit.weapon === 'tank' || unit.type === 'tank' as any
+        return (
+          <SoldierBody key={unit.id} unitId={unit.id} position={unit.position}
+            isDead={unit.status === 'dead'} colliderType={isTank ? 'box' : 'capsule'}
+            onBodyReady={handleBodyReady} onBodyRemoved={handleBodyRemoved}>
+            {isTank
+              ? <TankUnit unit={unit} physicsControlled />
+              : <SoldierUnit unit={unit} physicsControlled />
+            }
+          </SoldierBody>
+        )
+      })}
 
       {/* Projectiles */}
       {renderProjectiles.map((p) => (

@@ -11,13 +11,15 @@
  * Dead soldiers are fully physics-driven (gravity + impulse + collisions).
  */
 import { useRef, useEffect, type ReactNode } from 'react'
-import { RigidBody, CapsuleCollider, type RapierRigidBody } from '@react-three/rapier'
+import { RigidBody, CapsuleCollider, CuboidCollider, type RapierRigidBody } from '@react-three/rapier'
 import { GROUP_SOLDIER } from './collisionGroups'
 
 interface SoldierBodyProps {
   unitId: string
   position: [number, number, number]
   isDead: boolean
+  /** 'capsule' for soldiers, 'box' for tanks */
+  colliderType?: 'capsule' | 'box'
   /** Register the rigid body handle so BattleScene can drive it */
   onBodyReady: (id: string, body: RapierRigidBody) => void
   onBodyRemoved: (id: string) => void
@@ -25,7 +27,7 @@ interface SoldierBodyProps {
 }
 
 export function SoldierBody({
-  unitId, position, isDead,
+  unitId, position, isDead, colliderType = 'capsule',
   onBodyReady, onBodyRemoved, children,
 }: SoldierBodyProps) {
   const bodyRef = useRef<RapierRigidBody>(null!)
@@ -64,7 +66,10 @@ export function SoldierBody({
       ccd
       mass={1}
     >
-      <CapsuleCollider args={[0.15, 0.25]} position={[0, 0.4, 0]} />
+      {colliderType === 'box'
+        ? <CuboidCollider args={[0.5, 0.2, 0.35]} position={[0, 0.2, 0]} />
+        : <CapsuleCollider args={[0.15, 0.25]} position={[0, 0.4, 0]} />
+      }
       {children}
     </RigidBody>
   )
