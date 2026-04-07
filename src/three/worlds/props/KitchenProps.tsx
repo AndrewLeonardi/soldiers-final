@@ -14,6 +14,7 @@ import { RigidBody, CuboidCollider, CylinderCollider, useRapier, type RapierRigi
 import * as THREE from 'three'
 import { GROUP_PROP, GROUP_ENV } from '@three/physics/collisionGroups'
 import { registerProp, unregisterProp, getProp } from '@engine/physics/propState'
+import { addStickyZone } from '@engine/physics/stickyZones'
 import { triggerShake } from '@three/effects/ScreenShake'
 import type { PropConfig } from '@config/worlds/types'
 
@@ -147,16 +148,67 @@ export function CoffeeMug({ config }: { config: PropConfig }) {
 }
 
 // ── Syrup Bottle (breaks into sticky zone) ───────────
-// Tall bottle. When destroyed by explosions, it "breaks" and
-// creates a sticky zone that slows movement.
-// For now: a static prop that can be knocked over.
+// When destroyed by explosions, the bottle disappears and creates
+// a visual syrup puddle + sticky zone that slows ALL movement.
 
 export function SyrupBottle({ config }: { config: PropConfig }) {
   const bottleRadius = 0.25
   const bottleHeight = 1.4
+  const groupRef = useRef<THREE.Group>(null!)
+  const bodyRef = useRef<RapierRigidBody>(null!)
+  const puddleRef = useRef<THREE.Mesh>(null!)
+  const destroyed = useRef(false)
+  const stickyRadius = config.params?.stickyRadius ?? 2.0
+
+  // Register with prop state for explosion damage
+  useEffect(() => {
+    registerProp({
+      id: config.id,
+      position: [...config.position],
+      tags: config.tags,
+      health: config.health ?? 40,
+      maxHealth: config.health ?? 40,
+      destroyed: false,
+    })
+    return () => unregisterProp(config.id)
+  }, [config.id])
+
+  // Check for destruction each frame
+  useFrame(() => {
+    if (destroyed.current) return
+    const prop = getProp(config.id)
+    if (prop?.destroyed) {
+      destroyed.current = true
+      // Hide bottle
+      if (groupRef.current) groupRef.current.visible = false
+      if (bodyRef.current) bodyRef.current.setEnabled(false)
+      // Show puddle
+      if (puddleRef.current) puddleRef.current.visible = true
+      // Create sticky zone at current position
+      const pos = bodyRef.current ? bodyRef.current.translation() : { x: config.position[0], y: 0, z: config.position[2] }
+      addStickyZone({
+        id: `sticky-${config.id}`,
+        position: [pos.x, 0.01, pos.z],
+        radius: stickyRadius,
+        speedMultiplier: 0.3,
+      })
+    } else if (prop && bodyRef.current) {
+      // Sync position for damage distance checks
+      const pos = bodyRef.current.translation()
+      prop.position[0] = pos.x
+      prop.position[1] = pos.y
+      prop.position[2] = pos.z
+      // Update puddle position to follow bottle (before it breaks)
+      if (puddleRef.current) {
+        puddleRef.current.position.set(pos.x, 0.02, pos.z)
+      }
+    }
+  })
 
   return (
+    <>
     <RigidBody
+      ref={bodyRef}
       type="dynamic"
       position={config.position}
       collisionGroups={GROUP_PROP}
@@ -167,7 +219,7 @@ export function SyrupBottle({ config }: { config: PropConfig }) {
       friction={0.6}
     >
       <CylinderCollider args={[bottleHeight / 2, bottleRadius]} position={[0, bottleHeight / 2, 0]} />
-
+      <group ref={groupRef}>
       {/* Bottle body */}
       <mesh position={[0, bottleHeight * 0.4, 0]} castShadow receiveShadow>
         <cylinderGeometry args={[bottleRadius, bottleRadius * 1.1, bottleHeight * 0.7, 12]} />
@@ -197,7 +249,15 @@ export function SyrupBottle({ config }: { config: PropConfig }) {
         <planeGeometry args={[bottleRadius * 1.2, bottleHeight * 0.2]} />
         <meshStandardMaterial color={0xffcc44} roughness={0.5} />
       </mesh>
+      </group>
     </RigidBody>
+
+    {/* Syrup puddle (hidden until bottle is destroyed) */}
+    <mesh ref={puddleRef} position={config.position} rotation-x={-Math.PI / 2} visible={false}>
+      <circleGeometry args={[stickyRadius, 24]} />
+      <meshStandardMaterial color={0x8B6914} transparent opacity={0.4} roughness={1.0} />
+    </mesh>
+    </>
   )
 }
 

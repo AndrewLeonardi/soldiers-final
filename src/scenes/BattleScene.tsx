@@ -14,6 +14,7 @@ import { WorldRenderer } from '@three/worlds/WorldRenderer'
 import { worldRegistry } from '@config/worlds'
 import { damagePropsInRadius } from '@engine/physics/propState'
 import { applySteering, detectStuck } from '@engine/ai/steering'
+import { getStickySpeedMultiplier, clearStickyZones } from '@engine/physics/stickyZones'
 import { ProjectileMesh } from '@three/models/ProjectileMesh'
 import { Intel } from '@three/models/Intel'
 import { GhostPreview } from '@three/models/GhostPreview'
@@ -201,6 +202,7 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
     // Clear refs when leaving battle (prevents stale refs across rounds)
     if (phase === 'placement' || phase === 'worldSelect') {
       wallBlocksRef.current.clear()
+      clearStickyZones()
       setExplosions([])
       setSparks([])
       setDustClouds([])
@@ -450,7 +452,10 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
           })
 
           enemy.facingAngle = Math.atan2(steered.x, steered.z)
-          body.setLinvel({ x: steered.x * enemy.speed, y: curVel.y, z: steered.z * enemy.speed }, true)
+          // Apply sticky zone speed reduction
+          const stickyMult = getStickySpeedMultiplier(enemy.position[0], enemy.position[2])
+          const finalSpeed = enemy.speed * stickyMult
+          body.setLinvel({ x: steered.x * finalSpeed, y: curVel.y, z: steered.z * finalSpeed }, true)
         } else {
           enemy.facingAngle = Math.atan2(_tC.x, _tC.z)
         }
