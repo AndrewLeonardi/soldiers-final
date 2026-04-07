@@ -81,16 +81,25 @@ export function ResultScreen() {
             <>
               <button
                 className="result-btn"
-                onPointerDown={(e) => { e.stopPropagation(); resetLevel() }}
+                onPointerDown={(e) => {
+                  e.stopPropagation()
+                  // During tutorial: reset tutorial step so placement UI works
+                  if (tutorialActive) {
+                    useTutorialStore.getState().advanceTo('place-soldier')
+                  }
+                  resetLevel()
+                }}
               >
                 TRY DIFFERENT ARMY?
               </button>
-              <button
-                className="result-btn secondary-btn"
-                onPointerDown={(e) => { e.stopPropagation(); goToWorldSelect() }}
-              >
-                BACK TO MAP
-              </button>
+              {!tutorialActive && (
+                <button
+                  className="result-btn secondary-btn"
+                  onPointerDown={(e) => { e.stopPropagation(); goToWorldSelect() }}
+                >
+                  BACK TO MAP
+                </button>
+              )}
             </>
           )}
         </div>
