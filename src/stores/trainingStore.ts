@@ -70,7 +70,7 @@ export const useTrainingStore = create<TrainingState>((set, get) => ({
   simState: null,
   simConfig: null,
   nn: null,
-  simSpeed: 1,
+  simSpeed: 10,
   graduated: false,
   tickCounter: 0,
 
@@ -111,7 +111,7 @@ export const useTrainingStore = create<TrainingState>((set, get) => ({
       simState,
       simConfig,
       nn,
-      simSpeed: 1,
+      simSpeed: 10,
       graduated: false,
       tickCounter: 0,
     })
