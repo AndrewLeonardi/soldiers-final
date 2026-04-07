@@ -57,7 +57,7 @@ export const BLAST = {
   },
   ROCKET: {
     radius: 3.6,
-    damage: 90,
+    damage: 130,          // high damage — rockets should reliably kill infantry in blast
     unitForce: 10,
     unitYBias: 5,
     blockForce: 16,
@@ -123,10 +123,12 @@ export const RAPIER_BLOCK = {
 
 // ── Helpers ───────────────────────────────────────────────
 
-/** Compute ideal ballistic elevation for a given distance */
+/** Compute ideal ballistic elevation for a given distance.
+ *  Minimum 0.15 rad (~8.6 degrees) so close-range rockets don't fly flat over enemies. */
 export function idealElevation(dist: number): number {
   const arg = (ROCKET_GRAV * dist) / (ROCKET_SPEED * ROCKET_SPEED)
-  return Math.abs(arg) <= 1 ? 0.5 * Math.asin(arg) : 0.6
+  const raw = Math.abs(arg) <= 1 ? 0.5 * Math.asin(arg) : 0.6
+  return Math.max(0.15, raw)
 }
 
 /** Random float in [min, max] */

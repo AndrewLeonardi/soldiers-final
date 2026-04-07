@@ -90,7 +90,7 @@ export function ResultScreen() {
                   resetLevel()
                 }}
               >
-                TRY DIFFERENT ARMY?
+                TRY AGAIN
               </button>
               {!tutorialActive && (
                 <button
