@@ -8,6 +8,7 @@
  */
 
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import { NeuralNet } from '@engine/ml/neuralNet'
 import { GeneticAlgorithm } from '@engine/ml/geneticAlgorithm'
 import { initSim, simTick, scoreFitness } from '@engine/ml/simulationRunner'
@@ -56,7 +57,9 @@ interface TrainingState {
   stopTraining: () => void
 }
 
-export const useTrainingStore = create<TrainingState>((set, get) => ({
+export const useTrainingStore = create<TrainingState>()(
+  persist(
+    (set, get) => ({
   status: 'idle',
   soldierId: null,
   weapon: null,
@@ -249,7 +252,24 @@ export const useTrainingStore = create<TrainingState>((set, get) => ({
       fitnessHistory: [],
     })
   },
-}))
+}),
+    {
+      name: 'toy-soldiers-training',
+      partialize: (state) => ({
+        status: state.status === 'running' ? 'paused' : state.status,
+        soldierId: state.soldierId,
+        weapon: state.weapon,
+        generation: state.generation,
+        population: state.population,
+        currentIndividual: state.currentIndividual,
+        bestFitness: state.bestFitness,
+        bestWeights: state.bestWeights,
+        fitnessHistory: state.fitnessHistory,
+        // Don't persist: simState, simConfig, nn, fitnesses (reconstructed on resume)
+      }),
+    },
+  ),
+)
 
 // Dev testing helper
 if (typeof window !== 'undefined' && import.meta.env.DEV) {
