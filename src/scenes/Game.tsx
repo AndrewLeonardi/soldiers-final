@@ -21,6 +21,7 @@ import { TutorialOverlay } from '@ui/TutorialOverlay'
 import { useTutorialStore } from '@stores/tutorialStore'
 import { ScreenShake } from '@three/effects/ScreenShake'
 import { Store } from '@ui/Store'
+import { WorldSelect } from '@ui/WorldSelect'
 import { resumeOnInteraction } from '@audio/context'
 
 // Camera controller for training arena
@@ -159,6 +160,7 @@ export default function Game() {
       </Canvas>
 
       {/* HTML UI overlay */}
+      <WorldSelect />
       <Store />
       <BarracksScreen />
       <SoldierDetail />

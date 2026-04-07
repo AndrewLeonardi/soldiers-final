@@ -31,7 +31,7 @@ export interface Wave {
 }
 
 export interface StarCriteria {
-  type: 'survive' | 'budget_remaining' | 'objective'
+  type: 'win' | 'survive' | 'no_losses' | 'budget_remaining' | 'objective' | 'time_limit' | 'edge_kills' | 'chain_reactions' | 'unit_limit' | 'no_walls' | 'prop_kills'
   threshold?: number
   desc?: string
 }

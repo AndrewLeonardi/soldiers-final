@@ -1,0 +1,41 @@
+/**
+ * PropRenderer — dispatches PropConfig to the right 3D component.
+ *
+ * Each prop type has a dedicated component that renders visuals +
+ * Rapier colliders. Tags determine physics behavior (knockable,
+ * destructible, explosive, sticky, launcher).
+ *
+ * Adding a new prop type = add a component + register it here.
+ */
+import type { PropConfig } from '@config/worlds/types'
+import { CerealBox } from './KitchenProps'
+import { CoffeeMug } from './KitchenProps'
+import { SyrupBottle } from './KitchenProps'
+
+// Registry: prop type string -> React component
+const PROP_COMPONENTS: Record<string, React.FC<{ config: PropConfig }>> = {
+  cereal_box: CerealBox,
+  coffee_mug: CoffeeMug,
+  syrup_bottle: SyrupBottle,
+  // workshop props (Phase 2):
+  // tape_measure: TapeMeasure,
+  // hammer: Hammer,
+  // rolling_dowel: RollingDowel,
+  // backyard props (Phase 2):
+  // flower_pot: FlowerPot,
+  // soda_can: SodaCan,
+  // garden_hose: GardenHose,
+}
+
+interface PropRendererProps {
+  config: PropConfig
+}
+
+export function PropRenderer({ config }: PropRendererProps) {
+  const Component = PROP_COMPONENTS[config.type]
+  if (!Component) {
+    console.warn(`Unknown prop type: ${config.type}`)
+    return null
+  }
+  return <Component config={config} />
+}

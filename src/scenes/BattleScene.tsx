@@ -10,6 +10,8 @@ import { SoldierUnit } from '@three/models/SoldierUnit'
 import { WallDefense, SandbagDefense, WatchTower, type WallBlock } from '@three/models/Defenses'
 import { GROUP_ENV } from '@three/physics/collisionGroups'
 import { SoldierBody } from '@three/physics/SoldierBody'
+import { WorldRenderer } from '@three/worlds/WorldRenderer'
+import { worldRegistry } from '@config/worlds'
 import { ProjectileMesh } from '@three/models/ProjectileMesh'
 import { Intel } from '@three/models/Intel'
 import { GhostPreview } from '@three/models/GhostPreview'
@@ -98,54 +100,7 @@ function makeBattleUnit(unit: GameUnit): BattleUnit {
   }
 }
 
-// ── Lighting ────────────────────────────────────────────
-function Lights() {
-  return (
-    <>
-      <ambientLight color={0xb8a888} intensity={1.5} />
-      <directionalLight
-        color={0xfff5e0} intensity={3.5} position={[6, 12, 6]}
-        castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024}
-        shadow-camera-near={0.5} shadow-camera-far={35}
-        shadow-camera-left={-14} shadow-camera-right={14}
-        shadow-camera-top={10} shadow-camera-bottom={-10}
-      />
-      <directionalLight color={0x88aacc} intensity={0.8} position={[-6, 8, 3]} />
-      <pointLight color={0xd4aa40} intensity={2.0} position={[-5, 5, -8]} distance={20} />
-    </>
-  )
-}
-
-// ── Ground ──────────────────────────────────────────────
-function SandboxGround() {
-  const geometry = useMemo(() => {
-    const geo = new THREE.PlaneGeometry(20, 14, 60, 40)
-    const pos = geo.attributes.position as THREE.BufferAttribute
-    for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i)
-      const y = pos.getY(i)
-      let height = (Math.random() - 0.5) * 0.06
-      height += 0.2 * Math.exp(-((x + 4) ** 2 + (y - 1) ** 2) / 3)
-      height += 0.15 * Math.exp(-((x - 1) ** 2 + (y + 2) ** 2) / 4)
-      height += 0.12 * Math.exp(-((x - 6) ** 2 + y ** 2) / 5)
-      pos.setZ(i, pos.getZ(i) + height)
-    }
-    geo.computeVertexNormals()
-    return geo
-  }, [])
-
-  return (
-    <>
-      <mesh geometry={geometry} rotation-x={-Math.PI / 2} receiveShadow>
-        <meshStandardMaterial color={0xd2b48c} roughness={0.9} metalness={0} />
-      </mesh>
-      {/* Ground collider sized to table edges — soldiers past the edge fall off */}
-      <RigidBody type="fixed" position={[-0.25, -0.05, 0]} collisionGroups={GROUP_ENV}>
-        <CuboidCollider args={[8.75, 0.05, 6]} />
-      </RigidBody>
-    </>
-  )
-}
+// (Lights + SandboxGround removed — WorldRenderer handles environment)
 
 // ── Player Zone ─────────────────────────────────────────
 function PlayerZone({ visible }: { visible: boolean }) {
@@ -177,6 +132,8 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
   const selectedPlacement = useGameStore((s) => s.selectedPlacement)
   const placementRotation = useGameStore((s) => s.placementRotation)
   const placeSoldier = useGameStore((s) => s.placeSoldier)
+  const currentWorldId = useGameStore((s) => s.currentWorldId)
+  const currentWorldConfig = currentWorldId ? worldRegistry.getWorld(currentWorldId) : undefined
 
   // ── Mutable battle state (NOT in Zustand -- mutated every frame) ──
   const playersRef = useRef<BattleUnit[]>([])
@@ -1012,13 +969,19 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
 
   return (
     <>
-      <Lights />
-      <CameraRig orbitingRef={orbitingRef} />
-      <SandboxGround />
-      <Intel />
+      {/* World environment (ground, lighting, sky, props) */}
+      {currentWorldConfig && <WorldRenderer worldConfig={currentWorldConfig} />}
+      {!currentWorldConfig && (
+        <>
+          {/* Fallback: minimal ground if no world loaded */}
+          <ambientLight intensity={0.6} />
+          <directionalLight position={[5, 10, 5]} intensity={1.2} castShadow />
+          <color attach="background" args={[0x88bbdd]} />
+        </>
+      )}
 
-      <color attach="background" args={[0x88bbdd]} />
-      <fog attach="fog" args={[0xd4c8a0, 18, 40]} />
+      <CameraRig orbitingRef={orbitingRef} />
+      <Intel />
 
       <PlayerZone visible={isPlacing} />
       <GhostPreview selectedType={selectedPlacement} placementRotation={placementRotation} />

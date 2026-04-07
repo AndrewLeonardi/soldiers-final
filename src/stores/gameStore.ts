@@ -1,16 +1,26 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { GamePhase, GameUnit, PlacementSlot, Projectile, LevelConfig } from '@config/types'
+import { worldRegistry } from '@config/worlds'
 import { useRosterStore } from './rosterStore'
 import { WEAPON_STATS } from '@config/units'
 
 let _unitId = Date.now()
 function nextUnitId() { return `u-${++_unitId}` }
 
+interface WorldProgress {
+  battles: Record<string, { completed: boolean; bestStars: number }>
+}
+
 interface GameState {
   phase: GamePhase
   gold: number
   compute: number
+
+  // World/Battle navigation
+  currentWorldId: string | null
+  currentBattleId: string | null
+  worldProgress: Record<string, WorldProgress>
 
   // Store / Economy
   lastDailyClaimTime: number  // Unix timestamp (ms)
@@ -58,14 +68,20 @@ interface GameState {
   placeSoldier: (soldierId: string, position: [number, number, number]) => void
   placeDefense: (type: 'wall' | 'sandbag' | 'tower', position: [number, number, number]) => void
   removePlayerUnit: (unitId: string) => void
-  // Navigation
+  // World/Battle navigation
+  selectBattle: (battleId: string) => void
+  completeBattle: (battleId: string, stars: number) => void
   goToWorldSelect: () => void
+  nextBattle: () => void
 }
 
 export const useGameStore = create<GameState>()(
   persist(
     (set, get) => ({
   phase: 'worldSelect' as GamePhase,
+  currentWorldId: null,
+  currentBattleId: null,
+  worldProgress: {},
   gold: 0,
   compute: 500,
 
@@ -278,8 +294,79 @@ export const useGameStore = create<GameState>()(
     }
   }),
 
-  // ── Navigation ──
-  goToWorldSelect: () => set({ phase: 'worldSelect' }),
+  // ── World/Battle Navigation ──
+
+  selectBattle: (battleId) => {
+    const battle = worldRegistry.getBattle(battleId)
+    if (!battle) return
+    const world = worldRegistry.getWorld(battle.worldId)
+    if (!world) return
+
+    // Convert BattleConfig to LevelConfig shape for compatibility
+    const levelConfig = {
+      id: battle.id,
+      theme: world.id,
+      name: battle.name,
+      placement_slots: battle.placementZones.map(z => ({
+        id: z.id,
+        pos: z.position,
+        type: 'ground' as const,
+      })),
+      waves: battle.waves.map(w => ({
+        delay: w.delay,
+        enemies: w.enemies.map(e => ({
+          type: e.type,
+          count: e.count,
+          spacing: e.spacing,
+          path: 'default',
+          weapon: e.weapon,
+        })),
+      })),
+      available_units: ['rifle', 'rocketLauncher', 'grenade', 'machineGun', 'tank'],
+      budget: battle.budget,
+      stars: battle.stars,
+    }
+
+    set({
+      currentWorldId: world.id,
+      currentBattleId: battle.id,
+    })
+    get().loadLevel(levelConfig)
+  },
+
+  completeBattle: (battleId, stars) => set((s) => {
+    const battle = worldRegistry.getBattle(battleId)
+    if (!battle) return {}
+    const worldId = battle.worldId
+    const prev = s.worldProgress[worldId]?.battles[battleId]
+    return {
+      worldProgress: {
+        ...s.worldProgress,
+        [worldId]: {
+          battles: {
+            ...(s.worldProgress[worldId]?.battles ?? {}),
+            [battleId]: {
+              completed: true,
+              bestStars: Math.max(prev?.bestStars ?? 0, stars),
+            },
+          },
+        },
+      },
+    }
+  }),
+
+  goToWorldSelect: () => set({ phase: 'worldSelect', currentWorldId: null, currentBattleId: null }),
+
+  nextBattle: () => {
+    const { currentBattleId } = get()
+    if (!currentBattleId) return
+    const nextId = worldRegistry.getNextBattle(currentBattleId)
+    if (nextId) {
+      get().selectBattle(nextId)
+    } else {
+      get().goToWorldSelect()
+    }
+  },
     }),
     {
       name: 'toy-soldiers-game',
@@ -304,6 +391,7 @@ export const useGameStore = create<GameState>()(
         gold: state.gold,
         compute: state.compute,
         lastDailyClaimTime: state.lastDailyClaimTime,
+        worldProgress: state.worldProgress,
       }),
     }
   )
