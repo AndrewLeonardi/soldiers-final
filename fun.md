@@ -441,6 +441,35 @@ battle restricts differently:
 
 ---
 
+## Campaign Map (navigation between battles)
+
+The game uses an **Angry Birds-style campaign map** — a winding path
+with battle nodes, stars showing progress, and locked/unlocked states.
+This is NOT a simple grid of buttons. It's a visual journey.
+
+**What the map shows:**
+- A path winding through themed sections (kitchen → workshop → backyard)
+- Each battle is a NODE on the path with 0-3 stars displayed
+- Locked battles are greyed out until the previous one is completed
+- The path itself changes visual theme as it enters each world section
+  (warm wood texture for kitchen, metal for workshop, grass for backyard)
+- Decorative props from each world appear around the path
+  (tiny cereal boxes near kitchen nodes, little hammers near workshop)
+
+**Why this matters for polish:**
+- The map IS the game's home screen for returning players
+- It shows progress at a glance ("I'm halfway through Workshop")
+- It creates anticipation ("what's that locked node with the tank icon?")
+- It makes the 6 battles feel like a JOURNEY, not a menu
+
+**Implementation note:** The old LevelSelect component (deleted) was
+this pattern. The new WorldSelect component is a placeholder — it
+needs to be rebuilt as a proper campaign map with the path visual,
+world-themed sections, and node progression. This is ship-critical
+polish, not a nice-to-have.
+
+---
+
 ## The Retry Loop
 
 - **Instant:** death-to-gameplay under 1 second
@@ -493,7 +522,9 @@ the game because they want to train THEIR soldier to do that.
 - [ ] Backyard config + props (soda can, flower pot, garden hose)
 - [ ] Slope + wind mechanics for Backyard
 
-### P4: Polish + juice
+### P4: Campaign map + ship polish
+- [ ] Replace WorldSelect placeholder with Angry Birds-style campaign
+      map (path with nodes, world-themed sections, star progress)
 - [ ] Kill feed messages ("SGT RICO fell off the table!")
 - [ ] Near-miss feedback (visual + audio)
 - [ ] Soldier stat tracking across battles
