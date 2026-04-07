@@ -1,0 +1,259 @@
+/* ══════════════════════════════════════════════
+   CAMPAIGN MAP -- Angry Birds-style path map
+   with world-themed sections and battle nodes
+   ══════════════════════════════════════════════ */
+
+/* ── Overlay & layered background ── */
+
+.cm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  overflow: hidden;
+}
+
+.cm-bg-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.cm-bg-sky {
+  background: linear-gradient(
+    180deg,
+    #0a1a0a 0%,
+    #122212 15%,
+    #1a3018 40%,
+    #1e3520 60%
+  );
+}
+
+.cm-bg-dunes {
+  background:
+    radial-gradient(ellipse 70% 15% at 20% 75%, #2a4020 0%, transparent 100%),
+    radial-gradient(ellipse 60% 12% at 75% 70%, #253a1a 0%, transparent 100%),
+    radial-gradient(ellipse 80% 18% at 50% 80%, #2a3a1e 0%, transparent 100%);
+}
+
+.cm-bg-ground {
+  background: linear-gradient(
+    180deg,
+    transparent 55%,
+    #2a3a1a 70%,
+    #3a4a28 85%,
+    #2a3a1a 100%
+  );
+}
+
+.cm-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 70% 60% at 50% 50%,
+    transparent 0%,
+    rgba(0, 0, 0, 0.4) 100%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── Container ── */
+
+.cm-container {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 0.8rem 0.5rem;
+}
+
+/* ── Title banner ── */
+
+.cm-banner {
+  position: relative;
+  margin-bottom: 0.3rem;
+  animation: cmBannerDrop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.cm-banner-inner {
+  text-align: center;
+  padding: 0.6rem 2.5rem;
+  background: linear-gradient(180deg,
+    rgba(30, 50, 25, 0.85) 0%,
+    rgba(20, 35, 15, 0.9) 100%
+  );
+  border: 2px solid rgba(139, 170, 106, 0.3);
+  border-bottom: 3px solid rgba(42, 80, 32, 0.8);
+  border-radius: 8px;
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.cm-title {
+  font-family: 'Black Ops One', 'Impact', sans-serif;
+  font-size: 2.2rem;
+  color: #d4aa40;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  text-shadow:
+    0 2px 0 #8a6a20,
+    0 4px 12px rgba(0, 0, 0, 0.6),
+    0 0 30px rgba(212, 170, 64, 0.15);
+  line-height: 1;
+}
+
+.cm-subtitle {
+  font-family: 'Black Ops One', 'Impact', sans-serif;
+  font-size: 0.65rem;
+  color: #7a7a5a;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-top: 0.2rem;
+}
+
+/* ── SVG Map ── */
+
+.cm-map {
+  flex: 1;
+  width: 100%;
+  max-height: calc(100vh - 100px);
+}
+
+/* ── Node styles ── */
+
+.cm-node {
+  cursor: default;
+  opacity: 0;
+  transform-origin: center;
+  animation: cmNodePop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.cm-node.unlocked {
+  cursor: pointer;
+}
+
+.cm-node.current {
+  animation:
+    cmNodePop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both,
+    cmNodeBob 3s ease-in-out infinite 0.8s;
+}
+
+.cm-glow-outer {
+  fill: none;
+  stroke: #d4aa40;
+  stroke-width: 2;
+  opacity: 0;
+  animation: cmGlowPulse 2.5s ease-in-out infinite;
+}
+
+.cm-glow-inner {
+  fill: none;
+  stroke: #d4aa40;
+  stroke-width: 1.5;
+  opacity: 0;
+  animation: cmGlowPulse 2.5s ease-in-out infinite 0.4s;
+}
+
+.cm-sparkle {
+  opacity: 0;
+  animation: cmSparkle 2s ease-in-out infinite;
+}
+
+.cm-star-earned polygon {
+  animation: cmStarGlow 2s ease-in-out infinite;
+}
+
+.cm-number {
+  font-family: 'Black Ops One', 'Impact', sans-serif;
+  fill: #d4aa40;
+  pointer-events: none;
+}
+
+.cm-node.locked .cm-number {
+  fill: #444;
+}
+
+.cm-name {
+  font-family: 'Black Ops One', 'Impact', sans-serif;
+  font-size: 7px;
+  fill: #aaa88a;
+  letter-spacing: 0.12em;
+  pointer-events: none;
+}
+
+.cm-world-label {
+  font-family: 'Black Ops One', 'Impact', sans-serif;
+  font-size: 9px;
+  fill: #d4aa40;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.cm-flag {
+  transform-origin: 0% 50%;
+  animation: cmFlagWave 2s ease-in-out infinite;
+}
+
+.cm-node.unlocked:active {
+  transform: scale(0.92);
+  transition: transform 0.1s ease;
+}
+
+/* ══════════════════════════════════════
+   KEYFRAME ANIMATIONS
+   ══════════════════════════════════════ */
+
+@keyframes cmBannerDrop {
+  0% { opacity: 0; transform: translateY(-30px) scale(0.9); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes cmNodePop {
+  0% { opacity: 0; transform: scale(0) translateY(20px); }
+  60% { opacity: 1; transform: scale(1.1) translateY(-3px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes cmNodeBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes cmGlowPulse {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes cmSparkle {
+  0%, 20%, 100% { opacity: 0; transform: scale(0.5); }
+  10% { opacity: 0.8; transform: scale(1.2); }
+  15% { opacity: 0.4; transform: scale(0.8); }
+}
+
+@keyframes cmStarGlow {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.3); }
+}
+
+@keyframes cmFlagWave {
+  0%, 100% { transform: scaleX(1) skewY(0deg); }
+  25% { transform: scaleX(0.92) skewY(2deg); }
+  75% { transform: scaleX(1.04) skewY(-1deg); }
+}
+
+@media (max-height: 600px) {
+  .cm-title { font-size: 1.6rem; }
+  .cm-banner-inner { padding: 0.4rem 1.5rem; }
+}
+
+@media (min-width: 768px) {
+  .cm-container { max-width: 600px; }
+  .cm-title { font-size: 2.8rem; }
+}
