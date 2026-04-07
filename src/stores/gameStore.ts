@@ -38,6 +38,14 @@ interface GameState {
   starsEarned: number
   battleStartTime: number
 
+  // Battle HUD (updated every ~100ms during combat)
+  battleHUD: {
+    enemiesAlive: number
+    currentWave: number
+    totalWaves: number
+    elapsedTime: number
+  }
+
   // Placement state
   selectedPlacement: string | null
   placementRotation: number
@@ -68,6 +76,9 @@ interface GameState {
   placeSoldier: (soldierId: string, position: [number, number, number]) => void
   placeDefense: (type: 'wall' | 'sandbag' | 'tower', position: [number, number, number]) => void
   removePlayerUnit: (unitId: string) => void
+  // Battle HUD
+  updateBattleHUD: (data: { enemiesAlive: number; currentWave: number; totalWaves: number; elapsedTime: number }) => void
+
   // World/Battle navigation
   selectBattle: (battleId: string) => void
   completeBattle: (battleId: string, stars: number) => void
@@ -99,6 +110,7 @@ export const useGameStore = create<GameState>()(
   result: null,
   starsEarned: 0,
   battleStartTime: 0,
+  battleHUD: { enemiesAlive: 0, currentWave: 0, totalWaves: 0, elapsedTime: 0 },
 
   selectedPlacement: null,
   placementRotation: 0,
@@ -293,6 +305,9 @@ export const useGameStore = create<GameState>()(
       gold: newGold,
     }
   }),
+
+  // ── Battle HUD ──
+  updateBattleHUD: (data) => set({ battleHUD: data }),
 
   // ── World/Battle Navigation ──
 

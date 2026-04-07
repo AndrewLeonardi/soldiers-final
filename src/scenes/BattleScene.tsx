@@ -1043,6 +1043,13 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
     if (renderTickTimer.current > 0.1) {
       renderTickTimer.current = 0
       setRenderTick((t) => t + 1)
+      // Update battle HUD
+      useGameStore.getState().updateBattleHUD({
+        enemiesAlive: enemies.filter(e => e.status !== 'dead').length,
+        currentWave: wavesSpawned.current.size,
+        totalWaves: level?.waves.length ?? 0,
+        elapsedTime: battleTimeRef.current,
+      })
     }
 
     // ── Performance monitoring ──
