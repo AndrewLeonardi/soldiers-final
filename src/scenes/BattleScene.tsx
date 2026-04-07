@@ -179,6 +179,10 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
   const [dustClouds, setDustClouds] = useState<DustData[]>([])
   const dustIdRef = useRef(0)
 
+  // Star criteria tracking
+  const edgeKillsRef = useRef(0)
+  const chainReactionsRef = useRef(0)
+
   // Victory slow-mo + confetti
   const victorySlowMo = useRef(false)
   const slowMoStartTime = useRef(0)
@@ -194,6 +198,8 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
       battleTimeRef.current = 0
       wavesSpawned.current.clear()
       battleActive.current = true
+      edgeKillsRef.current = 0
+      chainReactionsRef.current = 0
       _eid = 1000
       _pid = 5000
     } else {
@@ -779,6 +785,7 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
       for (const prop of destroyedProps) {
         // Explosive props trigger chain reaction!
         if (prop.tags.includes('explosive') && prop.onExplode) {
+          chainReactionsRef.current++
           prop.onExplode(prop.position, 4.0, 10.0)
         }
       }
@@ -971,6 +978,7 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
       if (unit.position[1] < FALL_DEATH_Y && unit.status !== 'dead') {
         unit.health = 0
         unit.status = 'dead'
+        if (unit.team === 'tan') edgeKillsRef.current++
         unit.stateAge = 0
         sfx.fallScream()
       }
@@ -986,23 +994,40 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
       const allSurvived = livingPlayers.length === players.length
 
       // Evaluate star criteria from level config
+      const evaluateCriteria = (c: { type: string; threshold?: number }): boolean => {
+        switch (c.type) {
+          case 'win':
+          case 'survive':
+            return true // we're in the victory block
+          case 'no_losses':
+            return allSurvived
+          case 'edge_kills':
+            return edgeKillsRef.current >= (c.threshold ?? 1)
+          case 'chain_reactions':
+            return chainReactionsRef.current >= (c.threshold ?? 1)
+          case 'unit_limit':
+            return players.length <= (c.threshold ?? 3)
+          case 'time_limit':
+            return battleTimeRef.current <= (c.threshold ?? 60)
+          case 'no_walls':
+            return !players.some(p => p.type === 'wall' || p.type === 'sandbag')
+          case 'budget_remaining':
+            return store.gold >= (c.threshold ?? 0)
+          case 'prop_kills':
+            return false // future feature
+          default:
+            return true
+        }
+      }
+
       let stars = 0
       const sc = level?.stars
       if (sc) {
-        // Star 1: survive (always granted on victory)
-        if (sc.one.type === 'survive') stars = 1
-        // Star 2
-        if (stars >= 1) {
-          if (sc.two.type === 'budget_remaining' && store.gold >= (sc.two.threshold ?? 0)) stars = 2
-          else if (sc.two.type === 'objective' && sc.two.desc === 'No soldiers lost' && allSurvived) stars = 2
-        }
-        // Star 3
-        if (stars >= 2) {
-          if (sc.three.type === 'objective' && sc.three.desc === 'No soldiers lost' && allSurvived) stars = 3
-          else if (sc.three.type === 'budget_remaining' && store.gold >= (sc.three.threshold ?? 0)) stars = 3
-        }
+        if (evaluateCriteria(sc.one)) stars = 1
+        if (stars >= 1 && evaluateCriteria(sc.two)) stars = 2
+        if (stars >= 2 && evaluateCriteria(sc.three)) stars = 3
       } else {
-        stars = 1 // fallback
+        stars = 1
       }
 
       // Start slow-mo instead of immediate result (unless already in slow-mo)
