@@ -23,7 +23,7 @@ export const WALL_HIT_RADIUS = 0.3
 // ── Map geometry ──────────────────────────────────────────
 export const INTEL_POS_ARRAY: [number, number, number] = [-7, 0, 0]
 export const LOSE_THRESHOLD = 1.5
-export const SPAWN_X = 8
+export const SPAWN_X = 6.5
 export const TABLE_EDGE_X = 8.5     // right edge (ground plane is ±10, but tighter for gameplay)
 export const TABLE_EDGE_Z = 6.0    // front/back edges (ground is ±7)
 export const TABLE_EDGE_LEFT = -9.0 // left edge

@@ -228,7 +228,7 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
         victorySlowMo.current = false
         const level = useGameStore.getState().level
         useGameStore.getState().setResult('victory', pendingStars.current)
-        // TODO: world engine — completeBattle(level.id, pendingStars.current)
+        if (level) useGameStore.getState().completeBattle(level.id, pendingStars.current)
         sfx.graduationFanfare()
         setShowConfetti(true)
         battleActive.current = false

@@ -8,10 +8,12 @@
  *
  * These aren't scenery — they're weapons, hazards, and punchlines.
  */
-import { useRef, useMemo } from 'react'
-import { RigidBody, CuboidCollider, CylinderCollider, type RapierRigidBody } from '@react-three/rapier'
+import { useRef, useCallback } from 'react'
+import { useFrame } from '@react-three/fiber'
+import { RigidBody, CuboidCollider, CylinderCollider, useRapier, type RapierRigidBody } from '@react-three/rapier'
 import * as THREE from 'three'
 import { GROUP_PROP, GROUP_ENV } from '@three/physics/collisionGroups'
+import { triggerShake } from '@three/effects/ScreenShake'
 import type { PropConfig } from '@config/worlds/types'
 
 // ── Cereal Box (destructible cover) ──────────────────
@@ -155,5 +157,110 @@ export function SyrupBottle({ config }: { config: PropConfig }) {
         <meshStandardMaterial color={0xffcc44} roughness={0.5} />
       </mesh>
     </RigidBody>
+  )
+}
+
+// ── Mine (clickable explosive!) ──────────────────────
+// Click to detonate. Applies Rapier impulse to nearby dynamic bodies.
+// All animation uses mutable refs (no React re-renders in hot loop).
+
+export function Mine({ config }: { config: PropConfig }) {
+  const groupRef = useRef<THREE.Group>(null!)
+  const flashRef = useRef<THREE.Mesh>(null!)
+  const mineRef = useRef<THREE.Group>(null!)
+  const state = useRef({ exploded: false, flashAge: -1, done: false })
+  const { world } = useRapier()
+
+  const blastRadius = config.params?.blastRadius ?? 4.0
+  const blastForce = config.params?.blastForce ?? 10.0
+
+  const handleClick = useCallback(() => {
+    if (state.current.exploded) return
+    state.current.exploded = true
+    state.current.flashAge = 0
+    triggerShake(0.2)
+
+    // Hide mine mesh immediately
+    if (mineRef.current) mineRef.current.visible = false
+    // Show flash
+    if (flashRef.current) flashRef.current.visible = true
+
+    // Apply impulse to dynamic bodies in radius
+    const cx = config.position[0]
+    const cy = config.position[1] + 0.2
+    const cz = config.position[2]
+
+    world.bodies.forEach((body) => {
+      if (!body.isDynamic()) return
+      const pos = body.translation()
+      const dx = pos.x - cx
+      const dy = pos.y - cy
+      const dz = pos.z - cz
+      const dist = Math.sqrt(dx * dx + dy * dy + dz * dz)
+      if (dist < blastRadius && dist > 0.01) {
+        const f = ((blastRadius - dist) / blastRadius) * blastForce
+        const invD = 1 / dist
+        body.applyImpulse({
+          x: dx * invD * f,
+          y: Math.max(0.3, dy * invD + 0.5) * f * 0.8,
+          z: dz * invD * f,
+        }, true)
+        body.wakeUp()
+      }
+    })
+  }, [world, config.position, blastRadius, blastForce])
+
+  // Animate flash using refs only (zero React re-renders)
+  useFrame((_, delta) => {
+    const s = state.current
+    if (s.flashAge < 0) return
+    s.flashAge += delta
+    if (flashRef.current) {
+      const scale = 1 + s.flashAge * 12
+      flashRef.current.scale.setScalar(scale)
+      ;(flashRef.current.material as THREE.MeshStandardMaterial).opacity = Math.max(0, 1 - s.flashAge * 3)
+    }
+    if (s.flashAge > 0.4) {
+      s.flashAge = -1
+      s.done = true
+      if (groupRef.current) groupRef.current.visible = false
+    }
+  })
+
+  return (
+    <group ref={groupRef} position={config.position}>
+      {/* Mine body */}
+      <group ref={mineRef}>
+        <mesh
+          position={[0, 0.08, 0]}
+          castShadow
+          onClick={(e) => { e.stopPropagation(); handleClick() }}
+          onPointerOver={() => { document.body.style.cursor = 'pointer' }}
+          onPointerOut={() => { document.body.style.cursor = 'default' }}
+        >
+          <cylinderGeometry args={[0.3, 0.35, 0.15, 12]} />
+          <meshStandardMaterial color={0x556b2f} roughness={0.6} metalness={0.3} />
+        </mesh>
+        {/* Danger stripe */}
+        <mesh position={[0, 0.08, 0]}>
+          <cylinderGeometry args={[0.31, 0.36, 0.05, 12]} />
+          <meshStandardMaterial color={0xccaa00} roughness={0.5} />
+        </mesh>
+        {/* Trigger button */}
+        <mesh position={[0, 0.17, 0]}>
+          <cylinderGeometry args={[0.08, 0.08, 0.04, 8]} />
+          <meshStandardMaterial color={0xcc2222} roughness={0.4} emissive={0xcc2222} emissiveIntensity={0.3} />
+        </mesh>
+      </group>
+
+      {/* Explosion flash (hidden until detonation) */}
+      <mesh ref={flashRef} position={[0, 0.5, 0]} visible={false}>
+        <sphereGeometry args={[0.4, 16, 16]} />
+        <meshStandardMaterial
+          color={0xff6600} transparent opacity={1}
+          emissive={0xff4400} emissiveIntensity={3}
+        />
+      </mesh>
+    </group>
   )
 }

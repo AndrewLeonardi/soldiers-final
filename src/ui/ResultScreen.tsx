@@ -9,6 +9,8 @@ export function ResultScreen() {
   const level = useGameStore((s) => s.level)
   const resetLevel = useGameStore((s) => s.resetLevel)
   const goToWorldSelect = useGameStore((s) => s.goToWorldSelect)
+  const nextBattle = useGameStore((s) => s.nextBattle)
+  const currentBattleId = useGameStore((s) => s.currentBattleId)
   const playerUnits = useGameStore((s) => s.playerUnits)
   const enemyUnits = useGameStore((s) => s.enemyUnits)
 
@@ -60,18 +62,37 @@ export function ResultScreen() {
         )}
 
         <div className="result-buttons">
-          <button
-            className="result-btn"
-            onPointerDown={(e) => { e.stopPropagation(); resetLevel() }}
-          >
-            {isVictory ? 'PLAY AGAIN' : 'TRY AGAIN'}
-          </button>
-          <button
-            className="result-btn secondary-btn"
-            onPointerDown={(e) => { e.stopPropagation(); goToWorldSelect() }}
-          >
-            BACK TO MAP
-          </button>
+          {isVictory ? (
+            <>
+              <button
+                className="result-btn victory-btn"
+                onPointerDown={(e) => { e.stopPropagation(); nextBattle() }}
+              >
+                NEXT BATTLE
+              </button>
+              <button
+                className="result-btn secondary-btn"
+                onPointerDown={(e) => { e.stopPropagation(); resetLevel() }}
+              >
+                PLAY AGAIN
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                className="result-btn"
+                onPointerDown={(e) => { e.stopPropagation(); resetLevel() }}
+              >
+                TRY DIFFERENT ARMY?
+              </button>
+              <button
+                className="result-btn secondary-btn"
+                onPointerDown={(e) => { e.stopPropagation(); goToWorldSelect() }}
+              >
+                BACK TO MAP
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

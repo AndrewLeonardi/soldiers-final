@@ -70,6 +70,28 @@ export const kitchenWorld: WorldConfig = {
       health: 40,
       params: { stickyRadius: 2.0 },
     },
+    // Mines — click to explode! (for testing physics interactions)
+    {
+      id: 'mine-1',
+      type: 'mine',
+      position: [2, 0, 0],
+      tags: ['explosive'],
+      params: { blastRadius: 4.0, blastForce: 10.0 },
+    },
+    {
+      id: 'mine-2',
+      type: 'mine',
+      position: [-1, 0, -2.5],
+      tags: ['explosive'],
+      params: { blastRadius: 4.0, blastForce: 10.0 },
+    },
+    {
+      id: 'mine-3',
+      type: 'mine',
+      position: [4, 0, 2],
+      tags: ['explosive'],
+      params: { blastRadius: 3.5, blastForce: 8.0 },
+    },
   ],
 
   tableFrame: {

@@ -8,15 +8,14 @@
  * Adding a new prop type = add a component + register it here.
  */
 import type { PropConfig } from '@config/worlds/types'
-import { CerealBox } from './KitchenProps'
-import { CoffeeMug } from './KitchenProps'
-import { SyrupBottle } from './KitchenProps'
+import { CerealBox, CoffeeMug, SyrupBottle, Mine } from './KitchenProps'
 
 // Registry: prop type string -> React component
 const PROP_COMPONENTS: Record<string, React.FC<{ config: PropConfig }>> = {
   cereal_box: CerealBox,
   coffee_mug: CoffeeMug,
   syrup_bottle: SyrupBottle,
+  mine: Mine,
   // workshop props (Phase 2):
   // tape_measure: TapeMeasure,
   // hammer: Hammer,

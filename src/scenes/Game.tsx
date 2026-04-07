@@ -104,15 +104,14 @@ export default function Game() {
   useEffect(() => {
     resumeOnInteraction()
     if (!tutorialCompleted) {
-      // First-time player: reset roster synchronously before anything else
-      // (prevents persist hydration from showing stale soldiers)
+      // First-time player: reset roster, load Kitchen Table Battle 1 for tutorial
       useRosterStore.getState().selectSoldier('')
       useRosterStore.setState({ soldiers: [], selectedSoldierId: '', detailSoldierId: null })
-      // TODO: world engine — load first battle for tutorial
+      useGameStore.getState().selectBattle('kitchen-1')
       const t = setTimeout(() => startTutorial(), 100)
       return () => clearTimeout(t)
     } else {
-      // Returning player: go to level select
+      // Returning player: go to world select
       setPhase('worldSelect')
     }
   }, [])
