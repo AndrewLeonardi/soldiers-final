@@ -261,12 +261,12 @@ near the right edge. The training loop TEACHES the battle loop.
 
 ### Current Critical Bugs
 
-1. **Tank doesn't render in battle** — trained tank units are
-   invisible. Player sees bullets from nowhere. Must fix.
-2. **Trained brains not persisted** — closing the browser loses
-   all training progress. Must use localStorage.
-3. **Training arena is a flat empty room** — no connection to the
-   battle worlds. Must use world geometry.
+All previous critical bugs resolved:
+- ~~Tank doesn't render in battle~~ FIXED
+- ~~Trained brains not persisted~~ FIXED (localStorage)
+- ~~Training arena is a flat empty room~~ FIXED (uses world geometry)
+- ~~Enemies walk into walls and get stuck~~ FIXED (flow field navigation)
+- ~~One rocket destroys entire wall~~ FIXED (walls survive 2-3 hits)
 
 ---
 
@@ -567,9 +567,21 @@ the game because they want to train THEIR soldier to do that.
 - [x] Physics test page (/physics-test) proving everything works
 - [x] Battle explosions affect ALL Rapier bodies (surprise engine)
 - [x] Prop state system: destructible, explosive (chain reactions), sticky
-- [x] Enemy steering behaviors: spread, flank, wounded wobble
 - [x] Star criteria evaluation: all types (edge_kills, chain_reactions, etc.)
 - [x] Battle HUD: enemy count, wave progress, timer
+- [x] Dynamic world bounds: all map geometry derived from world config
+- [x] Explosion rebalancing: walls survive 2-3 hits, crumble gradually
+
+### Enemy AI & Navigation
+- [x] BFS flow field pathfinding: enemies navigate AROUND walls and obstacles
+- [x] Per-type behavior profiles: infantry (tactical), jeep (flanking), tank (bulldozer)
+- [x] Infantry cover seeking: duck behind nearest obstacle when under fire
+- [x] Infantry pause behind cover: peek-and-advance tactical movement
+- [x] Jeep flanking arc: perpendicular approach based on spawn position
+- [x] Tank bulldozer: crushes wall blocks and pushes props on contact
+- [x] Dynamic flow field rebuild: field updates when walls are destroyed
+- [x] Spread, improved flanking fallback, wounded wobble steering
+- [x] Multi-directional enemy spawns: right, left, back (spawnSide)
 
 ### Worlds (4 battles across 2 worlds)
 - [x] Kitchen Table: cereal box, coffee mug, syrup bottle, mines
@@ -584,6 +596,7 @@ the game because they want to train THEIR soldier to do that.
 - [x] Default speed 10x (rocket training ~9 min not 90)
 - [x] In-progress training persists to localStorage
 - [x] Tank units visible in battle (TankUnit component)
+- [x] Training target placement uses world bounds (targets stay on table)
 
 ### Game Flow
 - [x] Tutorial: recruit → train → deploy → battle → victory
@@ -596,14 +609,12 @@ the game because they want to train THEIR soldier to do that.
 
 ### Content
 - [ ] Backyard world (3rd world, 2 battles, slopes + wind)
-- [ ] Enemy spawn sides (multi-directional waves)
 - [ ] More star criteria variety per battle
 
 ### Polish
 - [ ] Kill feed messages ("SGT RICO fell off the table!")
 - [ ] Near-miss feedback (visual + audio)
 - [ ] Soldier stat tracking across battles
-- [ ] Per-enemy-type steering (jeeps flank, tanks ignore cover)
 - [ ] Training fitness rewards for edge-push kills
 
 ### Advanced

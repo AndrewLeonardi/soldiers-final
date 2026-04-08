@@ -54,13 +54,22 @@ const TANK_ACCEL = 4.0
 const TANK_FRICTION = 0.92
 const HIT_RADIUS = 0.4
 
-export function initTankSim(): TankSimState {
+/** Optional bounds from world config */
+export interface TrainingBounds {
+  minX: number; maxX: number
+  minZ: number; maxZ: number
+}
+
+const DEFAULT_BOUNDS: TrainingBounds = { minX: 3, maxX: 10, minZ: -4, maxZ: 4 }
+
+export function initTankSim(bounds?: TrainingBounds): TankSimState {
+  const b = bounds ?? DEFAULT_BOUNDS
   const count = 3 + Math.floor(Math.random() * 3)
   const targets: TankTarget[] = []
   for (let i = 0; i < count; i++) {
     targets.push({
-      x: 3 + Math.random() * 7,
-      z: (Math.random() - 0.5) * 8,
+      x: b.minX + Math.random() * (b.maxX - b.minX),
+      z: b.minZ + Math.random() * (b.maxZ - b.minZ),
       alive: true,
     })
   }

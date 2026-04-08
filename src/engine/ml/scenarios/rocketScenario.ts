@@ -47,14 +47,22 @@ const HIT_RADIUS = 0.3
 const SPLASH_RADIUS = 1.5
 const NEAR_MISS_RADIUS = 4.0
 
-export function initRocketSim(): RocketSimState {
-  // Place 3-5 targets at varied positions in the arena
+/** Optional bounds from world config — keeps targets on the table */
+export interface TrainingBounds {
+  minX: number; maxX: number
+  minZ: number; maxZ: number
+}
+
+const DEFAULT_BOUNDS: TrainingBounds = { minX: 2, maxX: 6, minZ: -3, maxZ: 3 }
+
+export function initRocketSim(bounds?: TrainingBounds): RocketSimState {
+  const b = bounds ?? DEFAULT_BOUNDS
   const targetCount = 3 + Math.floor(Math.random() * 3)
   const targets: Target[] = []
   for (let i = 0; i < targetCount; i++) {
     targets.push({
-      x: 2 + Math.random() * 4,       // 2-6 units ahead (within table bounds)
-      z: (Math.random() - 0.5) * 6,   // spread across width (-3 to +3)
+      x: b.minX + Math.random() * (b.maxX - b.minX),
+      z: b.minZ + Math.random() * (b.maxZ - b.minZ),
       alive: true,
     })
   }

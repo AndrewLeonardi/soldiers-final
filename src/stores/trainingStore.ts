@@ -12,11 +12,13 @@ import { persist } from 'zustand/middleware'
 import { NeuralNet } from '@engine/ml/neuralNet'
 import { GeneticAlgorithm } from '@engine/ml/geneticAlgorithm'
 import { initSim, simTick, scoreFitness } from '@engine/ml/simulationRunner'
-import type { SimState, SimConfig } from '@engine/ml/simulationRunner'
+import type { SimState, SimConfig, TrainingBounds } from '@engine/ml/simulationRunner'
 import type { WeaponType } from '@config/types'
 import { WEAPON_TRAINING } from '@config/roster'
 import { useGameStore } from './gameStore'
 import { useRosterStore } from './rosterStore'
+import { worldRegistry } from '@config/worlds'
+import { getWorldBounds } from '@engine/physics/battlePhysics'
 
 const INPUT_SIZE = 6
 const HIDDEN_SIZE = 12
@@ -94,9 +96,22 @@ export const useTrainingStore = create<TrainingState>()(
     const nn = new NeuralNet(INPUT_SIZE, HIDDEN_SIZE, OUTPUT_SIZE)
     nn.setWeights(population[0])
 
+    // Derive training bounds from current world so targets stay on the table
+    const currentWorldId = useGameStore.getState().currentWorldId
+    const worldConfig = currentWorldId ? worldRegistry.getWorld(currentWorldId) : worldRegistry.getWorld('kitchen')
+    const groundSize = worldConfig?.ground.size ?? [16, 12] as [number, number]
+    const wb = getWorldBounds(groundSize)
+    const bounds: TrainingBounds = {
+      minX: 2,
+      maxX: wb.tableEdgeRight - 0.5,
+      minZ: -(wb.tableEdgeZ - 0.5),
+      maxZ: wb.tableEdgeZ - 0.5,
+    }
+
     const simConfig: SimConfig = {
       weaponType: weapon,
       simDuration: config.simDuration,
+      bounds,
     }
     const simState = initSim(simConfig)
 

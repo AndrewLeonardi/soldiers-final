@@ -335,6 +335,7 @@ export const useGameStore = create<GameState>()(
           spacing: e.spacing,
           path: 'default',
           weapon: e.weapon,
+          spawnSide: e.spawnSide,
         })),
       })),
       available_units: ['rifle', 'rocketLauncher', 'grenade', 'machineGun', 'tank'],

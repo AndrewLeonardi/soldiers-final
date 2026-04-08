@@ -43,14 +43,22 @@ const COOLDOWN_TIME = 3.0
 const SPLASH_RADIUS = 2.0
 const NEAR_MISS_RADIUS = 3.5
 
-export function initGrenadeSim(): GrenadeSimState {
-  // Cluster targets closer together to reward splash
+/** Optional bounds from world config */
+export interface TrainingBounds {
+  minX: number; maxX: number
+  minZ: number; maxZ: number
+}
+
+const DEFAULT_BOUNDS: TrainingBounds = { minX: 2, maxX: 7, minZ: -2, maxZ: 2 }
+
+export function initGrenadeSim(bounds?: TrainingBounds): GrenadeSimState {
+  const b = bounds ?? DEFAULT_BOUNDS
   const groups = 1 + Math.floor(Math.random() * 2)
   const targets: GrenadeTarget[] = []
 
   for (let g = 0; g < groups; g++) {
-    const gx = 2 + Math.random() * 5
-    const gz = (Math.random() - 0.5) * 4
+    const gx = b.minX + Math.random() * (b.maxX - b.minX)
+    const gz = b.minZ + Math.random() * (b.maxZ - b.minZ)
     const clusterSize = 2 + Math.floor(Math.random() * 2)
     for (let i = 0; i < clusterSize; i++) {
       targets.push({

@@ -39,17 +39,24 @@ import {
 
 export type SimState = RocketSimState | GrenadeSimState | MGSimState | TankSimState
 
+/** Bounds for target placement — derived from world config */
+export interface TrainingBounds {
+  minX: number; maxX: number
+  minZ: number; maxZ: number
+}
+
 export interface SimConfig {
   weaponType: string
   simDuration: number
+  bounds?: TrainingBounds
 }
 
 export function initSim(config: SimConfig): SimState {
   switch (config.weaponType) {
-    case 'tank': return initTankSim()
-    case 'machineGun': return initMGSim()
-    case 'grenade': return initGrenadeSim()
-    default: return initRocketSim()
+    case 'tank': return initTankSim(config.bounds)
+    case 'machineGun': return initMGSim(config.bounds)
+    case 'grenade': return initGrenadeSim(config.bounds)
+    default: return initRocketSim(config.bounds)
   }
 }
 

@@ -44,14 +44,22 @@ const COOLDOWN_TIME = 0.3
 const BULLET_HIT_RADIUS = 0.25
 const MG_DAMAGE = 15
 
-export function initMGSim(): MGSimState {
-  // Moving targets — MG needs to track and lead
+/** Optional bounds from world config */
+export interface TrainingBounds {
+  minX: number; maxX: number
+  minZ: number; maxZ: number
+}
+
+const DEFAULT_BOUNDS: TrainingBounds = { minX: 4, maxX: 10, minZ: -3, maxZ: 3 }
+
+export function initMGSim(bounds?: TrainingBounds): MGSimState {
+  const b = bounds ?? DEFAULT_BOUNDS
   const count = 3 + Math.floor(Math.random() * 3)
   const targets: MGTarget[] = []
   for (let i = 0; i < count; i++) {
     targets.push({
-      x: 4 + Math.random() * 6,
-      z: (Math.random() - 0.5) * 6,
+      x: b.minX + Math.random() * (b.maxX - b.minX),
+      z: b.minZ + Math.random() * (b.maxZ - b.minZ),
       health: 40 + Math.floor(Math.random() * 20),
       maxHealth: 60,
       alive: true,
