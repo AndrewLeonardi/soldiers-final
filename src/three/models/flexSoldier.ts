@@ -84,6 +84,49 @@ export interface FlexSoldierResult {
   parts: SoldierParts
 }
 
+// ── Dismemberment ──
+
+export type DismemberableLimb = 'leftArm' | 'rightArm' | 'head' | 'leftLeg' | 'rightLeg'
+
+export interface DismembermentState {
+  leftArm: boolean   // true = blown off
+  rightArm: boolean
+  head: boolean
+  leftLeg: boolean
+  rightLeg: boolean
+}
+
+export function createDismembermentState(): DismembermentState {
+  return { leftArm: false, rightArm: false, head: false, leftLeg: false, rightLeg: false }
+}
+
+/** Roll for dismemberment based on damage. Higher damage = higher chance.
+ *  Returns which limb to blow off, or null if nothing happens. */
+export function rollDismemberment(damage: number, current: DismembermentState): DismemberableLimb | null {
+  const chance = Math.min(damage / 200, 0.6)
+  if (Math.random() > chance) return null
+  // Arms weighted 2x, legs 1x, head 0.5x (rarest, most dramatic)
+  const pool: DismemberableLimb[] = []
+  if (!current.leftArm)  { pool.push('leftArm', 'leftArm') }
+  if (!current.rightArm) { pool.push('rightArm', 'rightArm') }
+  if (!current.leftLeg)  { pool.push('leftLeg') }
+  if (!current.rightLeg) { pool.push('rightLeg') }
+  if (!current.head)     { pool.push('head') }
+  if (pool.length === 0) return null
+  return pool[Math.floor(Math.random() * pool.length)]
+}
+
+/** Apply dismemberment visually — hides the limb group */
+export function applyDismemberment(parts: SoldierParts, limb: DismemberableLimb): void {
+  switch (limb) {
+    case 'leftArm':  parts.leftArm.visible = false; break
+    case 'rightArm': parts.rightArm.visible = false; break
+    case 'head':     parts.headGrp.visible = false; break
+    case 'leftLeg':  parts.leftLeg.visible = false; break
+    case 'rightLeg': parts.rightLeg.visible = false; break
+  }
+}
+
 // ============================================================
 // Factory
 // ============================================================

@@ -23,6 +23,7 @@ export interface WaveEnemy {
   spacing?: number
   path: string
   weapon?: WeaponType // defaults to 'rifle' if omitted
+  spawnSide?: 'right' | 'left' | 'back'
 }
 
 export interface Wave {
@@ -67,6 +68,7 @@ export interface GameUnit {
   damage: number
   speed: number
   profileId?: string // links to SoldierProfile.id for roster soldiers
+  hitRecoveryAt?: number // seconds until 'hit' -> 'idle' recovery
 }
 
 export interface SoldierProfile {

@@ -1,7 +1,7 @@
 import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { createFlexSoldier, animateFlexSoldier } from './flexSoldier'
+import { createFlexSoldier, animateFlexSoldier, applyDismemberment, type DismembermentState } from './flexSoldier'
 import { applyWeaponToSoldier } from './weaponMeshes'
 import { TOY } from './materials'
 
@@ -17,6 +17,7 @@ interface UnitLike {
   spinSpeed?: number
   velocity?: [number, number, number]
   stateAge?: number
+  dismemberedParts?: DismembermentState
 }
 
 interface SoldierUnitProps {
@@ -56,6 +57,16 @@ export function SoldierUnit({ unit, physicsControlled = false }: SoldierUnitProp
     const isRagdolling = spin > 0.1 && unit.position[1] > 0.05
     if (!isRagdolling) {
       animateFlexSoldier(soldier, unit.status as any, state.clock.getElapsedTime(), delta)
+    }
+
+    // Apply dismemberment — hide blown-off limbs
+    if (unit.dismemberedParts) {
+      const d = unit.dismemberedParts
+      if (d.leftArm) soldier.parts.leftArm.visible = false
+      if (d.rightArm) soldier.parts.rightArm.visible = false
+      if (d.head) soldier.parts.headGrp.visible = false
+      if (d.leftLeg) soldier.parts.leftLeg.visible = false
+      if (d.rightLeg) soldier.parts.rightLeg.visible = false
     }
 
     // Muzzle flash: bright point light when firing

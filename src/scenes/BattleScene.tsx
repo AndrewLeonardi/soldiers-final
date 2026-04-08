@@ -7,6 +7,8 @@ import { useGameStore } from '@stores/gameStore'
 import { useRosterStore } from '@stores/rosterStore'
 import { NeuralNet } from '@engine/ml/neuralNet'
 import { SoldierUnit } from '@three/models/SoldierUnit'
+import { LimbDebris } from '@three/effects/LimbDebris'
+import { createDismembermentState, rollDismemberment, type DismembermentState, type DismemberableLimb } from '@three/models/flexSoldier'
 import { TankUnit } from '@three/models/TankUnit'
 import { WallDefense, SandbagDefense, WatchTower, type WallBlock } from '@three/models/Defenses'
 import { GROUP_ENV } from '@three/physics/collisionGroups'
@@ -14,7 +16,9 @@ import { SoldierBody } from '@three/physics/SoldierBody'
 import { WorldRenderer } from '@three/worlds/WorldRenderer'
 import { worldRegistry } from '@config/worlds'
 import { damagePropsInRadius } from '@engine/physics/propState'
-import { applySteering, detectStuck } from '@engine/ai/steering'
+import { applySteering, detectStuck, getProfile, isBehindCover, type ObstacleInfo } from '@engine/ai/steering'
+import { createFlowField, rebuildField, getFlowDirection, hasFlow, type FlowField, type FlowObstacle } from '@engine/ai/flowField'
+import { getAllProps } from '@engine/physics/propState'
 import { getStickySpeedMultiplier, clearStickyZones } from '@engine/physics/stickyZones'
 import { ProjectileMesh } from '@three/models/ProjectileMesh'
 import { Intel } from '@three/models/Intel'
@@ -31,17 +35,17 @@ import * as sfx from '@audio/sfx'
 import {
   PROJECTILE_GRAVITY, BULLET_SPEED, ROCKET_SPEED, GRENADE_SPEED,
   MG_BULLET_SPEED, ROCKET_GRAV, PROJECTILE_MAX_AGE, HIT_RADIUS, WALL_HIT_RADIUS,
-  INTEL_POS_ARRAY, LOSE_THRESHOLD, SPAWN_X, FALL_DEATH_Y,
-  TABLE_EDGE_X, TABLE_EDGE_Z, TABLE_EDGE_LEFT,
-  BLAST, SHAKE, RAGDOLL,
+  LOSE_THRESHOLD, FALL_DEATH_Y,
+  BLAST, SHAKE, RAGDOLL, STAGGER,
   idealElevation, randRange, randomDeathType,
+  getWorldBounds, type WorldBounds,
 } from '@engine/physics/battlePhysics'
 import { triggerHitpause, getHitpauseScale } from '@engine/physics/hitpause'
 import { perfMonitor } from '@engine/physics/perfMonitor'
 import type { GameUnit, Projectile, Wave, WaveEnemy, EnemyType, WeaponType } from '@config/types'
 
-// ── Battle constants (derived from physics module) ──────
-const INTEL_POS = new THREE.Vector3(...INTEL_POS_ARRAY)
+// ── Battle constants ──────
+// INTEL_POS is set per-battle from world bounds (see boundsRef)
 
 // Reusable temp vectors (avoids GC pressure in hot loops)
 const _tA = new THREE.Vector3()
@@ -62,7 +66,12 @@ interface BattleUnit extends GameUnit {
   isTrained: boolean
   shotsFired: number
   shotsHit: number
-  stuckTime: number // for flanking behavior (how long blocked by obstacle)
+  stuckTime: number      // for flanking behavior (how long blocked by obstacle)
+  enemyType?: EnemyType  // infantry, jeep, tank — for per-type steering
+  lastHitTime: number    // battle time when last damaged (for underFire detection)
+  coverPauseTime: number // time spent paused behind cover
+  spawnZ: number         // Z position at spawn (for jeep flank direction)
+  dismemberedParts: DismembermentState
 }
 
 /** Get enemy combat stats: base type stats + weapon overrides for range/damage/fireRate */
@@ -103,6 +112,10 @@ function makeBattleUnit(unit: GameUnit): BattleUnit {
     shotsFired: 0,
     shotsHit: 0,
     stuckTime: 0,
+    lastHitTime: -10,
+    coverPauseTime: 0,
+    spawnZ: unit.position[2],
+    dismemberedParts: createDismembermentState(),
   }
 }
 
@@ -141,6 +154,16 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
   const currentWorldId = useGameStore((s) => s.currentWorldId)
   const currentWorldConfig = currentWorldId ? worldRegistry.getWorld(currentWorldId) : undefined
 
+  // ── World bounds (derived from world config, used everywhere) ──
+  const boundsRef = useRef<WorldBounds>(getWorldBounds([16, 12])) // default Kitchen
+  const intelPosRef = useRef(new THREE.Vector3(-6, 0, 0))
+  useEffect(() => {
+    const size = currentWorldConfig?.ground.size ?? [16, 12]
+    const b = getWorldBounds(size)
+    boundsRef.current = b
+    intelPosRef.current.set(b.intelPos[0], b.intelPos[1], b.intelPos[2])
+  }, [currentWorldConfig])
+
   // ── Mutable battle state (NOT in Zustand -- mutated every frame) ──
   const playersRef = useRef<BattleUnit[]>([])
   const enemiesRef = useRef<BattleUnit[]>([])
@@ -154,6 +177,12 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
 
   // Wall block refs for collision detection
   const wallBlocksRef = useRef<Map<string, WallBlock[]>>(new Map())
+
+  // ── Flow Field for enemy navigation ──
+  const flowFieldRef = useRef<FlowField | null>(null)
+  const flowFieldObstaclesRef = useRef<ObstacleInfo[]>([]) // cached for cover-seeking queries
+  const wallIntactStates = useRef<Map<string, boolean>>(new Map())
+  const flowFieldRebuildTimer = useRef(0)
 
   // Rapier rigid body handles for all soldiers (keyed by unit ID)
   const bodyMapRef = useRef<Map<string, RapierRigidBody>>(new Map())
@@ -180,6 +209,11 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
   const [dustClouds, setDustClouds] = useState<DustData[]>([])
   const dustIdRef = useRef(0)
 
+  // Limb debris (dismemberment)
+  interface LimbDebrisData { id: string; position: [number, number, number]; velocity: [number, number, number]; team: 'green' | 'tan'; limb: DismemberableLimb }
+  const [limbDebrisItems, setLimbDebris] = useState<LimbDebrisData[]>([])
+  const limbDebrisIdRef = useRef(0)
+
   // Star criteria tracking
   const edgeKillsRef = useRef(0)
   const chainReactionsRef = useRef(0)
@@ -203,6 +237,50 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
       chainReactionsRef.current = 0
       _eid = 1000
       _pid = 5000
+
+      // ── Build flow field for enemy navigation ──
+      const worldSize = currentWorldConfig?.ground.size ?? [16, 12] as [number, number]
+      const ff = createFlowField(worldSize)
+      flowFieldRef.current = ff
+
+      // Gather obstacles: player defenses + large world props
+      const obstacles: FlowObstacle[] = []
+      const obstacleInfos: ObstacleInfo[] = []
+      for (const u of playersRef.current) {
+        if (u.type === 'wall') {
+          obstacles.push({ x: u.position[0], z: u.position[2], halfW: 1.2, halfD: 0.3, rotation: u.rotation })
+          obstacleInfos.push({ x: u.position[0], z: u.position[2], halfW: 1.2, halfD: 0.3 })
+        } else if (u.type === 'sandbag') {
+          obstacles.push({ x: u.position[0], z: u.position[2], halfW: 0.55, halfD: 0.25, rotation: u.rotation })
+          obstacleInfos.push({ x: u.position[0], z: u.position[2], halfW: 0.55, halfD: 0.25 })
+        } else if (u.type === 'tower') {
+          obstacles.push({ x: u.position[0], z: u.position[2], halfW: 0.55, halfD: 0.55, rotation: u.rotation })
+          obstacleInfos.push({ x: u.position[0], z: u.position[2], halfW: 0.55, halfD: 0.55 })
+        }
+      }
+      // Large world props (cereal boxes, tape measures, wood blocks, hammers)
+      for (const [, prop] of getAllProps()) {
+        if (prop.destroyed) continue
+        if (prop.tags.includes('destructible') || prop.id.includes('block') || prop.id.includes('hammer')) {
+          obstacles.push({ x: prop.position[0], z: prop.position[2], halfW: 0.6, halfD: 0.3, rotation: 0 })
+          obstacleInfos.push({ x: prop.position[0], z: prop.position[2], halfW: 0.6, halfD: 0.3 })
+        }
+      }
+      flowFieldObstaclesRef.current = obstacleInfos
+
+      const edges = currentWorldConfig?.edges ?? [
+        { side: 'front', open: false }, { side: 'back', open: false },
+        { side: 'left', open: false }, { side: 'right', open: false },
+      ]
+      const b = boundsRef.current
+      rebuildField(ff, obstacles, edges, worldSize, b.intelPos[0], b.intelPos[2])
+
+      // Track initial wall states for rebuild detection
+      wallIntactStates.current.clear()
+      for (const u of playersRef.current) {
+        if (u.type === 'wall') wallIntactStates.current.set(u.id, true)
+      }
+      flowFieldRebuildTimer.current = 0
     } else {
       battleActive.current = false
     }
@@ -293,14 +371,16 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
         const stats = ENEMY_STATS.infantry
         for (let j = 0; j < 2; j++) {
           const z = (j - 0.5) * 1.4
-          enemies.push(makeBattleUnit({
+          const tbu = makeBattleUnit({
             id: `e-${++_eid}`, type: 'soldier', team: 'tan',
-            position: [SPAWN_X + Math.random() * 1.5, 0, z],
+            position: [boundsRef.current.spawnRight + Math.random() * 1.0, 0, z],
             rotation: Math.PI, health: stats.health, maxHealth: stats.health,
             status: 'walking', weapon: 'rifle', lastFireTime: -10,
             fireRate: stats.fireRate, range: stats.range,
             damage: stats.damage, speed: stats.speed,
-          }))
+          })
+          tbu.enemyType = 'infantry'
+          enemies.push(tbu)
         }
       }
     } else if (level) {
@@ -309,22 +389,41 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
         const wave = level.waves[wi]
         if (time >= wave.delay) {
           wavesSpawned.current.add(wi)
+          const bounds = boundsRef.current
           for (const entry of wave.enemies) {
             const enemyWeapon = (entry.weapon ?? 'rifle') as WeaponType
             const stats = getEnemyStats(entry.type, enemyWeapon)
             if (!stats) continue
             const spacing = entry.spacing ?? 1.5
-            const xOffset = entry.type === 'tank' ? 2 : entry.type === 'jeep' ? 1 : 0
+            const side = entry.spawnSide ?? 'right'
             for (let j = 0; j < entry.count; j++) {
-              const z = (j - (entry.count - 1) / 2) * spacing
-              enemies.push(makeBattleUnit({
+              const spread = (j - (entry.count - 1) / 2) * spacing
+              let spawnPos: [number, number, number]
+              let rotation: number
+              if (side === 'right') {
+                const clampedZ = Math.max(-bounds.tableEdgeZ + 0.5, Math.min(bounds.tableEdgeZ - 0.5, spread))
+                spawnPos = [bounds.spawnRight + Math.random() * 0.8, 0, clampedZ]
+                rotation = Math.PI  // face left
+              } else if (side === 'left') {
+                const clampedZ = Math.max(-bounds.tableEdgeZ + 0.5, Math.min(bounds.tableEdgeZ - 0.5, spread))
+                spawnPos = [bounds.spawnLeft - Math.random() * 0.8, 0, clampedZ]
+                rotation = 0  // face right
+              } else {
+                // 'back' — spawn along back edge
+                const clampedX = Math.max(bounds.tableEdgeLeft + 0.5, Math.min(bounds.tableEdgeRight - 0.5, spread))
+                spawnPos = [clampedX, 0, bounds.spawnBack + Math.random() * 0.8]
+                rotation = -Math.PI / 2  // face front
+              }
+              const bu = makeBattleUnit({
                 id: `e-${++_eid}`, type: 'soldier', team: 'tan',
-                position: [Math.min(SPAWN_X + xOffset + Math.random() * 1.0, TABLE_EDGE_X - 0.5), 0, Math.max(-TABLE_EDGE_Z + 0.5, Math.min(TABLE_EDGE_Z - 0.5, z))],
-                rotation: Math.PI, health: stats.health, maxHealth: stats.health,
+                position: spawnPos,
+                rotation, health: stats.health, maxHealth: stats.health,
                 status: 'walking', weapon: enemyWeapon, lastFireTime: -10,
                 fireRate: stats.fireRate, range: stats.range,
                 damage: stats.damage, speed: stats.speed,
-              }))
+              })
+              bu.enemyType = entry.type
+              enemies.push(bu)
             }
           }
         }
@@ -335,10 +434,20 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
     for (const enemy of enemies) {
       if (enemy.status === 'dead') { enemy.stateAge += delta; continue }
       // Skip AI for units falling off the table
-      const enemyOffEdge = enemy.position[0] > TABLE_EDGE_X || enemy.position[0] < TABLE_EDGE_LEFT ||
-                           Math.abs(enemy.position[2]) > TABLE_EDGE_Z
+      const eb = boundsRef.current
+      const enemyOffEdge = enemy.position[0] > eb.tableEdgeRight + 1 || enemy.position[0] < eb.tableEdgeLeft - 1 ||
+                           Math.abs(enemy.position[2]) > eb.tableEdgeZ + 1
       if (enemyOffEdge) continue
       enemy.stateAge += delta
+
+      // ── Hit recovery: clear stagger after timer ──
+      if (enemy.status === 'hit') {
+        if (enemy.stateAge > (enemy.hitRecoveryAt ?? STAGGER.BULLET_RECOVERY)) {
+          enemy.status = 'idle'
+          enemy.stateAge = 0
+        }
+        continue // skip ALL AI while staggered — no firing, no movement
+      }
 
       _tA.set(enemy.position[0], enemy.position[1], enemy.position[2])
 
@@ -358,7 +467,7 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
         enemy.facingAngle = Math.atan2(_tB.x - _tA.x, _tB.z - _tA.z)
         {
           const body = bodyMapRef.current.get(enemy.id)
-          if (body && enemy.status !== 'hit') {
+          if (body) {
             const curVel = body.linvel()
             body.setLinvel({ x: 0, y: curVel.y, z: 0 }, true)
           }
@@ -436,9 +545,32 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
           enemy.status = 'idle'
         }
       } else {
-        // March toward Intel with steering behaviors
-        _tC.copy(INTEL_POS).sub(_tA).normalize()
+        // ── March toward Intel with flow field + per-type steering ──
         enemy.status = 'walking'
+        const eType = enemy.enemyType ?? 'infantry' as EnemyType
+        const profile = getProfile(eType)
+        const ff = flowFieldRef.current
+
+        // Get base direction: flow field for infantry, direct march for jeep/tank
+        let baseDirX: number
+        let baseDirZ: number
+        if (profile.usesFlowField && ff && hasFlow(ff, enemy.position[0], enemy.position[2])) {
+          const flow = getFlowDirection(ff, enemy.position[0], enemy.position[2])
+          baseDirX = flow.x
+          baseDirZ = flow.z
+        } else {
+          // Direct march toward Intel (fallback, or jeep/tank)
+          _tC.copy(intelPosRef.current).sub(_tA).normalize()
+          baseDirX = _tC.x
+          baseDirZ = _tC.z
+        }
+
+        // If no valid direction from flow field, fall back to direct march
+        if (Math.abs(baseDirX) < 0.01 && Math.abs(baseDirZ) < 0.01) {
+          _tC.copy(intelPosRef.current).sub(_tA).normalize()
+          baseDirX = _tC.x
+          baseDirZ = _tC.z
+        }
 
         const body = bodyMapRef.current.get(enemy.id)
         if (body) {
@@ -451,29 +583,108 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
             enemy.stuckTime = 0
           }
 
-          // Apply steering behaviors (spread, flanking, wounded wobble)
-          const steered = applySteering(_tC.x, _tC.z, enemy, {
+          // Determine underFire: was hit in the last 2 seconds
+          const underFire = (time - enemy.lastHitTime) < 2.0
+
+          // Compute direction from nearest player (for cover seeking)
+          let shooterDirX = 0
+          let shooterDirZ = 0
+          if (nearestPlayer) {
+            const sdx = nearestPlayer.position[0] - enemy.position[0]
+            const sdz = nearestPlayer.position[2] - enemy.position[2]
+            const sdLen = Math.sqrt(sdx * sdx + sdz * sdz)
+            if (sdLen > 0.01) { shooterDirX = sdx / sdLen; shooterDirZ = sdz / sdLen }
+          }
+
+          // Cover pause detection
+          if (profile.pauseBehindCover && !underFire) {
+            const behindCover = isBehindCover(
+              enemy.position[0], enemy.position[2],
+              shooterDirX, shooterDirZ,
+              flowFieldObstaclesRef.current,
+            )
+            if (behindCover) {
+              enemy.coverPauseTime += delta
+            } else {
+              enemy.coverPauseTime = 0
+            }
+          } else {
+            enemy.coverPauseTime = 0
+          }
+
+          // Apply steering behaviors (spread, cover seeking, flanking, etc.)
+          const steered = applySteering(baseDirX, baseDirZ, enemy, {
             allUnits: enemies,
-            underFire: enemy.stateAge < 1.0, // recently took damage
+            underFire,
             stuckTime: enemy.stuckTime,
+            enemyType: eType,
+            obstacles: flowFieldObstaclesRef.current,
+            shooterDirX,
+            shooterDirZ,
+            spawnZ: enemy.spawnZ,
+            coverPauseTime: enemy.coverPauseTime,
           })
 
           enemy.facingAngle = Math.atan2(steered.x, steered.z)
+
           // Apply sticky zone speed reduction
           const stickyMult = getStickySpeedMultiplier(enemy.position[0], enemy.position[2])
-          const finalSpeed = enemy.speed * stickyMult
+          const finalSpeed = enemy.speed * stickyMult * steered.speedMult
           body.setLinvel({ x: steered.x * finalSpeed, y: curVel.y, z: steered.z * finalSpeed }, true)
+
+          // ── TANK CRUSHING: destroy walls and push props on contact ──
+          if (eType === 'tank') {
+            // Crush nearby wall blocks
+            for (const [wallId, blocks] of wallBlocksRef.current) {
+              for (const block of blocks) {
+                if (!block.alive) continue
+                const bPos = block.mesh.getWorldPosition(_tD)
+                const dx = bPos.x - enemy.position[0]
+                const dz = bPos.z - enemy.position[2]
+                const dist = Math.sqrt(dx * dx + dz * dz)
+                if (dist < 0.8) {
+                  block.alive = false
+                  block.settled = false
+                  block.mesh.visible = false
+                }
+              }
+            }
+            // Push/damage props in tank's path
+            for (const [, prop] of getAllProps()) {
+              if (prop.destroyed) continue
+              const pdx = prop.position[0] - enemy.position[0]
+              const pdz = prop.position[2] - enemy.position[2]
+              const pDist = Math.sqrt(pdx * pdx + pdz * pdz)
+              if (pDist < 0.6) {
+                // Damage destructible props
+                if (prop.tags.includes('destructible')) {
+                  prop.health -= 40
+                  if (prop.health <= 0) {
+                    prop.health = 0
+                    prop.destroyed = true
+                  }
+                }
+                // Push knockable props via Rapier (find their body)
+                const propBody = bodyMapRef.current.get(prop.id)
+                if (propBody) {
+                  const pushX = pdx / (pDist || 1) * 8
+                  const pushZ = pdz / (pDist || 1) * 8
+                  propBody.applyImpulse({ x: pushX, y: 2, z: pushZ }, true)
+                }
+              }
+            }
+          }
         } else {
-          enemy.facingAngle = Math.atan2(_tC.x, _tC.z)
+          enemy.facingAngle = Math.atan2(baseDirX, baseDirZ)
         }
 
         // Check defeat condition
-        if (_tA.distanceTo(INTEL_POS) < LOSE_THRESHOLD) {
+        if (_tA.distanceTo(intelPosRef.current) < LOSE_THRESHOLD) {
           useGameStore.getState().setResult('defeat', 0)
           sfx.explosionLarge()
           triggerShake(SHAKE.DEFEAT)
           const expId = `exp-${++explosionIdRef.current}`
-          setExplosions((prev) => [...prev, { id: expId, position: [INTEL_POS.x, 0.5, INTEL_POS.z] as [number, number, number], scale: 1.5 }])
+          setExplosions((prev) => [...prev, { id: expId, position: [intelPosRef.current.x, 0.5, intelPosRef.current.z] as [number, number, number], scale: 1.5 }])
           battleActive.current = false
           return
         }
@@ -482,10 +693,71 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
       enemy.rotation = enemy.facingAngle
     }
 
+    // ── Flow field rebuild (check every 0.5s if walls were destroyed) ──
+    flowFieldRebuildTimer.current += delta
+    if (flowFieldRebuildTimer.current > 0.5 && flowFieldRef.current) {
+      flowFieldRebuildTimer.current = 0
+      let needsRebuild = false
+
+      for (const [wallId, blocks] of wallBlocksRef.current) {
+        const aliveCount = blocks.filter(b => b.alive).length
+        const totalCount = blocks.length
+        const isIntact = aliveCount >= totalCount * 0.3
+        const wasIntact = wallIntactStates.current.get(wallId) ?? true
+        if (wasIntact && !isIntact) {
+          needsRebuild = true
+          wallIntactStates.current.set(wallId, false)
+        }
+      }
+
+      if (needsRebuild) {
+        // Rebuild with updated obstacle list (exclude destroyed walls)
+        const ff = flowFieldRef.current
+        const worldSize = currentWorldConfig?.ground.size ?? [16, 12] as [number, number]
+        const obstacles: FlowObstacle[] = []
+        const obstacleInfos: ObstacleInfo[] = []
+        for (const u of players) {
+          if (u.type === 'wall' && wallIntactStates.current.get(u.id) !== false) {
+            obstacles.push({ x: u.position[0], z: u.position[2], halfW: 1.2, halfD: 0.3, rotation: u.rotation })
+            obstacleInfos.push({ x: u.position[0], z: u.position[2], halfW: 1.2, halfD: 0.3 })
+          } else if (u.type === 'sandbag') {
+            obstacles.push({ x: u.position[0], z: u.position[2], halfW: 0.55, halfD: 0.25, rotation: u.rotation })
+            obstacleInfos.push({ x: u.position[0], z: u.position[2], halfW: 0.55, halfD: 0.25 })
+          } else if (u.type === 'tower') {
+            obstacles.push({ x: u.position[0], z: u.position[2], halfW: 0.55, halfD: 0.55, rotation: u.rotation })
+            obstacleInfos.push({ x: u.position[0], z: u.position[2], halfW: 0.55, halfD: 0.55 })
+          }
+        }
+        for (const [, prop] of getAllProps()) {
+          if (prop.destroyed) continue
+          if (prop.tags.includes('destructible') || prop.id.includes('block') || prop.id.includes('hammer')) {
+            obstacles.push({ x: prop.position[0], z: prop.position[2], halfW: 0.6, halfD: 0.3, rotation: 0 })
+            obstacleInfos.push({ x: prop.position[0], z: prop.position[2], halfW: 0.6, halfD: 0.3 })
+          }
+        }
+        flowFieldObstaclesRef.current = obstacleInfos
+        const edges = currentWorldConfig?.edges ?? [
+          { side: 'front', open: false }, { side: 'back', open: false },
+          { side: 'left', open: false }, { side: 'right', open: false },
+        ]
+        const b = boundsRef.current
+        rebuildField(ff, obstacles, edges, worldSize, b.intelPos[0], b.intelPos[2])
+      }
+    }
+
     // ── Player AI (NERO hybrid -- trained NN vs untrained chaos) ──
     for (const player of players) {
       if (player.status === 'dead') { player.stateAge += delta; continue }
       player.stateAge += delta
+
+      // ── Hit recovery: clear stagger after timer ──
+      if (player.status === 'hit') {
+        if (player.stateAge > (player.hitRecoveryAt ?? STAGGER.BULLET_RECOVERY)) {
+          player.status = 'idle'
+          player.stateAge = 0
+        }
+        continue // skip firing while staggered
+      }
 
       _tA.set(player.position[0], player.position[1], player.position[2])
       let nearestEnemy: BattleUnit | null = null
@@ -634,9 +906,9 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
       } else {
         if (player.status !== 'idle') { player.status = 'idle'; player.stateAge = 0 }
       }
-      // Player soldiers are stationary — zero horizontal velocity unless knocked back
-      // (dead players already skipped via continue above)
-      if (player.status !== 'hit') {
+      // Player soldiers are stationary — zero horizontal velocity
+      // (dead and hit players already skipped via continue above)
+      {
         const body = bodyMapRef.current.get(player.id)
         if (body) {
           const curVel = body.linvel()
@@ -664,6 +936,7 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
           const force = (blastRadius - dist) / blastRadius
           const dmg = Math.round(blastDamage * force)
           unit.health -= dmg
+          ;(unit as BattleUnit).lastHitTime = time // track for underFire detection
 
           // Knockback via Rapier impulse for comedy physics
           const knockDir = _tA.set(uPos.x - cPos.x, uPos.y - cPos.y, uPos.z - cPos.z).normalize()
@@ -701,13 +974,47 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
 
             const dustId = `dust-${++dustIdRef.current}`
             setDustClouds(prev => [...prev, { id: dustId, position: [...unit.position] as [number, number, number], intensity: 0.8 }])
+
+            // Death dismemberment — roll 2-3 times for dramatic ragdoll
+            const bu = unit as BattleUnit
+            for (let r = 0; r < 2 + Math.round(Math.random()); r++) {
+              const limb = rollDismemberment(dmg * 2, bu.dismemberedParts)
+              if (limb) {
+                bu.dismemberedParts[limb] = true
+                const lid = `limb-${++limbDebrisIdRef.current}`
+                setLimbDebris(prev => [...prev, {
+                  id: lid,
+                  position: [...unit.position] as [number, number, number],
+                  velocity: [impulseX * 1.5 + (Math.random() - 0.5) * 3, randRange(3, 7), impulseZ * 1.5 + (Math.random() - 0.5) * 3],
+                  team: unit.team,
+                  limb,
+                }])
+              }
+            }
           } else {
             unit.status = 'hit'
             unit.stateAge = 0
+            unit.hitRecoveryAt = STAGGER.EXPLOSION_RECOVERY
             const hitImpulseY = 0.4 + force * blastConfig.unitYBias * 0.3
             const body = bodyMapRef.current.get(unit.id)
             if (body) {
               body.applyImpulse({ x: impulseX, y: hitImpulseY, z: impulseZ }, true)
+            }
+
+            // Chance of non-lethal dismemberment
+            const bu = unit as BattleUnit
+            const limb = rollDismemberment(dmg, bu.dismemberedParts)
+            if (limb) {
+              bu.dismemberedParts[limb] = true
+              if (limb === 'head') { unit.health = 0; unit.status = 'dead'; killCount++ }
+              const lid = `limb-${++limbDebrisIdRef.current}`
+              setLimbDebris(prev => [...prev, {
+                id: lid,
+                position: [...unit.position] as [number, number, number],
+                velocity: [impulseX * 1.2 + (Math.random() - 0.5) * 2, randRange(2, 5), impulseZ * 1.2 + (Math.random() - 0.5) * 2],
+                team: unit.team,
+                limb,
+              }])
             }
           }
         }
@@ -724,10 +1031,9 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
           if (dist < blastRadius) {
             const force = (blastRadius - dist) / blastRadius
             if (force > blastConfig.destroyThreshold) {
-              // Destroy block and LAUNCH it (sandbox-style: much more dramatic)
+              // Destroy block and LAUNCH it — stays visible while flying, Defenses.tsx hides after settling
               block.alive = false
               block.settled = false
-              block.mesh.visible = false
               blocksDestroyed++
               const knockDir = _tA.set(tempWorldPos.x - cPos.x, tempWorldPos.y - cPos.y, tempWorldPos.z - cPos.z).normalize()
               block.velocity.set(
@@ -879,6 +1185,7 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
             sfx.explosionLarge()
           } else {
             unit.health -= p.damage
+            ;(unit as BattleUnit).lastHitTime = time
             sfx.bulletImpact()
             triggerShake(SHAKE.BULLET_IMPACT)
             // Spawn spark at hit location
@@ -903,9 +1210,25 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
               }
               unit.spinSpeed = randRange(1, RAGDOLL.TUMBLE_SPIN_MAX * 0.5)
               triggerHitpause(3)
+
+              // Bullet death dismemberment (lower chance than explosions)
+              const bu = unit as BattleUnit
+              const limb = rollDismemberment(p.damage, bu.dismemberedParts)
+              if (limb) {
+                bu.dismemberedParts[limb] = true
+                const lid = `limb-${++limbDebrisIdRef.current}`
+                setLimbDebris(prev => [...prev, {
+                  id: lid,
+                  position: [...unit.position] as [number, number, number],
+                  velocity: [knockDir.x * 3 + (Math.random() - 0.5) * 2, randRange(2, 4), knockDir.z * 3 + (Math.random() - 0.5) * 2],
+                  team: unit.team,
+                  limb,
+                }])
+              }
             } else {
               unit.status = 'hit'
               unit.stateAge = 0
+              unit.hitRecoveryAt = STAGGER.BULLET_RECOVERY
             }
           }
           const shooter = allUnits.find((u) => u.id === p.ownerId)
@@ -1083,7 +1406,7 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
       )}
 
       <CameraRig orbitingRef={orbitingRef} />
-      <Intel />
+      <Intel position={boundsRef.current.intelPos} />
 
       <PlayerZone visible={isPlacing} />
       <GhostPreview selectedType={selectedPlacement} placementRotation={placementRotation} />
@@ -1122,6 +1445,10 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
             rotation={unit.rotation}
             wallBlocksRef={wallBlocksRef}
             wallId={unit.id}
+            tableBounds={{
+              halfWidth: (currentWorldConfig?.ground.size?.[0] ?? 16) / 2,
+              halfDepth: (currentWorldConfig?.ground.size?.[1] ?? 12) / 2,
+            }}
           />
         )
         if (unit.type === 'sandbag') return <SandbagDefense key={unit.id} position={unit.position} rotation={unit.rotation} />
@@ -1183,6 +1510,18 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
           position={d.position}
           intensity={d.intensity}
           onComplete={() => setDustClouds((prev) => prev.filter((x) => x.id !== d.id))}
+        />
+      ))}
+
+      {/* Limb debris (dismemberment) */}
+      {limbDebrisItems.map((d) => (
+        <LimbDebris
+          key={d.id}
+          position={d.position}
+          velocity={d.velocity}
+          team={d.team}
+          limb={d.limb}
+          onComplete={() => setLimbDebris((prev) => prev.filter((x) => x.id !== d.id))}
         />
       ))}
 

@@ -32,9 +32,13 @@ interface DefenseProps {
 interface WallProps extends DefenseProps {
   wallBlocksRef?: React.MutableRefObject<Map<string, WallBlock[]>>
   wallId?: string
+  /** World-space half extents of the table. Blocks outside these bounds fall into the void. */
+  tableBounds?: { halfWidth: number; halfDepth: number }
 }
 
-export function WallDefense({ position, rotation = 0, wallBlocksRef, wallId }: WallProps) {
+const FALL_VOID_Y = -8 // hide blocks once they fall this far below the table
+
+export function WallDefense({ position, rotation = 0, wallBlocksRef, wallId, tableBounds }: WallProps) {
   const groupRef = useRef<THREE.Group>(null!)
   const initialized = useRef(false)
 
@@ -153,8 +157,49 @@ export function WallDefense({ position, rotation = 0, wallBlocksRef, wallId }: W
     }
 
     // ── Block physics ──
+    // Helper: is this block (in world XZ) still over the table?
+    const _wp = new THREE.Vector3()
+    const isOverTable = (block: WallBlock): boolean => {
+      if (!tableBounds) return true // no bounds = always over (legacy behavior)
+      block.mesh.getWorldPosition(_wp)
+      return Math.abs(_wp.x) <= tableBounds.halfWidth && Math.abs(_wp.z) <= tableBounds.halfDepth
+    }
+
     for (const b of blocks) {
-      if (!b.alive) continue
+      if (!b.mesh.visible) continue // already faded out
+
+      // Dead blocks still animate as flying debris until they settle (or fall off the world)
+      if (!b.alive) {
+        const speed = b.velocity.length()
+        // Hide if block has fallen into the void
+        if (b.mesh.position.y < FALL_VOID_Y) {
+          b.mesh.visible = false
+          continue
+        }
+        // Settle on table if at rest
+        if (speed < BLOCK_SETTLE_SPEED && b.mesh.position.y <= BLOCK_H && isOverTable(b)) {
+          b.mesh.visible = false
+          continue
+        }
+        // Animate flying debris
+        b.velocity.y += BLOCK_GRAVITY * delta
+        b.mesh.position.add(b.velocity.clone().multiplyScalar(delta))
+        // Only clamp to ground if still over the table — otherwise let it fall into the void
+        if (b.mesh.position.y < BLOCK_H / 2 && isOverTable(b)) {
+          b.mesh.position.y = BLOCK_H / 2
+          b.velocity.y *= BLOCK_GROUND_BOUNCE_VY
+          b.velocity.x *= BLOCK_GROUND_FRICTION
+          b.velocity.z *= BLOCK_GROUND_FRICTION
+          if (Math.abs(b.velocity.y) < 0.3) b.velocity.y = 0
+        }
+        if (speed > 0.5) {
+          b.mesh.rotation.x += b.velocity.z * delta * 2
+          b.mesh.rotation.z -= b.velocity.x * delta * 2
+        }
+        b.velocity.multiplyScalar(BLOCK_DAMPING)
+        continue
+      }
+
       const speed = b.velocity.length()
 
       if (speed < BLOCK_SETTLE_SPEED && b.mesh.position.y <= b.homePos.y + 0.01) {
@@ -163,12 +208,19 @@ export function WallDefense({ position, rotation = 0, wallBlocksRef, wallId }: W
         continue
       }
 
+      // Hide live blocks that fall into the void (cascade collapse off-table)
+      if (b.mesh.position.y < FALL_VOID_Y) {
+        b.alive = false
+        b.mesh.visible = false
+        continue
+      }
+
       b.settled = false
       b.velocity.y += BLOCK_GRAVITY * delta
       b.mesh.position.add(b.velocity.clone().multiplyScalar(delta))
 
-      // Ground collision
-      if (b.mesh.position.y < BLOCK_H / 2) {
+      // Ground collision (only if still over table)
+      if (b.mesh.position.y < BLOCK_H / 2 && isOverTable(b)) {
         b.mesh.position.y = BLOCK_H / 2
         b.velocity.y *= BLOCK_GROUND_BOUNCE_VY
         b.velocity.x *= BLOCK_GROUND_FRICTION

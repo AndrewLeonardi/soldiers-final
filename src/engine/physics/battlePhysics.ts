@@ -21,13 +21,56 @@ export const HIT_RADIUS = 0.5
 export const WALL_HIT_RADIUS = 0.3
 
 // ── Map geometry ──────────────────────────────────────────
-export const INTEL_POS_ARRAY: [number, number, number] = [-7, 0, 0]
-export const LOSE_THRESHOLD = 1.5
-export const SPAWN_X = 6.5
-export const TABLE_EDGE_X = 8.5     // right edge (ground plane is ±10, but tighter for gameplay)
-export const TABLE_EDGE_Z = 6.0    // front/back edges (ground is ±7)
-export const TABLE_EDGE_LEFT = -9.0 // left edge
 export const FALL_DEATH_Y = -2      // Y threshold for fall-off-table death
+export const LOSE_THRESHOLD = 1.5
+
+/** Computed boundaries derived from a world's ground.size */
+export interface WorldBounds {
+  tableEdgeRight: number
+  tableEdgeLeft: number
+  tableEdgeZ: number       // symmetric: ±this value for front/back
+  spawnRight: number       // right-side spawn X
+  spawnLeft: number        // left-side spawn X
+  spawnBack: number        // back spawn Z
+  spawnFront: number       // front spawn Z
+  intelX: number           // Intel position X
+  intelPos: [number, number, number]
+}
+
+/** Derive all boundary constants from a world's ground size.
+ *  The 0.5 inset keeps spawns/intel off the very edge. */
+export function getWorldBounds(groundSize: [number, number]): WorldBounds {
+  const hw = groundSize[0] / 2
+  const hd = groundSize[1] / 2
+  const edgeInset = 0.5
+  const spawnInset = 1.5
+  const intelInset = 2.0
+
+  const tableEdgeRight = hw - edgeInset
+  const tableEdgeLeft = -(hw - edgeInset)
+  const tableEdgeZ = hd - edgeInset
+  const intelX = -(hw - intelInset)
+
+  return {
+    tableEdgeRight,
+    tableEdgeLeft,
+    tableEdgeZ,
+    spawnRight: tableEdgeRight - 0.5,
+    spawnLeft: tableEdgeLeft + 0.5,
+    spawnBack: tableEdgeZ - 0.5,
+    spawnFront: -(tableEdgeZ - 0.5),
+    intelX,
+    intelPos: [intelX, 0, 0],
+  }
+}
+
+// Legacy constants — kept for backward compat in code that hasn't been migrated yet
+// Kitchen (16x12) defaults:
+export const INTEL_POS_ARRAY: [number, number, number] = [-6, 0, 0]
+export const SPAWN_X = 6.5
+export const TABLE_EDGE_X = 7.5
+export const TABLE_EDGE_Z = 5.5
+export const TABLE_EDGE_LEFT = -7.5
 
 // ── Wall blocks (ported from sandbox — smaller = more granular) ──
 export const BLOCK_W = 0.3
@@ -42,28 +85,30 @@ export const BLOCK_SETTLE_SPEED = 0.01
 export const BLOCK_SUPPORT_OVERLAP = 0.25 // fraction of block width
 export const ROW_COLLAPSE_THRESHOLD = 0.4 // if >40% of row destroyed, whole row falls
 
-// ── Blast physics (ported from sandbox — much punchier) ──
+// ── Blast physics ──
+// Tuned so walls survive multiple hits — a rocket punches a HOLE (3-8 blocks)
+// but doesn't obliterate the entire wall. Creates crumbling comedy and real cover.
 export const BLAST = {
   GRENADE: {
     radius: 3.5,
     damage: 60,
-    unitForce: 8,        // horizontal knockback on units
-    unitYBias: 4,        // upward knockback on units
-    blockForce: 14,      // horizontal force on wall blocks
-    blockYBias: 10,      // upward force on wall blocks (dramatic launches)
+    unitForce: 6,
+    unitYBias: 2.5,
+    blockForce: 11,       // punchy — blocks fly dramatically (old sandbox: ~14)
+    blockYBias: 7,        // high arcs on debris
     fuseTime: 1.3,
-    destroyThreshold: 0.12, // force > this destroys block (lower = more destruction)
-    shakeThreshold: 0.05,   // force > this shakes block loose
+    destroyThreshold: 0.10, // most blocks in blast get destroyed
+    shakeThreshold: 0.04,   // far blocks at least jiggle loose
   },
   ROCKET: {
     radius: 3.6,
-    damage: 130,          // high damage — rockets should reliably kill infantry in blast
-    unitForce: 10,
-    unitYBias: 5,
-    blockForce: 16,
-    blockYBias: 12,
-    destroyThreshold: 0.1,  // rockets are more destructive
-    shakeThreshold: 0.04,
+    damage: 130,
+    unitForce: 8,
+    unitYBias: 3,
+    blockForce: 14,       // rockets devastate walls (old sandbox: ~16)
+    blockYBias: 9,        // dramatic upward launches
+    destroyThreshold: 0.08, // rockets obliterate nearby blocks
+    shakeThreshold: 0.04,   // shake the whole wall
   },
 } as const
 
@@ -119,6 +164,12 @@ export const RAPIER_BLOCK = {
   RESTITUTION: 0.15,      // low bounce for wall chunks
   FRICTION: 0.6,
   LINEAR_DAMPING: 0.5,
+} as const
+
+// ── Stagger / hit recovery ───────────────────────────────
+export const STAGGER = {
+  BULLET_RECOVERY: 0.4,      // seconds to recover from bullet hit
+  EXPLOSION_RECOVERY: 0.8,   // seconds to recover from explosion hit
 } as const
 
 // ── Helpers ───────────────────────────────────────────────
