@@ -1,7 +1,7 @@
 import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { createFlexSoldier, animateFlexSoldier, applyDismemberment, type DismembermentState } from './flexSoldier'
+import { createFlexSoldier, animateFlexSoldier } from './flexSoldier'
 import { applyWeaponToSoldier } from './weaponMeshes'
 import { TOY } from './materials'
 
@@ -17,7 +17,8 @@ interface UnitLike {
   spinSpeed?: number
   velocity?: [number, number, number]
   stateAge?: number
-  dismemberedParts?: DismembermentState
+  health?: number
+  maxHealth?: number
 }
 
 interface SoldierUnitProps {
@@ -29,7 +30,6 @@ interface SoldierUnitProps {
 export function SoldierUnit({ unit, physicsControlled = false }: SoldierUnitProps) {
   const groupRef = useRef<THREE.Group>(null!)
   const weaponRef = useRef<THREE.Group | null>(null)
-  const tumbleRef = useRef({ rx: 0, rz: 0 })
   const muzzleFlashRef = useRef<THREE.PointLight>(null!)
 
   const soldier = useMemo(() => {
@@ -52,22 +52,10 @@ export function SoldierUnit({ unit, physicsControlled = false }: SoldierUnitProp
   useFrame((state, delta) => {
     if (!soldier || !groupRef.current) return
 
-    // Animate pose -- skip when ragdolling (spinning through air)
-    const spin = unit.spinSpeed ?? 0
-    const isRagdolling = spin > 0.1 && unit.position[1] > 0.05
-    if (!isRagdolling) {
-      animateFlexSoldier(soldier, unit.status as any, state.clock.getElapsedTime(), delta)
-    }
-
-    // Apply dismemberment — hide blown-off limbs
-    if (unit.dismemberedParts) {
-      const d = unit.dismemberedParts
-      if (d.leftArm) soldier.parts.leftArm.visible = false
-      if (d.rightArm) soldier.parts.rightArm.visible = false
-      if (d.head) soldier.parts.headGrp.visible = false
-      if (d.leftLeg) soldier.parts.leftLeg.visible = false
-      if (d.rightLeg) soldier.parts.rightLeg.visible = false
-    }
+    // Always animate the pose. The death pose is now a vertical crumple that
+    // stays inside the capsule collider, so there's no need to skip animation
+    // for "ragdolling" soldiers. The body never tumbles outside its collider.
+    animateFlexSoldier(soldier, unit.status as any, state.clock.getElapsedTime(), delta)
 
     // Muzzle flash: bright point light when firing
     if (muzzleFlashRef.current) {
@@ -93,45 +81,16 @@ export function SoldierUnit({ unit, physicsControlled = false }: SoldierUnitProp
       if (groupRef.current.position.y < 0) groupRef.current.position.y = 0
     }
 
-    // Rotation
-    const isGrounded = unit.position[1] < 0.05
-
-    if (spin > 0.1 && !isGrounded) {
-      // Airborne tumble
-      tumbleRef.current.rx += spin * delta * 3
-      tumbleRef.current.rz += spin * delta * 2.3
-      groupRef.current.rotation.x = tumbleRef.current.rx
-      groupRef.current.rotation.z = tumbleRef.current.rz
-      groupRef.current.rotation.y += spin * delta * 0.5
-    } else if (isGrounded) {
-      // Settle rotation back to upright
-      tumbleRef.current.rx *= 0.85
-      tumbleRef.current.rz *= 0.85
-      if (Math.abs(tumbleRef.current.rx) < 0.02) tumbleRef.current.rx = 0
-      if (Math.abs(tumbleRef.current.rz) < 0.02) tumbleRef.current.rz = 0
-      groupRef.current.rotation.x = tumbleRef.current.rx
-      groupRef.current.rotation.z = tumbleRef.current.rz
-
-      // Face direction smoothly
-      const targetRot = unit.facingAngle ?? unit.rotation
-      groupRef.current.rotation.y = THREE.MathUtils.lerp(
-        groupRef.current.rotation.y,
-        targetRot,
-        Math.min(1, delta * 6),
-      )
-    } else {
-      // Falling (no spin) -- just face direction
-      const targetRot = unit.facingAngle ?? unit.rotation
-      groupRef.current.rotation.y = THREE.MathUtils.lerp(
-        groupRef.current.rotation.y,
-        targetRot,
-        Math.min(1, delta * 6),
-      )
-      tumbleRef.current.rx *= 0.95
-      tumbleRef.current.rz *= 0.95
-      groupRef.current.rotation.x = tumbleRef.current.rx
-      groupRef.current.rotation.z = tumbleRef.current.rz
-    }
+    // Rotation: just face the target angle. No tumble, no spin accumulation.
+    // The Rapier body has lockRotations, so the visual must match by staying upright.
+    const targetRot = unit.facingAngle ?? unit.rotation
+    groupRef.current.rotation.x = 0
+    groupRef.current.rotation.z = 0
+    groupRef.current.rotation.y = THREE.MathUtils.lerp(
+      groupRef.current.rotation.y,
+      targetRot,
+      Math.min(1, delta * 6),
+    )
   })
 
   return (

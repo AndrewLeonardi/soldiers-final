@@ -5,7 +5,6 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { createGunJeep, animateGunJeep } from '@three/models/jeep';
-import { createPlasticWall } from '@three/models/plasticWall';
 import '@styles/homepage.css';
 
 // ── Constants ──
@@ -121,20 +120,24 @@ function useHeroScene(containerRef: React.RefObject<HTMLDivElement | null>): voi
       jeep.parts.gunPivot.rotation.y = 1.3;
     }
 
-    // Walls
-    const walls: ReturnType<typeof createPlasticWall>[] = [];
+    // Decorative background blocks (simple boxes — not destructible, just visual scenery)
+    const wallGeo = new THREE.BoxGeometry(1.2, 1.0, 0.4);
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x5a8a5a, roughness: 0.7 });
+    const walls: THREE.Mesh[] = [];
     const wallPositions = [
       { x: -8, z: -2 }, { x: -4, z: 3 }, { x: 0, z: -3 },
       { x: 4, z: 2 }, { x: 8, z: -1 }, { x: 12, z: 3 },
       { x: 16, z: -2 }, { x: 20, z: 1 },
     ];
     for (let i = 0; i < WALL_COUNT; i++) {
-      const wall = createPlasticWall();
+      const wall = new THREE.Mesh(wallGeo, wallMat);
       const p = wallPositions[i];
-      wall.group.position.set(p.x, 0, p.z);
-      wall.group.scale.setScalar(2 + Math.random() * 1.5);
-      wall.group.rotation.y = Math.random() * Math.PI;
-      scene.add(wall.group);
+      const scale = 2 + Math.random() * 1.5;
+      wall.position.set(p.x, 0.5 * scale, p.z);
+      wall.scale.setScalar(scale);
+      wall.rotation.y = Math.random() * Math.PI;
+      wall.castShadow = true;
+      scene.add(wall);
       walls.push(wall);
     }
 
@@ -205,9 +208,9 @@ function useHeroScene(containerRef: React.RefObject<HTMLDivElement | null>): voi
 
       // Scroll walls left
       for (const w of walls) {
-        w.group.position.x -= DRIVE_SPEED * (1 / 60);
-        if (w.group.position.x < -15) {
-          w.group.position.x += 40;
+        w.position.x -= DRIVE_SPEED * (1 / 60);
+        if (w.position.x < -15) {
+          w.position.x += 40;
         }
       }
 
@@ -251,7 +254,8 @@ function useHeroScene(containerRef: React.RefObject<HTMLDivElement | null>): voi
       composer.dispose();
       renderer.dispose();
       jeep.dispose();
-      for (const w of walls) w.dispose();
+      wallGeo.dispose();
+      wallMat.dispose();
       dustGeo.dispose();
       dustMat.dispose();
       groundGeo.dispose();

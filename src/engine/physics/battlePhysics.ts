@@ -86,29 +86,30 @@ export const BLOCK_SUPPORT_OVERLAP = 0.25 // fraction of block width
 export const ROW_COLLAPSE_THRESHOLD = 0.4 // if >40% of row destroyed, whole row falls
 
 // ── Blast physics ──
-// Tuned so walls survive multiple hits — a rocket punches a HOLE (3-8 blocks)
-// but doesn't obliterate the entire wall. Creates crumbling comedy and real cover.
+// Walls survive multiple hits — a rocket punches a HOLE (3-8 blocks),
+// then the cascade-collapse system finishes the job over the next second.
+// Damage is tuned so explosions wound but don't insta-wipe a 100hp soldier.
 export const BLAST = {
   GRENADE: {
     radius: 3.5,
-    damage: 60,
+    damage: 40,           // wound, don't one-shot (was 60)
     unitForce: 6,
     unitYBias: 2.5,
-    blockForce: 11,       // punchy — blocks fly dramatically (old sandbox: ~14)
+    blockForce: 11,       // punchy — blocks fly dramatically when destroyed
     blockYBias: 7,        // high arcs on debris
     fuseTime: 1.3,
-    destroyThreshold: 0.10, // most blocks in blast get destroyed
-    shakeThreshold: 0.04,   // far blocks at least jiggle loose
+    destroyThreshold: 0.30, // ~1/3 of blocks in blast get destroyed (was 0.10)
+    shakeThreshold: 0.10,   // outer ring gets shaken loose for cascade
   },
   ROCKET: {
     radius: 3.6,
-    damage: 130,
+    damage: 75,           // 2 rockets to kill at center (was 130, one-shot kill)
     unitForce: 8,
     unitYBias: 3,
-    blockForce: 14,       // rockets devastate walls (old sandbox: ~16)
-    blockYBias: 9,        // dramatic upward launches
-    destroyThreshold: 0.08, // rockets obliterate nearby blocks
-    shakeThreshold: 0.04,   // shake the whole wall
+    blockForce: 14,       // dramatic launches when destroyed
+    blockYBias: 9,
+    destroyThreshold: 0.22, // ~1/2 of blocks in blast get destroyed (was 0.08)
+    shakeThreshold: 0.08,   // outer blocks shaken loose
   },
 } as const
 
@@ -126,19 +127,17 @@ export const DEBRIS = {
 } as const
 
 // ── Ragdoll ───────────────────────────────────────────────
+// All deaths tumble — soldiers stay grounded, spin sideways, no upward launches.
 export const RAGDOLL = {
   GROUND_BOUNCE_VY: -0.2,
   GROUND_FRICTION: 0.8,
   SPIN_DAMPING: 0.7,
   AIR_DRAG: 0.993,
-  // Variation ranges for comedy
   FORCE_VARIANCE_MIN: 0.6,
   FORCE_VARIANCE_MAX: 1.8,
-  LAUNCH_Y_MIN: 3,
-  LAUNCH_Y_MAX: 7,
   TUMBLE_SPIN_MIN: 2,
   TUMBLE_SPIN_MAX: 8,
-  LATERAL_OFFSET_MAX: 0.4, // random perpendicular kick
+  LATERAL_OFFSET_MAX: 0.4,
 } as const
 
 // ── Screen shake per event ────────────────────────────────
@@ -187,7 +186,7 @@ export function randRange(min: number, max: number): number {
   return min + Math.random() * (max - min)
 }
 
-/** Pick "launch" or "tumble" death type randomly */
-export function randomDeathType(): 'launch' | 'tumble' {
-  return Math.random() > 0.45 ? 'launch' : 'tumble'
+/** Death type — only 'tumble' now (launch flying-into-air removed for visual clarity) */
+export function randomDeathType(): 'tumble' {
+  return 'tumble'
 }

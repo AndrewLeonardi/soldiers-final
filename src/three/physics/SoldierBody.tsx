@@ -11,7 +11,7 @@
  * Dead soldiers are fully physics-driven (gravity + impulse + collisions).
  */
 import { useRef, useEffect, type ReactNode } from 'react'
-import { RigidBody, CapsuleCollider, CuboidCollider, type RapierRigidBody } from '@react-three/rapier'
+import { RigidBody, CuboidCollider, type RapierRigidBody } from '@react-three/rapier'
 import { GROUP_SOLDIER } from './collisionGroups'
 
 interface SoldierBodyProps {
@@ -68,7 +68,11 @@ export function SoldierBody({
     >
       {colliderType === 'box'
         ? <CuboidCollider args={[0.5, 0.2, 0.35]} position={[0, 0.2, 0]} />
-        : <CapsuleCollider args={[0.15, 0.25]} position={[0, 0.4, 0]} />
+        // Soldier collider: a chunky box that fully encompasses the visual silhouette,
+        // including any pose lean / arm extension / rifle. Half-extents [0.32, 0.5, 0.32]
+        // → total 0.64 × 1.0 × 0.64, centered at y=0.5 → bottom at y=0, top at y=1.0.
+        // Wider than the bare body so soldiers physically cannot clip into walls.
+        : <CuboidCollider args={[0.32, 0.5, 0.32]} position={[0, 0.5, 0]} />
       }
       {children}
     </RigidBody>

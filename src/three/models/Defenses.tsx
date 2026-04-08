@@ -1,19 +1,39 @@
+/**
+ * Unified destructible defenses — wall, sandbag mound, watchtower.
+ *
+ * All three share the same physics simulation: each defense is a collection
+ * of "blocks" with per-block velocity, ground collision, support checking,
+ * and cascade collapse. The only thing that differs is the initial layout
+ * (positions, sizes, colors) and the support topology (row-based vs explicit).
+ */
 import { useRef, useMemo, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { RigidBody, CuboidCollider, type RapierRigidBody } from '@react-three/rapier'
+import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import * as THREE from 'three'
 import {
   BLOCK_W, BLOCK_H, BLOCK_D, WALL_COLS, WALL_ROWS,
   BLOCK_GRAVITY, BLOCK_DAMPING, BLOCK_GROUND_BOUNCE_VY,
-  BLOCK_GROUND_FRICTION, BLOCK_SETTLE_SPEED, BLOCK_SUPPORT_OVERLAP,
+  BLOCK_GROUND_FRICTION, BLOCK_SETTLE_SPEED,
   ROW_COLLAPSE_THRESHOLD,
 } from '@engine/physics/battlePhysics'
 import { GROUP_WALL } from '@three/physics/collisionGroups'
 
-// ── Wall Segment (destructible brick grid — denser, punchier) ──
-const blockGeo = new THREE.BoxGeometry(BLOCK_W, BLOCK_H, BLOCK_D)
-const wallMat = new THREE.MeshStandardMaterial({ color: 0x4a6b3a, roughness: 0.35, metalness: 0.02 })
+// ── Block shared caches ──
+const geoCache = new Map<string, THREE.BoxGeometry>()
+const matCache = new Map<number, THREE.MeshStandardMaterial>()
+function getBlockGeo(size: [number, number, number]): THREE.BoxGeometry {
+  const key = `${size[0]}_${size[1]}_${size[2]}`
+  let g = geoCache.get(key)
+  if (!g) { g = new THREE.BoxGeometry(...size); geoCache.set(key, g) }
+  return g
+}
+function getBlockMat(color: number): THREE.MeshStandardMaterial {
+  let m = matCache.get(color)
+  if (!m) { m = new THREE.MeshStandardMaterial({ color, roughness: 0.6, metalness: 0.02 }); matCache.set(color, m) }
+  return m
+}
 
+// ── Block runtime state ──
 export interface WallBlock {
   mesh: THREE.Mesh
   velocity: THREE.Vector3
@@ -22,51 +42,225 @@ export interface WallBlock {
   homePos: THREE.Vector3
   row: number
   col: number
+  size: [number, number, number]
+  /** Indices of blocks that support this one. Empty = use row-based overlap check. */
+  supportedBy: number[]
+  /** If true, this block sits on the ground and never falls from integrity checks. */
+  groundSupported: boolean
 }
+
+// ── Layout spec (what buildXBlocks returns) ──
+interface BlockSpec {
+  position: [number, number, number]
+  size: [number, number, number]
+  color: number
+  row: number
+  col: number
+  supportedBy?: number[]
+  groundSupported?: boolean
+}
+
+// ── Layout builders ──────────────────────────────────────
+export type DefenseStyle = 'wall' | 'sandbag' | 'tower'
+
+function buildWallBlocks(): BlockSpec[] {
+  const specs: BlockSpec[] = []
+  const color = 0x4a6b3a
+  for (let row = 0; row < WALL_ROWS; row++) {
+    for (let col = 0; col < WALL_COLS; col++) {
+      const offsetX = row % 2 === 0 ? 0 : BLOCK_W * 0.5
+      const x = col * BLOCK_W - (WALL_COLS * BLOCK_W) / 2 + BLOCK_W / 2 + offsetX
+      const y = row * BLOCK_H + BLOCK_H / 2
+      specs.push({
+        position: [x, y, 0],
+        size: [BLOCK_W, BLOCK_H, BLOCK_D],
+        color,
+        row,
+        col,
+        groundSupported: row === 0,
+      })
+    }
+  }
+  return specs
+}
+
+function buildSandbagBlocks(): BlockSpec[] {
+  const specs: BlockSpec[] = []
+  const color = 0xA89070
+  const sbSize: [number, number, number] = [0.3, 0.14, 0.18]
+  const sbSizeRot: [number, number, number] = [0.18, 0.14, 0.3]
+
+  // Front row (5 bags, bottom)
+  for (let i = 0; i < 5; i++) {
+    specs.push({
+      position: [(i - 2) * 0.32, 0.07, 0.3],
+      size: sbSize, color, row: 0, col: i,
+      groundSupported: true,
+    })
+  }
+  // Second row (4 bags offset)
+  for (let i = 0; i < 4; i++) {
+    specs.push({
+      position: [(i - 1.5) * 0.32, 0.21, 0.3],
+      size: sbSize, color, row: 1, col: i,
+    })
+  }
+  // Top row (3 bags)
+  for (let i = 0; i < 3; i++) {
+    specs.push({
+      position: [(i - 1) * 0.32, 0.35, 0.3],
+      size: sbSize, color, row: 2, col: i,
+    })
+  }
+  // Side walls — 2 stacks of 2 bags, perpendicular
+  for (const x of [-0.65, 0.65]) {
+    const colIdx = x < 0 ? 10 : 11
+    specs.push({
+      position: [x, 0.07, 0],
+      size: sbSizeRot, color, row: 0, col: colIdx,
+      groundSupported: true,
+    })
+    specs.push({
+      position: [x, 0.21, 0],
+      size: sbSizeRot, color, row: 1, col: colIdx,
+    })
+  }
+  return specs
+}
+
+function buildTowerBlocks(): BlockSpec[] {
+  const specs: BlockSpec[] = []
+  const legColor = 0x6b4226
+  const platformColor = 0x6b4226
+  const railColor = 0x3d6b4f
+
+  // 4 legs — box approximations of cylinders, ground-supported
+  const legPositions: [number, number, number][] = [
+    [-0.4, 0.9, -0.4], [0.4, 0.9, -0.4], [-0.4, 0.9, 0.4], [0.4, 0.9, 0.4],
+  ]
+  const legIndices: number[] = []
+  for (let i = 0; i < 4; i++) {
+    legIndices.push(specs.length)
+    specs.push({
+      position: legPositions[i],
+      size: [0.1, 1.8, 0.1],
+      color: legColor,
+      row: 0, col: i,
+      groundSupported: true,
+    })
+  }
+  // Platform — supported by ALL 4 legs
+  const platformIndex = specs.length
+  specs.push({
+    position: [0, 1.85, 0],
+    size: [1.1, 0.08, 1.1],
+    color: platformColor,
+    row: 1, col: 0,
+    supportedBy: legIndices,
+  })
+  // 3 back/side railings
+  specs.push({
+    position: [0, 2.02, -0.52],
+    size: [1.08, 0.32, 0.05],
+    color: railColor,
+    row: 2, col: 0,
+    supportedBy: [platformIndex],
+  })
+  specs.push({
+    position: [-0.52, 2.02, 0],
+    size: [0.05, 0.32, 1.08],
+    color: railColor,
+    row: 2, col: 1,
+    supportedBy: [platformIndex],
+  })
+  specs.push({
+    position: [0.52, 2.02, 0],
+    size: [0.05, 0.32, 1.08],
+    color: railColor,
+    row: 2, col: 2,
+    supportedBy: [platformIndex],
+  })
+  // Front rail (lower)
+  specs.push({
+    position: [0, 1.96, 0.52],
+    size: [1.08, 0.2, 0.05],
+    color: railColor,
+    row: 2, col: 3,
+    supportedBy: [platformIndex],
+  })
+  return specs
+}
+
+function buildBlocks(style: DefenseStyle): BlockSpec[] {
+  switch (style) {
+    case 'wall': return buildWallBlocks()
+    case 'sandbag': return buildSandbagBlocks()
+    case 'tower': return buildTowerBlocks()
+  }
+}
+
+// ── Static collider footprint per style ──
+function getStaticCollider(style: DefenseStyle): { half: [number, number, number]; offset: [number, number, number] } {
+  switch (style) {
+    case 'wall': {
+      const hw = (WALL_COLS * BLOCK_W) / 2
+      const hh = (WALL_ROWS * BLOCK_H) / 2
+      const hd = BLOCK_D / 2 + 0.1
+      return { half: [hw, hh, hd], offset: [0, hh, 0] }
+    }
+    case 'sandbag':
+      return { half: [0.9, 0.25, 0.25], offset: [0, 0.2, 0.15] }
+    case 'tower':
+      return { half: [0.55, 0.9, 0.55], offset: [0, 0.9, 0] }
+  }
+}
+
+// ── Unified DestructibleDefense ──────────────────────────
+const FALL_VOID_Y = -8
 
 interface DefenseProps {
   position: [number, number, number]
   rotation?: number
-}
-
-interface WallProps extends DefenseProps {
+  style?: DefenseStyle
   wallBlocksRef?: React.MutableRefObject<Map<string, WallBlock[]>>
   wallId?: string
-  /** World-space half extents of the table. Blocks outside these bounds fall into the void. */
   tableBounds?: { halfWidth: number; halfDepth: number }
 }
 
-const FALL_VOID_Y = -8 // hide blocks once they fall this far below the table
-
-export function WallDefense({ position, rotation = 0, wallBlocksRef, wallId, tableBounds }: WallProps) {
+export function DestructibleDefense({
+  position,
+  rotation = 0,
+  style = 'wall',
+  wallBlocksRef,
+  wallId,
+  tableBounds,
+}: DefenseProps) {
   const groupRef = useRef<THREE.Group>(null!)
   const initialized = useRef(false)
 
   const blocks = useMemo(() => {
+    const specs = buildBlocks(style)
     const arr: WallBlock[] = []
-    for (let row = 0; row < WALL_ROWS; row++) {
-      for (let col = 0; col < WALL_COLS; col++) {
-        const mesh = new THREE.Mesh(blockGeo, wallMat)
-        // Staggered brick pattern
-        const offsetX = row % 2 === 0 ? 0 : BLOCK_W * 0.5
-        const x = col * BLOCK_W - (WALL_COLS * BLOCK_W) / 2 + BLOCK_W / 2 + offsetX
-        const y = row * BLOCK_H + BLOCK_H / 2
-        mesh.position.set(x, y, 0)
-        mesh.castShadow = true
-        mesh.receiveShadow = true
-        arr.push({
-          mesh,
-          velocity: new THREE.Vector3(),
-          alive: true,
-          settled: true,
-          homePos: new THREE.Vector3(x, y, 0),
-          row,
-          col,
-        })
-      }
+    for (const spec of specs) {
+      const mesh = new THREE.Mesh(getBlockGeo(spec.size), getBlockMat(spec.color))
+      mesh.position.set(...spec.position)
+      mesh.castShadow = true
+      mesh.receiveShadow = true
+      arr.push({
+        mesh,
+        velocity: new THREE.Vector3(),
+        alive: true,
+        settled: true,
+        homePos: new THREE.Vector3(...spec.position),
+        row: spec.row,
+        col: spec.col,
+        size: spec.size,
+        supportedBy: spec.supportedBy ?? [],
+        groundSupported: spec.groundSupported ?? false,
+      })
     }
     return arr
-  }, [])
+  }, [style])
 
   // Register blocks for collision detection
   useMemo(() => {
@@ -76,7 +270,6 @@ export function WallDefense({ position, rotation = 0, wallBlocksRef, wallId, tab
   }, [blocks, wallId, wallBlocksRef])
 
   const integrityTimer = useRef(0)
-  // Track pending row collapses for staggered cascade effect
   const pendingCollapses = useRef<{ row: number; delay: number }[]>([])
 
   useFrame((_, rawDelta) => {
@@ -93,9 +286,8 @@ export function WallDefense({ position, rotation = 0, wallBlocksRef, wallId, tab
       const pc = pendingCollapses.current[i]
       pc.delay -= delta
       if (pc.delay <= 0) {
-        // Collapse all alive blocks in this row
         for (const b of blocks) {
-          if (b.row === pc.row && b.alive && b.settled) {
+          if (b.row === pc.row && b.alive && b.settled && !b.groundSupported) {
             b.settled = false
             b.velocity.y = -0.8
             b.velocity.x += (Math.random() - 0.5) * 0.5
@@ -106,46 +298,63 @@ export function WallDefense({ position, rotation = 0, wallBlocksRef, wallId, tab
       }
     }
 
-    // ── Structural integrity: unsupported blocks fall ──
+    // ── Structural integrity ──
     integrityTimer.current += delta
     if (integrityTimer.current > 0.1) {
       integrityTimer.current = 0
 
-      for (let row = 1; row < WALL_ROWS; row++) {
-        const rowBlocks = blocks.filter(b => b.row === row)
-        const aliveInRow = rowBlocks.filter(b => b.alive)
+      // Group blocks by row for row-based cascade check
+      const rowGroups = new Map<number, WallBlock[]>()
+      for (const b of blocks) {
+        if (b.groundSupported) continue // never part of cascade triggering
+        let list = rowGroups.get(b.row)
+        if (!list) { list = []; rowGroups.set(b.row, list) }
+        list.push(b)
+      }
 
-        // Check if row has lost >40% — if so, cascade collapse the whole row
-        const destroyedFrac = 1 - aliveInRow.length / WALL_COLS
+      for (const [row, rowBlocks] of rowGroups) {
+        const aliveInRow = rowBlocks.filter(b => b.alive)
+        if (aliveInRow.length === 0) continue
+
+        // Row cascade: if too much of this row is gone, drop what's left
+        const destroyedFrac = 1 - aliveInRow.length / rowBlocks.length
         if (destroyedFrac >= ROW_COLLAPSE_THRESHOLD && aliveInRow.some(b => b.settled)) {
           const alreadyPending = pendingCollapses.current.some(pc => pc.row === row)
           if (!alreadyPending) {
-            pendingCollapses.current.push({ row, delay: 0.033 * (row - 1) })
+            pendingCollapses.current.push({ row, delay: 0.033 * row })
           }
           continue
         }
 
-        // Per-block support check: need STRONG support (>50% overlap), not just touching
+        // Per-block support check
         for (const block of aliveInRow) {
           if (!block.settled) continue
 
-          const belowRow = row - 1
-          if (belowRow < 0) continue
-
-          // Count how many support blocks exist below
-          let totalSupport = 0
-          const bx = block.mesh.position.x
-          for (const belowBlock of blocks) {
-            if (belowBlock.row !== belowRow) continue
-            // Block must be alive AND either settled or just displaced
-            if (!belowBlock.alive) continue
-            const overlap = BLOCK_W - Math.abs(bx - belowBlock.mesh.position.x)
-            if (overlap > BLOCK_W * 0.15) {
-              totalSupport += overlap / BLOCK_W
+          // Explicit support: block falls if MORE THAN HALF of its explicit supports are dead
+          if (block.supportedBy.length > 0) {
+            const aliveSupports = block.supportedBy.filter(idx => blocks[idx]?.alive).length
+            if (aliveSupports <= block.supportedBy.length / 2) {
+              block.settled = false
+              block.velocity.y = -0.8 - Math.random() * 0.5
+              block.velocity.x += (Math.random() - 0.5) * 0.5
+              block.velocity.z += (Math.random() - 0.5) * 0.3
             }
+            continue
           }
 
-          // Need at least 40% total overlap support to stay up
+          // Row-based support: need >40% overlap with blocks in row-1
+          const belowRow = row - 1
+          if (belowRow < 0) continue
+          let totalSupport = 0
+          const bx = block.mesh.position.x
+          const blockW = block.size[0]
+          for (const below of blocks) {
+            if (below.row !== belowRow || !below.alive) continue
+            const overlap = blockW - Math.abs(bx - below.mesh.position.x)
+            if (overlap > blockW * 0.15) {
+              totalSupport += overlap / blockW
+            }
+          }
           if (totalSupport < 0.4) {
             block.settled = false
             block.velocity.y = -0.8 - Math.random() * 0.5
@@ -157,36 +366,32 @@ export function WallDefense({ position, rotation = 0, wallBlocksRef, wallId, tab
     }
 
     // ── Block physics ──
-    // Helper: is this block (in world XZ) still over the table?
     const _wp = new THREE.Vector3()
     const isOverTable = (block: WallBlock): boolean => {
-      if (!tableBounds) return true // no bounds = always over (legacy behavior)
+      if (!tableBounds) return true
       block.mesh.getWorldPosition(_wp)
       return Math.abs(_wp.x) <= tableBounds.halfWidth && Math.abs(_wp.z) <= tableBounds.halfDepth
     }
 
     for (const b of blocks) {
-      if (!b.mesh.visible) continue // already faded out
+      if (!b.mesh.visible) continue
+      const blockHalfH = b.size[1] / 2
 
-      // Dead blocks still animate as flying debris until they settle (or fall off the world)
+      // Dead blocks animate as debris until they settle or fall off
       if (!b.alive) {
         const speed = b.velocity.length()
-        // Hide if block has fallen into the void
         if (b.mesh.position.y < FALL_VOID_Y) {
           b.mesh.visible = false
           continue
         }
-        // Settle on table if at rest
-        if (speed < BLOCK_SETTLE_SPEED && b.mesh.position.y <= BLOCK_H && isOverTable(b)) {
+        if (speed < BLOCK_SETTLE_SPEED && b.mesh.position.y <= blockHalfH + 0.01 && isOverTable(b)) {
           b.mesh.visible = false
           continue
         }
-        // Animate flying debris
         b.velocity.y += BLOCK_GRAVITY * delta
         b.mesh.position.add(b.velocity.clone().multiplyScalar(delta))
-        // Only clamp to ground if still over the table — otherwise let it fall into the void
-        if (b.mesh.position.y < BLOCK_H / 2 && isOverTable(b)) {
-          b.mesh.position.y = BLOCK_H / 2
+        if (b.mesh.position.y < blockHalfH && isOverTable(b)) {
+          b.mesh.position.y = blockHalfH
           b.velocity.y *= BLOCK_GROUND_BOUNCE_VY
           b.velocity.x *= BLOCK_GROUND_FRICTION
           b.velocity.z *= BLOCK_GROUND_FRICTION
@@ -200,15 +405,14 @@ export function WallDefense({ position, rotation = 0, wallBlocksRef, wallId, tab
         continue
       }
 
+      // Alive blocks settle at home position
       const speed = b.velocity.length()
-
       if (speed < BLOCK_SETTLE_SPEED && b.mesh.position.y <= b.homePos.y + 0.01) {
         b.settled = true
         b.velocity.set(0, 0, 0)
         continue
       }
 
-      // Hide live blocks that fall into the void (cascade collapse off-table)
       if (b.mesh.position.y < FALL_VOID_Y) {
         b.alive = false
         b.mesh.visible = false
@@ -219,16 +423,14 @@ export function WallDefense({ position, rotation = 0, wallBlocksRef, wallId, tab
       b.velocity.y += BLOCK_GRAVITY * delta
       b.mesh.position.add(b.velocity.clone().multiplyScalar(delta))
 
-      // Ground collision (only if still over table)
-      if (b.mesh.position.y < BLOCK_H / 2 && isOverTable(b)) {
-        b.mesh.position.y = BLOCK_H / 2
+      if (b.mesh.position.y < blockHalfH && isOverTable(b)) {
+        b.mesh.position.y = blockHalfH
         b.velocity.y *= BLOCK_GROUND_BOUNCE_VY
         b.velocity.x *= BLOCK_GROUND_FRICTION
         b.velocity.z *= BLOCK_GROUND_FRICTION
         if (Math.abs(b.velocity.y) < 0.3) b.velocity.y = 0
       }
 
-      // Tumble when moving fast
       if (speed > 0.5) {
         b.mesh.rotation.x += b.velocity.z * delta * 2
         b.mesh.rotation.z -= b.velocity.x * delta * 2
@@ -238,163 +440,47 @@ export function WallDefense({ position, rotation = 0, wallBlocksRef, wallId, tab
     }
   })
 
-  // Track how many blocks remain alive for collider sizing
-  const [wallIntact, setWallIntact] = useState(true)
-  const wallCheckTimer = useRef(0)
-
-  // Check periodically if wall is mostly destroyed (remove collider)
+  // Remove the static collider once the defense is mostly destroyed
+  const [intact, setIntact] = useState(true)
+  const checkTimer = useRef(0)
   useFrame((_, rawDelta) => {
-    wallCheckTimer.current += Math.min(rawDelta, 0.05)
-    if (wallCheckTimer.current > 0.3) {
-      wallCheckTimer.current = 0
+    checkTimer.current += Math.min(rawDelta, 0.05)
+    if (checkTimer.current > 0.3) {
+      checkTimer.current = 0
       const aliveCount = blocks.filter(b => b.alive).length
-      const totalCount = WALL_COLS * WALL_ROWS
-      if (aliveCount < totalCount * 0.3 && wallIntact) {
-        setWallIntact(false)
+      if (aliveCount < blocks.length * 0.3 && intact) {
+        setIntact(false)
       }
     }
   })
 
-  // Wall dimensions: WALL_COLS * BLOCK_W wide, WALL_ROWS * BLOCK_H tall, BLOCK_D deep
-  const wallHalfW = (WALL_COLS * BLOCK_W) / 2
-  const wallHalfH = (WALL_ROWS * BLOCK_H) / 2
-  const wallHalfD = BLOCK_D / 2
+  const collider = getStaticCollider(style)
 
   return (
     <>
       <group ref={groupRef} />
-      {wallIntact && (
+      {intact && (
         <RigidBody
           type="fixed"
-          position={[position[0], position[1] + wallHalfH, position[2]]}
+          position={[position[0] + collider.offset[0], position[1] + collider.offset[1], position[2] + collider.offset[2]]}
           rotation={[0, rotation, 0]}
           collisionGroups={GROUP_WALL}
           colliders={false}
         >
-          <CuboidCollider args={[wallHalfW, wallHalfH, wallHalfD + 0.1]} />
+          <CuboidCollider args={collider.half} />
         </RigidBody>
       )}
     </>
   )
 }
 
-// ── Sandbag Bunker ──────────────────────────────────────
-const sandbagGeo = new THREE.BoxGeometry(0.3, 0.14, 0.18)
-const sandbagMat = new THREE.MeshStandardMaterial({ color: 0xA89070, roughness: 0.85 })
-
-export function SandbagDefense({ position, rotation = 0 }: DefenseProps) {
-  return (
-    <>
-      <group position={position} rotation-y={rotation}>
-        {/* Front row */}
-        {[...Array(5)].map((_, i) => (
-          <mesh key={`f-${i}`} geometry={sandbagGeo} material={sandbagMat}
-            position={[(i - 2) * 0.32, 0.07, 0.3]}
-            rotation={[0, (i % 2) * 0.1, 0]}
-            castShadow receiveShadow
-          />
-        ))}
-        {/* Second row offset */}
-        {[...Array(4)].map((_, i) => (
-          <mesh key={`s-${i}`} geometry={sandbagGeo} material={sandbagMat}
-            position={[(i - 1.5) * 0.32, 0.21, 0.3]}
-            rotation={[0, (i % 2) * -0.1, 0]}
-            castShadow receiveShadow
-          />
-        ))}
-        {/* Side walls */}
-        {[-0.65, 0.65].map((x, idx) => (
-          <group key={`side-${idx}`}>
-            <mesh geometry={sandbagGeo} material={sandbagMat}
-              position={[x, 0.07, 0]} rotation={[0, Math.PI / 2, 0]}
-              castShadow receiveShadow
-            />
-            <mesh geometry={sandbagGeo} material={sandbagMat}
-              position={[x, 0.21, 0]} rotation={[0, Math.PI / 2, 0]}
-              castShadow receiveShadow
-            />
-          </group>
-        ))}
-        {/* Top row */}
-        {[...Array(3)].map((_, i) => (
-          <mesh key={`t-${i}`} geometry={sandbagGeo} material={sandbagMat}
-            position={[(i - 1) * 0.32, 0.35, 0.3]}
-            castShadow receiveShadow
-          />
-        ))}
-      </group>
-      <RigidBody type="fixed" position={position} rotation={[0, rotation, 0]} collisionGroups={GROUP_WALL} colliders={false}>
-        <CuboidCollider args={[0.55, 0.25, 0.25]} position={[0, 0.2, 0.15]} />
-      </RigidBody>
-    </>
-  )
+// ── Backwards-compatible wrappers (all destructible now) ─
+export function WallDefense(props: Omit<DefenseProps, 'style'>) {
+  return <DestructibleDefense {...props} style="wall" />
 }
-
-// ── Watch Tower ─────────────────────────────────────────
-export function WatchTower({ position, rotation = 0 }: DefenseProps) {
-  return (
-    <group position={position} rotation-y={rotation}>
-      {/* 4 legs */}
-      {[[-0.4, -0.4], [0.4, -0.4], [-0.4, 0.4], [0.4, 0.4]].map(([x, z], i) => (
-        <mesh key={`leg-${i}`} position={[x, 0.9, z]} castShadow>
-          <cylinderGeometry args={[0.05, 0.06, 1.8, 6]} />
-          <meshStandardMaterial color={0x6b4226} roughness={0.7} />
-        </mesh>
-      ))}
-      {/* Cross braces */}
-      {[[-0.4, 0], [0.4, 0], [0, -0.4], [0, 0.4]].map(([x, z], i) => (
-        <mesh key={`brace-${i}`} position={[x, 0.5, z]}
-          rotation={[0, 0, i < 2 ? 0.4 : 0]}
-          castShadow>
-          <boxGeometry args={[i < 2 ? 0.04 : 0.84, 0.04, i < 2 ? 0.84 : 0.04]} />
-          <meshStandardMaterial color={0x5a3a1a} roughness={0.7} />
-        </mesh>
-      ))}
-      {/* Platform */}
-      <mesh position={[0, 1.8, 0]} castShadow receiveShadow>
-        <boxGeometry args={[1.1, 0.08, 1.1]} />
-        <meshStandardMaterial color={0x6b4226} roughness={0.6} />
-      </mesh>
-      {/* Railings */}
-      {[
-        { pos: [0, 2.0, -0.52] as [number, number, number], size: [1.08, 0.32, 0.05] as [number, number, number] },
-        { pos: [-0.52, 2.0, 0] as [number, number, number], size: [0.05, 0.32, 1.08] as [number, number, number] },
-        { pos: [0.52, 2.0, 0] as [number, number, number], size: [0.05, 0.32, 1.08] as [number, number, number] },
-      ].map((wall, i) => (
-        <mesh key={`rail-${i}`} position={wall.pos} castShadow>
-          <boxGeometry args={wall.size} />
-          <meshStandardMaterial color={0x3d6b4f} roughness={0.5} />
-        </mesh>
-      ))}
-      {/* Front rail (lower) */}
-      <mesh position={[0, 1.94, 0.52]} castShadow>
-        <boxGeometry args={[1.08, 0.2, 0.05]} />
-        <meshStandardMaterial color={0x3d6b4f} roughness={0.5} />
-      </mesh>
-      {/* Corner posts */}
-      {[[-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5]].map(([x, z], i) => (
-        <mesh key={`post-${i}`} position={[x, 2.1, z]} castShadow>
-          <cylinderGeometry args={[0.03, 0.03, 0.52, 6]} />
-          <meshStandardMaterial color={0x5a3a1a} roughness={0.7} />
-        </mesh>
-      ))}
-      {/* Ladder */}
-      <group position={[0.55, 0.9, 0]}>
-        <mesh position={[0, 0, -0.08]} castShadow>
-          <boxGeometry args={[0.04, 1.8, 0.04]} />
-          <meshStandardMaterial color={0x6b4226} roughness={0.7} />
-        </mesh>
-        <mesh position={[0, 0, 0.08]} castShadow>
-          <boxGeometry args={[0.04, 1.8, 0.04]} />
-          <meshStandardMaterial color={0x6b4226} roughness={0.7} />
-        </mesh>
-        {[...Array(6)].map((_, i) => (
-          <mesh key={`rung-${i}`} position={[0, -0.6 + i * 0.3, 0]} castShadow>
-            <boxGeometry args={[0.03, 0.03, 0.2]} />
-            <meshStandardMaterial color={0x5a3a1a} roughness={0.7} />
-          </mesh>
-        ))}
-      </group>
-    </group>
-  )
+export function SandbagDefense(props: Omit<DefenseProps, 'style'>) {
+  return <DestructibleDefense {...props} style="sandbag" />
+}
+export function WatchTower(props: Omit<DefenseProps, 'style'>) {
+  return <DestructibleDefense {...props} style="tower" />
 }

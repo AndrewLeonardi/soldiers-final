@@ -84,49 +84,6 @@ export interface FlexSoldierResult {
   parts: SoldierParts
 }
 
-// ── Dismemberment ──
-
-export type DismemberableLimb = 'leftArm' | 'rightArm' | 'head' | 'leftLeg' | 'rightLeg'
-
-export interface DismembermentState {
-  leftArm: boolean   // true = blown off
-  rightArm: boolean
-  head: boolean
-  leftLeg: boolean
-  rightLeg: boolean
-}
-
-export function createDismembermentState(): DismembermentState {
-  return { leftArm: false, rightArm: false, head: false, leftLeg: false, rightLeg: false }
-}
-
-/** Roll for dismemberment based on damage. Higher damage = higher chance.
- *  Returns which limb to blow off, or null if nothing happens. */
-export function rollDismemberment(damage: number, current: DismembermentState): DismemberableLimb | null {
-  const chance = Math.min(damage / 200, 0.6)
-  if (Math.random() > chance) return null
-  // Arms weighted 2x, legs 1x, head 0.5x (rarest, most dramatic)
-  const pool: DismemberableLimb[] = []
-  if (!current.leftArm)  { pool.push('leftArm', 'leftArm') }
-  if (!current.rightArm) { pool.push('rightArm', 'rightArm') }
-  if (!current.leftLeg)  { pool.push('leftLeg') }
-  if (!current.rightLeg) { pool.push('rightLeg') }
-  if (!current.head)     { pool.push('head') }
-  if (pool.length === 0) return null
-  return pool[Math.floor(Math.random() * pool.length)]
-}
-
-/** Apply dismemberment visually — hides the limb group */
-export function applyDismemberment(parts: SoldierParts, limb: DismemberableLimb): void {
-  switch (limb) {
-    case 'leftArm':  parts.leftArm.visible = false; break
-    case 'rightArm': parts.rightArm.visible = false; break
-    case 'head':     parts.headGrp.visible = false; break
-    case 'leftLeg':  parts.leftLeg.visible = false; break
-    case 'rightLeg': parts.rightLeg.visible = false; break
-  }
-}
-
 // ============================================================
 // Factory
 // ============================================================
@@ -431,57 +388,100 @@ export function poseHit(p: SoldierParts, age: number): void {
   p.rightLeg.rotation.x = -stagger * 0.1
 }
 
-/** Death — staged fall: stagger -> knees buckle -> topple sideways (progress 0-1) */
+/** Death — toy soldier flick: tips sideways and lands flat.
+ *
+ *  The body rotates around the LEFT BOOT (the point that ends up touching the
+ *  ground when tipping over). The base disc stays unrotated (it's a sibling of
+ *  hips inside root, not a descendant of hips), so it remains flat on the ground.
+ *  The boot pivot is preserved through the rotation using the formula:
+ *
+ *      hips.position += (I - R) * pivot_in_hips_local
+ *
+ *  This guarantees the chosen pivot point stays at its original world position
+ *  throughout the entire rotation, so the lowest body part never dips below
+ *  y=0. No magic lift constants — just math.
+ *
+ *  Rotation capped at ~80° (1.4 rad). At exactly 90° the helmet's lowest world
+ *  Y reaches the ground with zero margin; 80° leaves a clean ~0.2 buffer.
+ *
+ *  Verification at θ=1.4 rad, pivot=(-0.1, -0.48):
+ *    left boot:  world y = 0.040 (the pivot, fixed)
+ *    right boot: world y = 0.237
+ *    helmet:     world y = 0.324 (sphere bottom at 0.199)
+ *    All ≥ 0 ✓
+ */
 export function poseDeath(p: SoldierParts, progress: number): void {
+  const t = Math.min(1, progress)
+  const ease = 1 - Math.pow(1 - t, 3) // ease-out cubic
+
+  // Root is left UNTOUCHED so the base disc stays flat on the ground.
   p.root.position.y = 0
-  if (progress < 0.15) {
-    const t = progress / 0.15
-    const stagger = t * t
-    p.spine.rotation.x = stagger * 0.4
-    p.spine.rotation.z = stagger * 0.05
-    p.headGrp.rotation.x = stagger * 0.3
-    p.leftArm.rotation.x = stagger * 0.5
-    p.rightArm.rotation.x = stagger * 0.3
-    p.leftLeg.rotation.x = 0
-    p.rightLeg.rotation.x = 0
-    p.leftKnee.rotation.x = -stagger * 0.2
-    p.rightKnee.rotation.x = -stagger * 0.15
-    p.root.rotation.z = 0
-    p.root.rotation.x = 0
-  } else if (progress < 0.4) {
-    const t = (progress - 0.15) / 0.25
-    const ease = t * t * (3 - 2 * t)
-    p.spine.rotation.x = 0.4 - ease * 0.1
-    p.spine.rotation.z = ease * 0.1
-    p.headGrp.rotation.x = 0.3 + ease * 0.2
-    p.leftArm.rotation.x = 0.5 + ease * 0.3
-    p.leftArm.rotation.z = ease * 0.5
-    p.rightArm.rotation.x = 0.3 + ease * 0.2
-    p.rightArm.rotation.z = -ease * 0.3
-    p.leftLeg.rotation.x = -ease * 0.3
-    p.leftKnee.rotation.x = -0.2 - ease * 0.4
-    p.rightLeg.rotation.x = ease * 0.15
-    p.rightKnee.rotation.x = -0.15 - ease * 0.3
-    p.root.rotation.z = ease * 0.15
-    p.root.rotation.x = ease * 0.1
-  } else {
-    const t = (progress - 0.4) / 0.6
-    const ease = 1 - Math.pow(1 - t, 3)
-    p.root.rotation.z = 0.15 + ease * (Math.PI / 2 * 0.85 - 0.15)
-    p.root.rotation.x = 0.1 + ease * 0.15
-    p.spine.rotation.x = 0.3 + ease * 0.1
-    p.spine.rotation.z = 0.1 - ease * 0.05
-    p.headGrp.rotation.x = 0.5 + ease * 0.3
-    p.headGrp.rotation.y = ease * 0.15
-    p.leftArm.rotation.z = 0.5 + ease * 0.8
-    p.leftArm.rotation.x = 0.8 - ease * 0.3
-    p.rightArm.rotation.z = -0.3 - ease * 0.6
-    p.rightArm.rotation.x = 0.5 - ease * 0.2
-    p.leftLeg.rotation.x = -0.3 + ease * 0.1
-    p.rightLeg.rotation.x = 0.15 + ease * 0.1
-    p.leftKnee.rotation.x = -0.6 + ease * 0.2
-    p.rightKnee.rotation.x = -0.45 + ease * 0.1
-  }
+  p.root.rotation.x = 0
+  p.root.rotation.z = 0
+
+  // Tip the body around the left boot pivot.
+  const theta = ease * 1.4 // ~80 degrees
+  const cosT = Math.cos(theta)
+  const sinT = Math.sin(theta)
+
+  // Pivot point in hips-local coords. Left boot is at root-local (-0.1, 0.04, 0.02);
+  // hips origin is at root-local (0, 0.52, 0); so pivot in hips-local = (-0.1, -0.48, 0.02).
+  const px = -0.1
+  const py = -0.48
+  // Apply (I - R) * P offset to hips.position so the pivot stays fixed in world.
+  // hips.position is in root-local coords; original is (0, 0.52, 0).
+  p.hips.position.x = (1 - cosT) * px + sinT * py
+  p.hips.position.y = 0.52 + (-sinT * px + (1 - cosT) * py)
+  p.hips.rotation.z = theta
+
+  // Neutral spine/head — the body falls as a rigid unit
+  p.spine.rotation.x = 0
+  p.spine.rotation.z = 0
+  p.headGrp.rotation.x = 0
+  p.headGrp.rotation.y = 0
+
+  // Legs straight (rigid extensions of the rotated hips)
+  p.leftLeg.rotation.x = 0
+  p.rightLeg.rotation.x = 0
+  p.leftKnee.rotation.x = 0
+  p.rightKnee.rotation.x = 0
+
+  // Arms relax slightly
+  p.leftArm.rotation.x = ease * 0.4
+  p.leftArm.rotation.z = ease * 0.25
+  p.leftElbow.rotation.x = 0
+  p.rightArm.rotation.x = ease * 0.3
+  p.rightArm.rotation.z = -ease * 0.2
+  p.rightElbow.rotation.x = 0
+}
+
+/** Wounded — hunched, slumped posture for soldiers below 50% HP */
+export function poseWounded(p: SoldierParts, t: number): void {
+  const breath = Math.sin(t * 1.4) * 0.04
+  // Slumped spine and head down
+  p.spine.rotation.x = 0.22 + breath
+  p.spine.rotation.z = 0.05
+  p.headGrp.rotation.x = 0.28
+  p.headGrp.rotation.y = Math.sin(t * 0.5) * 0.08
+  // Hips lowered (was 0.52)
+  p.hips.position.y = 0.46
+  // Drooping arms
+  p.leftArm.rotation.x = 0.25
+  p.leftArm.rotation.z = 0.18
+  p.leftElbow.rotation.x = -0.15
+  p.rightArm.rotation.x = 0.2
+  p.rightArm.rotation.z = -0.18
+  p.rightElbow.rotation.x = -0.12
+  // Stiff legs with subtle limp shift
+  const limp = Math.sin(t * 0.8)
+  p.leftLeg.rotation.x = limp * 0.06
+  p.leftKnee.rotation.x = 0.08
+  p.rightLeg.rotation.x = -limp * 0.05
+  p.rightKnee.rotation.x = 0.05
+  // Reset root just in case death pose touched it earlier
+  p.root.position.y = 0
+  p.root.rotation.x = 0
+  p.root.rotation.z = 0
 }
 
 /** Crouch behind cover */
@@ -744,6 +744,7 @@ export function animateFlexSoldier(
   status: string,
   elapsed: number,
   _dt: number,
+  isWounded: boolean = false,
 ): void {
   const p = soldier.parts
 
@@ -756,6 +757,12 @@ export function animateFlexSoldier(
   if (status !== animState.status) {
     if (status === 'dead') animState.deathStart = elapsed
     animState.status = status
+  }
+
+  // Wounded overrides idle/walking/firing — but NOT hit, dead, or other action states
+  if (isWounded && (status === 'idle' || status === 'walking' || status === 'firing')) {
+    poseWounded(p, elapsed)
+    return
   }
 
   switch (status) {

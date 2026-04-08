@@ -7,10 +7,8 @@ import { useGameStore } from '@stores/gameStore'
 import { useRosterStore } from '@stores/rosterStore'
 import { NeuralNet } from '@engine/ml/neuralNet'
 import { SoldierUnit } from '@three/models/SoldierUnit'
-import { LimbDebris } from '@three/effects/LimbDebris'
-import { createDismembermentState, rollDismemberment, type DismembermentState, type DismemberableLimb } from '@three/models/flexSoldier'
 import { TankUnit } from '@three/models/TankUnit'
-import { WallDefense, SandbagDefense, WatchTower, type WallBlock } from '@three/models/Defenses'
+import { DestructibleDefense, type WallBlock } from '@three/models/Defenses'
 import { GROUP_ENV } from '@three/physics/collisionGroups'
 import { SoldierBody } from '@three/physics/SoldierBody'
 import { WorldRenderer } from '@three/worlds/WorldRenderer'
@@ -37,7 +35,7 @@ import {
   MG_BULLET_SPEED, ROCKET_GRAV, PROJECTILE_MAX_AGE, HIT_RADIUS, WALL_HIT_RADIUS,
   LOSE_THRESHOLD, FALL_DEATH_Y,
   BLAST, SHAKE, RAGDOLL, STAGGER,
-  idealElevation, randRange, randomDeathType,
+  idealElevation, randRange,
   getWorldBounds, type WorldBounds,
 } from '@engine/physics/battlePhysics'
 import { triggerHitpause, getHitpauseScale } from '@engine/physics/hitpause'
@@ -71,7 +69,6 @@ interface BattleUnit extends GameUnit {
   lastHitTime: number    // battle time when last damaged (for underFire detection)
   coverPauseTime: number // time spent paused behind cover
   spawnZ: number         // Z position at spawn (for jeep flank direction)
-  dismemberedParts: DismembermentState
 }
 
 /** Get enemy combat stats: base type stats + weapon overrides for range/damage/fireRate */
@@ -115,7 +112,6 @@ function makeBattleUnit(unit: GameUnit): BattleUnit {
     lastHitTime: -10,
     coverPauseTime: 0,
     spawnZ: unit.position[2],
-    dismemberedParts: createDismembermentState(),
   }
 }
 
@@ -209,10 +205,6 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
   const [dustClouds, setDustClouds] = useState<DustData[]>([])
   const dustIdRef = useRef(0)
 
-  // Limb debris (dismemberment)
-  interface LimbDebrisData { id: string; position: [number, number, number]; velocity: [number, number, number]; team: 'green' | 'tan'; limb: DismemberableLimb }
-  const [limbDebrisItems, setLimbDebris] = useState<LimbDebrisData[]>([])
-  const limbDebrisIdRef = useRef(0)
 
   // Star criteria tracking
   const edgeKillsRef = useRef(0)
@@ -956,41 +948,16 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
             killCount++
             sfx.deathThud()
 
-            // Death type determines trajectory character
-            const deathType = randomDeathType()
-            let impulseY: number
-            if (deathType === 'launch') {
-              impulseY = randRange(RAGDOLL.LAUNCH_Y_MIN, RAGDOLL.LAUNCH_Y_MAX) * force
-              unit.spinSpeed = randRange(1, 3)
-            } else {
-              impulseY = 0.4 + force * 2
-              unit.spinSpeed = randRange(RAGDOLL.TUMBLE_SPIN_MIN, RAGDOLL.TUMBLE_SPIN_MAX)
-            }
-
+            // Death — purely horizontal knockback. The vertical crumple pose
+            // handles the visual fall in place. No upward impulse, no spin.
+            unit.spinSpeed = 0
             const body = bodyMapRef.current.get(unit.id)
             if (body) {
-              body.applyImpulse({ x: impulseX, y: impulseY, z: impulseZ }, true)
+              body.applyImpulse({ x: impulseX, y: 0, z: impulseZ }, true)
             }
 
             const dustId = `dust-${++dustIdRef.current}`
             setDustClouds(prev => [...prev, { id: dustId, position: [...unit.position] as [number, number, number], intensity: 0.8 }])
-
-            // Death dismemberment — roll 2-3 times for dramatic ragdoll
-            const bu = unit as BattleUnit
-            for (let r = 0; r < 2 + Math.round(Math.random()); r++) {
-              const limb = rollDismemberment(dmg * 2, bu.dismemberedParts)
-              if (limb) {
-                bu.dismemberedParts[limb] = true
-                const lid = `limb-${++limbDebrisIdRef.current}`
-                setLimbDebris(prev => [...prev, {
-                  id: lid,
-                  position: [...unit.position] as [number, number, number],
-                  velocity: [impulseX * 1.5 + (Math.random() - 0.5) * 3, randRange(3, 7), impulseZ * 1.5 + (Math.random() - 0.5) * 3],
-                  team: unit.team,
-                  limb,
-                }])
-              }
-            }
           } else {
             unit.status = 'hit'
             unit.stateAge = 0
@@ -999,22 +966,6 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
             const body = bodyMapRef.current.get(unit.id)
             if (body) {
               body.applyImpulse({ x: impulseX, y: hitImpulseY, z: impulseZ }, true)
-            }
-
-            // Chance of non-lethal dismemberment
-            const bu = unit as BattleUnit
-            const limb = rollDismemberment(dmg, bu.dismemberedParts)
-            if (limb) {
-              bu.dismemberedParts[limb] = true
-              if (limb === 'head') { unit.health = 0; unit.status = 'dead'; killCount++ }
-              const lid = `limb-${++limbDebrisIdRef.current}`
-              setLimbDebris(prev => [...prev, {
-                id: lid,
-                position: [...unit.position] as [number, number, number],
-                velocity: [impulseX * 1.2 + (Math.random() - 0.5) * 2, randRange(2, 5), impulseZ * 1.2 + (Math.random() - 0.5) * 2],
-                team: unit.team,
-                limb,
-              }])
             }
           }
         }
@@ -1196,35 +1147,19 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
               unit.status = 'dead'
               unit.stateAge = 0
               sfx.deathThud()
-              // Varied ragdoll via Rapier impulse
+              // Pure horizontal knockback — no upward impulse, no spin
               const knockDir = new THREE.Vector3(dx, 0, dz).normalize()
-              const perpAngle = Math.atan2(knockDir.z, knockDir.x) + (Math.random() - 0.5) * 1.2
               const forceVar = randRange(RAGDOLL.FORCE_VARIANCE_MIN, RAGDOLL.FORCE_VARIANCE_MAX)
               const bulletBody = bodyMapRef.current.get(unit.id)
               if (bulletBody) {
                 bulletBody.applyImpulse({
-                  x: knockDir.x * 1.5 * forceVar + Math.cos(perpAngle) * 0.5,
-                  y: randRange(1.0, 2.5),
-                  z: knockDir.z * 1.5 * forceVar + Math.sin(perpAngle) * 0.5,
+                  x: knockDir.x * 1.5 * forceVar,
+                  y: 0,
+                  z: knockDir.z * 1.5 * forceVar,
                 }, true)
               }
-              unit.spinSpeed = randRange(1, RAGDOLL.TUMBLE_SPIN_MAX * 0.5)
+              unit.spinSpeed = 0
               triggerHitpause(3)
-
-              // Bullet death dismemberment (lower chance than explosions)
-              const bu = unit as BattleUnit
-              const limb = rollDismemberment(p.damage, bu.dismemberedParts)
-              if (limb) {
-                bu.dismemberedParts[limb] = true
-                const lid = `limb-${++limbDebrisIdRef.current}`
-                setLimbDebris(prev => [...prev, {
-                  id: lid,
-                  position: [...unit.position] as [number, number, number],
-                  velocity: [knockDir.x * 3 + (Math.random() - 0.5) * 2, randRange(2, 4), knockDir.z * 3 + (Math.random() - 0.5) * 2],
-                  team: unit.team,
-                  limb,
-                }])
-              }
             } else {
               unit.status = 'hit'
               unit.stateAge = 0
@@ -1436,23 +1371,25 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
         </mesh>
       )}
 
-      {/* Player units: soldiers + defenses */}
+      {/* Player units: soldiers + destructible defenses (all share the same block system) */}
       {renderPlayers.map((unit) => {
-        if (unit.type === 'wall') return (
-          <WallDefense
-            key={unit.id}
-            position={unit.position}
-            rotation={unit.rotation}
-            wallBlocksRef={wallBlocksRef}
-            wallId={unit.id}
-            tableBounds={{
-              halfWidth: (currentWorldConfig?.ground.size?.[0] ?? 16) / 2,
-              halfDepth: (currentWorldConfig?.ground.size?.[1] ?? 12) / 2,
-            }}
-          />
-        )
-        if (unit.type === 'sandbag') return <SandbagDefense key={unit.id} position={unit.position} rotation={unit.rotation} />
-        if (unit.type === 'tower') return <WatchTower key={unit.id} position={unit.position} rotation={unit.rotation} />
+        if (unit.type === 'wall' || unit.type === 'sandbag' || unit.type === 'tower') {
+          const style = unit.type === 'wall' ? 'wall' : unit.type === 'sandbag' ? 'sandbag' : 'tower'
+          return (
+            <DestructibleDefense
+              key={unit.id}
+              position={unit.position}
+              rotation={unit.rotation}
+              style={style}
+              wallBlocksRef={wallBlocksRef}
+              wallId={unit.id}
+              tableBounds={{
+                halfWidth: (currentWorldConfig?.ground.size?.[0] ?? 16) / 2,
+                halfDepth: (currentWorldConfig?.ground.size?.[1] ?? 12) / 2,
+              }}
+            />
+          )
+        }
         const isTank = unit.weapon === 'tank'
         return (
           <SoldierBody key={unit.id} unitId={unit.id} position={unit.position}
@@ -1510,18 +1447,6 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
           position={d.position}
           intensity={d.intensity}
           onComplete={() => setDustClouds((prev) => prev.filter((x) => x.id !== d.id))}
-        />
-      ))}
-
-      {/* Limb debris (dismemberment) */}
-      {limbDebrisItems.map((d) => (
-        <LimbDebris
-          key={d.id}
-          position={d.position}
-          velocity={d.velocity}
-          team={d.team}
-          limb={d.limb}
-          onComplete={() => setLimbDebris((prev) => prev.filter((x) => x.id !== d.id))}
         />
       ))}
 
