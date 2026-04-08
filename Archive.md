@@ -1,4 +1,125 @@
-# TOY SOLDIERS -- GAMEPLAN
+# Archive
+
+> Historical design docs consolidated on 2026-04-08. These are archived for reference only. The game's source of truth is being rewritten based on browser-Claude deep research currently in flight, centered on the non-negotiable hook: *"Every toy soldier in this game has its own AI brain."*
+>
+> `fun.md` was deleted as part of this cleanup — it had drifted from the production plan and was creating confusion. The useful parts of it (the North Star scenario, the physics-comedy rules, the Timmy/Johnny/Spike framing) are preserved here only by reference; they should be re-extracted from git history if needed (`git log -- fun.md`).
+>
+> The three docs below are preserved in full because they contain real decisions — pricing tiers, difficulty curves, architectural state, build sequence — that are likely to survive the coming pivot and should not be redone from scratch. Read them critically: some claims may be stale, especially anywhere `fun.md`-style aspirational spectacle language crept in.
+
+## Contents
+
+1. [ECONOMY](#1-economy) — the full monetization design: compute, gold, pricing tiers, pressure curve, revenue math
+2. [GAMEPLAN](#2-gameplan) — production plan: current status, screens, architecture, build sequence, tech stack
+3. [ACCEPTANCE_CRITERIA](#3-acceptance_criteria) — visual/game-loop phase acceptance criteria (mostly historical, largely complete)
+
+---
+
+# 1. ECONOMY
+
+*Originally `ECONOMY.md`. Last updated in source: 2026-04-03.*
+
+## COMPUTE (revenue -- the entire business model)
+
+**What it is:** The premium currency. Used to train soldiers in new weapon
+skills via real neuroevolution. This is the ONLY source of revenue.
+
+**Unit economics:**
+- 1 basic weapon training = 100 Compute (rocket, grenade)
+- 1 advanced weapon training = 200 Compute (machine gun)
+- 1 vehicle training = 300 Compute (tank)
+- Daily free drip: 100 Compute/day (exactly 1 basic training)
+- 7-day login streak bonus: 20/20/30/30/40/40/150 Compute (330 total/week)
+- Streak is forgiving -- missing a day doesn't reset, it pauses
+
+**Why compute feels valuable:**
+- Training is visible and dramatic (watch the neural net evolve in real-time)
+- The skill difference is obvious (untrained = misses wildly, trained = snipes)
+- Graduation moment feels like a Matrix download ("SGT Rico learned ROCKET")
+- Skills are permanent -- once trained, yours forever
+- Mid-game levels are unbeatable without trained soldiers
+- Compute represents real AI computation -- not an arbitrary game token
+
+---
+
+## PURCHASE TIERS
+
+Stripe PWA -- we keep ~94% of revenue vs ~70% through app stores.
+
+| Tier           | Compute | Price  | Per-unit | Bonus vs base |
+|----------------|---------|--------|----------|---------------|
+| Ammo Crate     | 100     | $0.99  | $0.0099  | --            |
+| Supply Drop    | 600     | $4.99  | $0.0083  | +17%          |
+| War Chest      | 1,400   | $9.99  | $0.0071  | +28%          |
+| Arsenal        | 3,200   | $19.99 | $0.0062  | +37%          |
+| Command Center | 8,000   | $49.99 | $0.0062  | +37%          |
+| Nuclear Option | 18,000  | $99.99 | $0.0056  | +44%          |
+
+**First-purchase bonus:** 2x compute on first buy at ANY tier. Industry-
+standard, dramatically increases first conversion.
+
+---
+
+## SECONDARY MONETIZATION
+
+| Offer              | Price  | What                                      | When shown            |
+|--------------------|--------|-------------------------------------------|-----------------------|
+| Starter Pack       | $2.99  | 300 Compute + 1 rare soldier + 500 Gold   | After tutorial (one-time) |
+| Battle Pass        | $4.99  | 30-day: daily 50 bonus Compute + skins + gold multiplier | Always available |
+| Comeback Offer     | $1.99  | 250 Compute                               | After 3+ day absence  |
+| Post-Defeat Bundle | $2.99  | 400 Compute + heal all soldiers           | After losing a level 3x |
+
+Battle Pass alone drove a 145% revenue increase for Clash of Clans.
+It is the single highest-leverage secondary monetization.
+
+---
+
+## GOLD (free, never purchasable)
+
+- Earned ONLY by winning battles (100-500 per level based on stars)
+- Spent on: recruiting soldiers (200), healing injuries (50-100),
+  unlocking weapon blueprints (300-500)
+- Plentiful enough that it never bottlenecks. Compute is always the gate.
+
+---
+
+## THE PRESSURE CURVE
+
+```
+Levels 1-10:  Beatable with free rifle soldiers (0 trained skills needed)
+Levels 11-20: Require 1-2 trained weapon skills (rocket or grenade)
+Levels 21-30: Require 3-4 trained skills across your squad
+Levels 31-40: Require advanced training + specific compositions
+Levels 41-50: Require mastery -- deep training investment
+```
+
+Patient players: ~1 skill/day free = complete campaign in ~45 days.
+Paying players: can sprint through in a week.
+Both paths are valid. Neither feels punished.
+
+---
+
+## REVENUE BENCHMARKS
+
+- Only ~3.5% of players ever pay. Free economy must work for 96.5%.
+- Healthy indie ARPDAU: $0.05-$0.12
+- At 5,000 DAU with $0.08 ARPDAU = ~$12K/month
+- Top 1% of spenders average $108/month, generate ~29% of revenue
+- The ML/AI training angle is a genuine differentiator -- no major
+  competitors doing real neural net training as gameplay
+
+---
+
+## IMPLEMENTATION PHASES
+
+**Phase 1:** Compute counter + gold counter on HUD. That's it.
+**Phase 2:** Daily free compute claim, gold earn/spend, shop bottom sheet.
+**Phase 4:** Stripe integration, Battle Pass, contextual offers, analytics.
+
+---
+
+# 2. GAMEPLAN
+
+*Originally `GAMEPLAN.md`. Last known status snapshot: 2026-04-06.*
 
 This is the production build. Every line of code serves the game.
 
@@ -427,4 +548,80 @@ src/
 
 ---
 
-*Last updated: 2026-04-06*
+# 3. ACCEPTANCE_CRITERIA
+
+*Originally `ACCEPTANCE_CRITERIA.md`. Mostly historical — reflects the visual/game-loop phase that predated the ML training system being built. Most items are now complete; the "remaining" items reference gates that have since been passed.*
+
+# ACCEPTANCE CRITERIA -- Visual & Game Loop Phase
+
+Pass/fail. No partial credit. Every item must be true before we move on.
+
+---
+
+## 1. BARRACKS (Hub Screen)
+
+- [x] Shows real 3D flexSoldier models standing on a surface, NOT 2D icon cards
+- [x] Each soldier is in their idle pose holding their equipped weapon
+- [x] Soldiers are distinguishable (different weapons visible on the models)
+- [x] Tapping a soldier opens their detail view
+- [x] Recruit [+] button adds a new soldier (costs gold, soldier appears on screen)
+- [x] DEPLOY button transitions to placement phase
+- [x] Feels like looking at a toy collection, not a dashboard
+- [x] A 10-year-old could figure out what to do in 5 seconds
+
+## 2. SOLDIER DETAIL (Tap a soldier)
+
+- [x] Full soldier model visible head-to-toe (not cut off)
+- [x] Soldier is rotatable (drag to spin)
+- [x] Equipped weapon is clearly visible on the model
+- [x] Tapping a different weapon swaps the model's weapon live
+- [x] Locked weapons show lock + compute cost clearly
+- [x] Unlocking a weapon spends compute and equips it
+- [x] Back button returns to barracks
+- [x] Screen is NOT cluttered -- soldier is the hero, UI is minimal
+- [ ] Weapon cards need 3D weapon models (currently SVG icons -- in progress)
+- [x] Works on mobile portrait (375x812) without scrolling issues
+
+## 3. DEPLOYMENT (After hitting DEPLOY)
+
+- [x] Mission briefing modal appears with level name + squad roster
+- [x] Placement tray shows YOUR roster soldiers by name (SGT RICO, PVT ACE)
+- [x] NOT generic "RIFLE / ROCKET / SANDBAG / WALL" labels
+- [x] Each soldier shows their equipped weapon type
+- [x] Placing a soldier spawns a flexSoldier with the correct weapon
+- [x] Soldiers appear on the battlefield in their idle pose
+- [x] GO button starts the battle phase
+
+## 4. BATTLEFIELD (After hitting GO)
+
+- [x] Your configured soldiers appear on the battlefield where you placed them
+- [x] Each soldier holds the weapon you equipped in the loadout
+- [x] Soldiers are in their idle pose (alive, standing)
+- [x] Camera stays usable (orbit still works)
+- [ ] (Battle simulation is NOT required yet -- just visual presence)
+
+## 5. GENERAL
+
+- [x] Zero TypeScript errors
+- [x] Zero console errors (warnings from THREE.Clock deprecation are acceptable)
+- [x] 60fps on desktop (no major frame drops)
+- [x] Mobile viewport (375x812) is usable for all screens
+- [ ] Some UI still has dashboard-like elements (ongoing polish)
+- [x] Every interactive element has touch feedback (scale on press)
+
+## 6. TRAINING VISIBILITY (NEW)
+
+- [x] Locked weapons show "REQUIRES TRAINING" when tapped
+- [x] Training CTA overlay shows soldier name + weapon name
+- [x] Pulsing TRAIN button with compute cost visible
+- [x] "Watch your soldier learn through neural evolution" messaging
+- [ ] Actual training arena (ML system) not built yet -- visual placeholder only
+
+---
+
+## REMAINING BEFORE MOVING TO ML/TRAINING
+
+- [ ] Polish weapon cards in soldier detail (3D models instead of SVG icons)
+- [ ] Ensure all screens pass "not a dashboard" test
+
+*When these are done, we build the training/ML system.*
