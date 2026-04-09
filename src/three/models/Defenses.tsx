@@ -141,10 +141,12 @@ function buildTowerBlocks(): BlockSpec[] {
     [-0.4, 0.9, -0.4], [0.4, 0.9, -0.4], [-0.4, 0.9, 0.4], [0.4, 0.9, 0.4],
   ]
   const legIndices: number[] = []
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < legPositions.length; i++) {
+    const legPos = legPositions[i]
+    if (!legPos) continue
     legIndices.push(specs.length)
     specs.push({
-      position: legPositions[i],
+      position: legPos,
       size: [0.1, 1.8, 0.1],
       color: legColor,
       row: 0, col: i,
@@ -244,26 +246,27 @@ function buildTrainingGroundsBlocks(): BlockSpec[] {
   const canvasColor = 0xA89070   // tan canvas (matches sandbags)
 
   // ── Corner posts (ground-supported) ──
+  // Each post pushed individually so its spec index is a named local
+  // variable. Downstream beams reference these by name rather than by
+  // array index, which keeps the code readable under strict indexed-
+  // access checking.
   const postSize: [number, number, number] = [0.14, 1.0, 0.14]
-  const postPositions: [number, number, number][] = [
-    [-0.9, 0.5, -0.9],
-    [ 0.9, 0.5, -0.9],
-    [-0.9, 0.5,  0.9],
-    [ 0.9, 0.5,  0.9],
-  ]
-  const postIndices: number[] = []
-  for (let i = 0; i < 4; i++) {
-    postIndices.push(specs.length)
+  const pushPost = (pos: [number, number, number], col: number): number => {
+    const idx = specs.length
     specs.push({
-      position: postPositions[i],
+      position: pos,
       size: postSize,
       color: postColor,
       row: 0,
-      col: i,
+      col,
       groundSupported: true,
     })
+    return idx
   }
-  const [plFL, plFR, plBL, plBR] = postIndices
+  const plFL = pushPost([-0.9, 0.5, -0.9], 0)
+  const plFR = pushPost([ 0.9, 0.5, -0.9], 1)
+  const plBL = pushPost([-0.9, 0.5,  0.9], 2)
+  const plBR = pushPost([ 0.9, 0.5,  0.9], 3)
 
   // ── Cross-beams on top of posts (row 1) ──
   // Front beam connects FL and FR
@@ -485,6 +488,7 @@ export function DestructibleDefense({
     // Process pending cascade collapses with stagger delay
     for (let i = pendingCollapses.current.length - 1; i >= 0; i--) {
       const pc = pendingCollapses.current[i]
+      if (!pc) continue
       pc.delay -= delta
       if (pc.delay <= 0) {
         for (const b of blocks) {

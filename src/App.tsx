@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
+import { GameConceptBoundary } from './game/GameConceptBoundary'
 
 const HomePage = lazy(() => import('./pages/HomePage'))
 const Game = lazy(() => import('./scenes/Game'))
@@ -34,7 +35,14 @@ export function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/play" element={<Game />} />
         <Route path="/physics-test" element={<PhysicsTest />} />
-        <Route path="/game-concept" element={<GameConcept />} />
+        <Route
+          path="/game-concept"
+          element={
+            <GameConceptBoundary>
+              <GameConcept />
+            </GameConceptBoundary>
+          }
+        />
       </Routes>
     </Suspense>
   )

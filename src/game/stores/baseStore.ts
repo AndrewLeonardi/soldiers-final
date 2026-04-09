@@ -16,6 +16,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { BuildingInstance, BuildingKind } from '@game/buildings/types'
 import { isValidPlacement, snapToGrid } from '@game/base/footprints'
+import { track } from '@game/analytics/events'
 
 // ── Types ────────────────────────────────────────────────
 
@@ -115,6 +116,7 @@ export const useBaseStore = create<BaseState>()(
         } else {
           set({ mode })
         }
+        track('base_mode_toggled', { to: mode })
       },
 
       toggleMode: () => {
@@ -127,27 +129,35 @@ export const useBaseStore = create<BaseState>()(
         // Tapping the already-selected brush clears it (toggle).
         if (current?.kind === 'building' && current.buildingKind === kind) {
           set({ brush: null })
+          track('base_brush_cleared', {})
           return
         }
         set({ brush: { kind: 'building', buildingKind: kind, rotation: 0 } })
+        track('base_brush_selected', { kind })
       },
 
       selectWallBrush: () => {
         const current = get().brush
         if (current?.kind === 'wall') {
           set({ brush: null })
+          track('base_brush_cleared', {})
           return
         }
         set({ brush: { kind: 'wall', rotation: 0 } })
+        track('base_brush_selected', { kind: 'wall' })
       },
 
-      clearBrush: () => set({ brush: null }),
+      clearBrush: () => {
+        set({ brush: null })
+        track('base_brush_cleared', {})
+      },
 
       rotateBrush: () => {
         const b = get().brush
         if (!b) return
         const nextRotation = (b.rotation + Math.PI / 2) % (Math.PI * 2)
         set({ brush: { ...b, rotation: nextRotation } })
+        track('base_brush_rotated', { rotation: nextRotation })
       },
 
       placeBuilding: (kind, position, rotation, tableBounds) => {
@@ -155,6 +165,7 @@ export const useBaseStore = create<BaseState>()(
         const { layout } = get()
         const brush: Brush = { kind: 'building', buildingKind: kind, rotation }
         if (!isValidPlacement(brush, snapped, rotation, layout, tableBounds)) {
+          track('base_building_place_rejected', { kind, x: snapped[0], z: snapped[2] })
           return false
         }
         const newBuilding: BuildingInstance = {
@@ -169,6 +180,7 @@ export const useBaseStore = create<BaseState>()(
             buildings: [...layout.buildings, newBuilding],
           },
         })
+        track('base_building_placed', { kind, x: snapped[0], z: snapped[2] })
         return true
       },
 
@@ -177,6 +189,7 @@ export const useBaseStore = create<BaseState>()(
         const { layout } = get()
         const brush: Brush = { kind: 'wall', rotation }
         if (!isValidPlacement(brush, snapped, rotation, layout, tableBounds)) {
+          track('base_wall_place_rejected', { x: snapped[0], z: snapped[2] })
           return false
         }
         const newWall: WallInstance = {
@@ -190,11 +203,13 @@ export const useBaseStore = create<BaseState>()(
             walls: [...layout.walls, newWall],
           },
         })
+        track('base_wall_placed', { x: snapped[0], z: snapped[2] })
         return true
       },
 
       resetToStarterLayout: () => {
         set({ layout: STARTER_LAYOUT, brush: null })
+        track('base_reset_to_starter', {})
       },
     }),
     {
