@@ -55,14 +55,18 @@ export class GeneticAlgorithm {
   /** Evolve: given fitnesses for current generation, produce next generation */
   evolve(population: number[][], fitnesses: number[], generation: number): number[][] {
     const indices = Array.from({ length: population.length }, (_, i) => i)
-    indices.sort((a, b) => fitnesses[b] - fitnesses[a])
+    indices.sort((a, b) => (fitnesses[b] ?? -Infinity) - (fitnesses[a] ?? -Infinity))
 
-    const sorted = indices.map(i => population[i])
+    const sorted = indices
+      .map((i) => population[i])
+      .filter((p): p is number[] => p !== undefined)
     const newPop: number[][] = []
 
     // Elites survive unchanged
     for (let i = 0; i < this.eliteCount; i++) {
-      newPop.push([...sorted[i]])
+      const elite = sorted[i]
+      if (!elite) break
+      newPop.push([...elite])
     }
 
     // Adaptive mutation: strength decays over generations
@@ -88,21 +92,25 @@ export class GeneticAlgorithm {
   }
 
   private tournamentSelect(population: number[][], fitnesses: number[], k: number): number[] {
+    // Population is guaranteed non-empty at call time (populationSize
+    // is >= 1). The `!` assertions below are safe because the random
+    // index is always within bounds.
     let bestIdx = Math.floor(Math.random() * population.length)
-    let bestFit = fitnesses[bestIdx]
+    let bestFit = fitnesses[bestIdx] ?? -Infinity
 
     for (let i = 1; i < k; i++) {
       const idx = Math.floor(Math.random() * population.length)
-      if (fitnesses[idx] > bestFit) {
+      const f = fitnesses[idx] ?? -Infinity
+      if (f > bestFit) {
         bestIdx = idx
-        bestFit = fitnesses[idx]
+        bestFit = f
       }
     }
-    return population[bestIdx]
+    return population[bestIdx] ?? []
   }
 
   private crossover(a: number[], b: number[]): number[] {
-    return a.map((val, i) => Math.random() < 0.5 ? val : b[i])
+    return a.map((val, i) => (Math.random() < 0.5 ? val : (b[i] ?? val)))
   }
 
   private mutate(weights: number[], rate: number, strength: number): number[] {

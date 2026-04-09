@@ -1,80 +1,16 @@
 /*
- * Build tray + mode toggle + rotate/cancel/reset chrome.
+ * Build tray + brush buttons + rotate/cancel corner actions.
+ *
+ * Everything in this file is build-mode gameplay chrome — the brush
+ * selection tray at the bottom of the screen and the Rotate/Cancel
+ * corner buttons that appear when a brush is active. Top-of-screen
+ * HUD chrome (mode toggle, dev reset, back, title) lives in
+ * `base-hud.css`.
  *
  * Toy-game aesthetic throughout. No flat CSS. No web patterns. Every
  * button has beveling, gradients, press states, and lives in the thumb
  * zone (bottom 40% of screen) per plan.md UX non-negotiables.
  */
-
-/* ── Mode toggle (top-right, next to back button area) ── */
-
-.base-mode-toggle {
-  pointer-events: auto;
-  position: absolute;
-  top: calc(var(--sp-2) + env(safe-area-inset-top, 0px));
-  right: var(--sp-2);
-  padding: 10px 18px;
-  color: var(--text-white);
-  font-family: var(--font-display);
-  font-size: var(--fs-sm);
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  background: linear-gradient(180deg, #3a4a2e 0%, #2a3a20 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.35),
-    0 3px 0 rgba(0, 0, 0, 0.4),
-    0 6px 14px rgba(0, 0, 0, 0.45);
-  transition:
-    transform 0.08s ease-out,
-    background 0.15s ease-out,
-    box-shadow 0.08s ease-out;
-}
-
-.base-mode-toggle--build {
-  background: linear-gradient(180deg, #6a5a1e 0%, #4a3a12 100%);
-  color: #ffe8a0;
-}
-
-.base-mode-toggle:hover {
-  filter: brightness(1.1);
-}
-
-.base-mode-toggle:active {
-  transform: translateY(2px);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.25),
-    0 1px 0 rgba(0, 0, 0, 0.4),
-    0 2px 6px rgba(0, 0, 0, 0.5);
-}
-
-/* ── Dev reset button (top-left, under back button) ── */
-
-.base-dev-reset {
-  pointer-events: auto;
-  position: absolute;
-  top: calc(58px + env(safe-area-inset-top, 0px));
-  left: var(--sp-2);
-  padding: 6px 10px;
-  color: #ef9a9a;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  border: 1px solid rgba(239, 68, 68, 0.4);
-  border-radius: 4px;
-  cursor: pointer;
-  background: rgba(60, 20, 20, 0.6);
-  transition: background 0.1s ease-out;
-}
-
-.base-dev-reset:hover {
-  background: rgba(80, 30, 30, 0.8);
-}
 
 /* ── Build tray (bottom strip, shown in BUILD mode) ── */
 

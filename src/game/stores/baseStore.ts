@@ -109,6 +109,11 @@ export const useBaseStore = create<BaseState>()(
       brush: null,
 
       setMode: (mode) => {
+        // No-op: don't fire an analytics event when nothing changed.
+        // Otherwise Phase 8 retention dashboards overcount mode toggles
+        // every time some future caller naively calls setMode('view')
+        // while already in view.
+        if (get().mode === mode) return
         // Leaving build mode always clears the brush so the player isn't
         // stuck with a phantom selection on return.
         if (mode === 'view') {

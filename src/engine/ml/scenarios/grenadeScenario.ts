@@ -131,7 +131,7 @@ export function applyGrenadeOutputs(state: GrenadeSimState, outputs: number[], d
   const dx = cx - state.soldierX
   const dz = cz - state.soldierZ
   const baseAngle = Math.atan2(dx, dz)
-  const aimCorrection = outputs[0] * 0.25
+  const aimCorrection = (outputs[0] ?? 0) * 0.25
   const finalAngle = baseAngle + aimCorrection
 
   state.soldierRotation = finalAngle
@@ -139,10 +139,10 @@ export function applyGrenadeOutputs(state: GrenadeSimState, outputs: number[], d
   const dist = Math.sqrt(dx * dx + dz * dz)
   const arg = (GRAVITY * dist) / (THROW_SPEED * THROW_SPEED)
   const idealElevation = Math.abs(arg) <= 1 ? 0.5 * Math.asin(arg) : 0.7
-  const elevationCorrection = outputs[1] * 0.2
+  const elevationCorrection = (outputs[1] ?? 0) * 0.2
   const finalElevation = Math.max(0.15, idealElevation + elevationCorrection)
 
-  if (outputs[2] > 0 && state.cooldown <= 0) {
+  if ((outputs[2] ?? 0) > 0 && state.cooldown <= 0) {
     const cosE = Math.cos(finalElevation)
     state.projectiles.push({
       x: state.soldierX,
@@ -164,6 +164,7 @@ export function tickGrenadeProjectiles(state: GrenadeSimState, dt: number): void
 
   for (let i = 0; i < state.projectiles.length; i++) {
     const p = state.projectiles[i]
+    if (!p) continue
     p.x += p.vx * dt
     p.y += p.vy * dt
     p.z += p.vz * dt
@@ -192,7 +193,9 @@ export function tickGrenadeProjectiles(state: GrenadeSimState, dt: number): void
   }
 
   for (let i = toRemove.length - 1; i >= 0; i--) {
-    state.projectiles.splice(toRemove[i], 1)
+    const idx = toRemove[i]
+    if (idx === undefined) continue
+    state.projectiles.splice(idx, 1)
   }
 }
 

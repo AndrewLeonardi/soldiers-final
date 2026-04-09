@@ -86,10 +86,11 @@ export function initMGSim(bounds?: TrainingBounds): MGSimState {
 
 export function getMGInputs(state: MGSimState): number[] {
   const alive = state.targets.filter(t => t.alive)
-  if (alive.length === 0) return [0, 0, 0, 0, state.cooldown / COOLDOWN_TIME, 0]
+  const first = alive[0]
+  if (!first) return [0, 0, 0, 0, state.cooldown / COOLDOWN_TIME, 0]
 
   // Nearest alive target
-  let nearest = alive[0]
+  let nearest = first
   let nearestDist = Infinity
   for (const t of alive) {
     const dx = t.x - state.soldierX
@@ -127,10 +128,11 @@ export function applyMGOutputs(state: MGSimState, outputs: number[], dt: number)
   }
 
   const alive = state.targets.filter(t => t.alive)
-  if (alive.length === 0) return
+  const firstAlive = alive[0]
+  if (!firstAlive) return
 
   // Find nearest
-  let nearest = alive[0]
+  let nearest = firstAlive
   let nearestDist = Infinity
   for (const t of alive) {
     const dx = t.x - state.soldierX
@@ -144,13 +146,13 @@ export function applyMGOutputs(state: MGSimState, outputs: number[], dt: number)
   const baseAngle = Math.atan2(dx, dz)
 
   // NN controls: sweep offset + fire trigger
-  const sweepOffset = outputs[0] * 0.3  // ±0.3 rad sweep
+  const sweepOffset = (outputs[0] ?? 0) * 0.3  // ±0.3 rad sweep
   const finalAngle = baseAngle + sweepOffset
 
   state.soldierRotation = finalAngle
 
   // Fire: output[2] > 0 and ready
-  if (outputs[2] > 0 && state.cooldown <= 0) {
+  if ((outputs[2] ?? 0) > 0 && state.cooldown <= 0) {
     state.projectiles.push({
       x: state.soldierX,
       z: state.soldierZ,
@@ -169,6 +171,7 @@ export function tickMGProjectiles(state: MGSimState, dt: number): void {
 
   for (let i = 0; i < state.projectiles.length; i++) {
     const p = state.projectiles[i]
+    if (!p) continue
     p.x += p.vx * dt
     p.z += p.vz * dt
     p.age += dt
@@ -198,7 +201,9 @@ export function tickMGProjectiles(state: MGSimState, dt: number): void {
   }
 
   for (let i = toRemove.length - 1; i >= 0; i--) {
-    state.projectiles.splice(toRemove[i], 1)
+    const idx = toRemove[i]
+    if (idx === undefined) continue
+    state.projectiles.splice(idx, 1)
   }
 }
 

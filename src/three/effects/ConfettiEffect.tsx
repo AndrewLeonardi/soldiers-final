@@ -61,7 +61,12 @@ export function ConfettiEffect({ position, onComplete }: ConfettiEffectProps) {
       initialized.current = true
       const count = 45 + Math.floor(Math.random() * 15) // 45-60
       for (let i = 0; i < count; i++) {
-        const color = CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)]
+        // `CONFETTI_COLORS` is a non-empty constant literal, so the
+        // modulo index is always in bounds. The `?? 0xffffff` fallback
+        // is strict noUncheckedIndexedAccess cover.
+        const color =
+          CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)] ??
+          0xffffff
         const mat = getConfettiMat(color)
         const mesh = new THREE.Mesh(confettiGeo, mat.clone()) // clone for independent opacity
         mesh.position.set(

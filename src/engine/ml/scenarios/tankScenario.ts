@@ -98,9 +98,10 @@ export function initTankSim(bounds?: TrainingBounds): TankSimState {
 
 export function getTankInputs(state: TankSimState): number[] {
   const alive = state.targets.filter(t => t.alive)
-  if (alive.length === 0) return [0, 0, 0, state.cooldown / COOLDOWN_TIME, 0, state.elapsed / 8]
+  const first = alive[0]
+  if (!first) return [0, 0, 0, state.cooldown / COOLDOWN_TIME, 0, state.elapsed / 8]
 
-  let nearest = alive[0]
+  let nearest = first
   let nearestDist = Infinity
   for (const t of alive) {
     const dx = t.x - state.tankX
@@ -132,10 +133,10 @@ export function applyTankOutputs(state: TankSimState, outputs: number[], dt: num
   state.justFired = false
 
   // Steering
-  state.tankAngle += outputs[0] * TANK_TURN_SPEED * dt
+  state.tankAngle += (outputs[0] ?? 0) * TANK_TURN_SPEED * dt
 
   // Throttle: accelerate/decelerate
-  state.tankSpeed += outputs[1] * TANK_ACCEL * dt
+  state.tankSpeed += (outputs[1] ?? 0) * TANK_ACCEL * dt
   state.tankSpeed = Math.max(-TANK_MAX_SPEED, Math.min(TANK_MAX_SPEED, state.tankSpeed))
   state.tankSpeed *= TANK_FRICTION
 
@@ -157,8 +158,9 @@ export function applyTankOutputs(state: TankSimState, outputs: number[], dt: num
 
   // Scripted turret auto-tracks nearest target
   const alive = state.targets.filter(t => t.alive)
-  if (alive.length > 0) {
-    let nearest = alive[0]
+  const firstAlive = alive[0]
+  if (firstAlive) {
+    let nearest = firstAlive
     let nearestDist = Infinity
     for (const t of alive) {
       const dx = t.x - state.tankX
@@ -175,10 +177,10 @@ export function applyTankOutputs(state: TankSimState, outputs: number[], dt: num
   }
 
   // Fire: NN decides when
-  if (outputs[2] > 0 && state.cooldown <= 0 && alive.length > 0) {
+  if ((outputs[2] ?? 0) > 0 && state.cooldown <= 0 && firstAlive) {
     // Fire in turret direction
     const dist = Math.sqrt(
-      (alive[0].x - state.tankX) ** 2 + (alive[0].z - state.tankZ) ** 2
+      (firstAlive.x - state.tankX) ** 2 + (firstAlive.z - state.tankZ) ** 2
     )
     const arg = (SHELL_GRAVITY * dist) / (SHELL_SPEED * SHELL_SPEED)
     const elevation = Math.abs(arg) <= 1 ? 0.5 * Math.asin(arg) : 0.5
@@ -204,6 +206,7 @@ export function tickTankProjectiles(state: TankSimState, dt: number): void {
 
   for (let i = 0; i < state.projectiles.length; i++) {
     const p = state.projectiles[i]
+    if (!p) continue
     p.x += p.vx * dt
     p.y += p.vy * dt
     p.z += p.vz * dt
@@ -227,7 +230,9 @@ export function tickTankProjectiles(state: TankSimState, dt: number): void {
   }
 
   for (let i = toRemove.length - 1; i >= 0; i--) {
-    state.projectiles.splice(toRemove[i], 1)
+    const idx = toRemove[i]
+    if (idx === undefined) continue
+    state.projectiles.splice(idx, 1)
   }
 }
 

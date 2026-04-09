@@ -55,7 +55,10 @@ const SOLDIER_NAMES = [
 let _nameIdx = 0
 
 export function randomSoldierName(): string {
-  const name = SOLDIER_NAMES[_nameIdx % SOLDIER_NAMES.length]
+  // SOLDIER_NAMES is a non-empty constant literal, so the modulo index
+  // is always in bounds; the `?? 'PVT RECRUIT'` fallback exists purely
+  // for the strict noUncheckedIndexedAccess check.
+  const name = SOLDIER_NAMES[_nameIdx % SOLDIER_NAMES.length] ?? 'PVT RECRUIT'
   _nameIdx++
   return name
 }

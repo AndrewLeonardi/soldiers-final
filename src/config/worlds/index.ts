@@ -52,7 +52,7 @@ export const worldRegistry: WorldRegistry = {
   getNextBattle: (currentBattleId) => {
     const idx = BATTLES.findIndex(b => b.id === currentBattleId)
     if (idx < 0 || idx >= BATTLES.length - 1) return null
-    return BATTLES[idx + 1].id
+    return BATTLES[idx + 1]?.id ?? null
   },
 }
 

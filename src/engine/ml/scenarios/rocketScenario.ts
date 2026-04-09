@@ -86,10 +86,11 @@ export function initRocketSim(bounds?: TrainingBounds): RocketSimState {
 /** Extract 6 sensor inputs for the neural net (all normalized roughly -1 to 1) */
 export function getRocketInputs(state: RocketSimState): number[] {
   const alive = state.targets.filter(t => t.alive)
-  if (alive.length === 0) return [0, 0, 0, 0, state.cooldown / COOLDOWN_TIME, 0]
+  const first = alive[0]
+  if (!first) return [0, 0, 0, 0, state.cooldown / COOLDOWN_TIME, 0]
 
   // Find nearest alive target
-  let nearest = alive[0]
+  let nearest = first
   let nearestDist = Infinity
   for (const t of alive) {
     const dx = t.x - state.soldierX
@@ -133,10 +134,11 @@ export function applyRocketOutputs(
   }
 
   const alive = state.targets.filter(t => t.alive)
-  if (alive.length === 0) return
+  const first = alive[0]
+  if (!first) return
 
   // Find nearest target — scripted auto-aim
-  let nearest = alive[0]
+  let nearest = first
   let nearestDist = Infinity
   for (const t of alive) {
     const dx = t.x - state.soldierX
@@ -154,7 +156,7 @@ export function applyRocketOutputs(
   // Scripted base angle
   const baseAngle = Math.atan2(dx, dz)
   // NN correction: ±0.2 radians
-  const aimCorrection = outputs[0] * 0.2
+  const aimCorrection = (outputs[0] ?? 0) * 0.2
   const finalAngle = baseAngle + aimCorrection
 
   // Update soldier rotation to face target (visual feedback)
@@ -165,11 +167,11 @@ export function applyRocketOutputs(
   const arg = (GRAVITY * dist) / (ROCKET_SPEED * ROCKET_SPEED)
   const idealElevation = Math.abs(arg) <= 1 ? 0.5 * Math.asin(arg) : 0.6
   // NN correction: ±0.15 radians
-  const elevationCorrection = outputs[1] * 0.15
+  const elevationCorrection = (outputs[1] ?? 0) * 0.15
   const finalElevation = Math.max(0.05, idealElevation + elevationCorrection)
 
   // Fire trigger: NN output > 0 fires if ready
-  if (outputs[2] > 0 && state.cooldown <= 0) {
+  if ((outputs[2] ?? 0) > 0 && state.cooldown <= 0) {
     const cosE = Math.cos(finalElevation)
     state.projectiles.push({
       x: state.soldierX,
@@ -192,6 +194,7 @@ export function tickRocketProjectiles(state: RocketSimState, dt: number): void {
 
   for (let i = 0; i < state.projectiles.length; i++) {
     const p = state.projectiles[i]
+    if (!p) continue
     p.x += p.vx * dt
     p.y += p.vy * dt
     p.z += p.vz * dt
@@ -223,7 +226,9 @@ export function tickRocketProjectiles(state: RocketSimState, dt: number): void {
 
   // Remove expired projectiles (reverse order to preserve indices)
   for (let i = toRemove.length - 1; i >= 0; i--) {
-    state.projectiles.splice(toRemove[i], 1)
+    const idx = toRemove[i]
+    if (idx === undefined) continue
+    state.projectiles.splice(idx, 1)
   }
 }
 

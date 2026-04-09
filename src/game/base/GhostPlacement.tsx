@@ -1,35 +1,34 @@
 /**
  * GhostPlacement — translucent preview of the brush at the pointer.
  *
- * Mirrors the pattern from `src/three/models/GhostPreview.tsx`:
+ * Follows the raycaster-allocation-free pattern from `GhostPreview.tsx`:
  *   - Module-level raycaster, mouse vec, ground plane, intersect vec
- *   - Module-level window listener to update the mouse normalized coords
+ *     (allocation-free per frame — one vector allocation per module load)
  *   - Module-level pre-built valid/invalid materials
  *   - A single useFrame that raycasts, snaps, validates, and moves a mesh
+ *
+ * The `pointermove` listener is installed via useEffect so it's cleaned up
+ * when the component unmounts (e.g. the player leaves `/game-concept`
+ * back to the homepage). Promoted from a module-level listener after a
+ * housekeeping audit — HMR accumulation in dev and "why is my cursor
+ * affecting memory I'm not rendering" in prod were both real concerns.
  *
  * For Phase 2a the ghost is a colored box sized to each brush's footprint
  * — enough to show "where it lands + whether it fits" without the cost of
  * instantiating a full DestructibleDefense for every pointer move.
  */
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { BUILDING_FOOTPRINTS } from '@three/models/Defenses'
 import { useBaseStore, type Brush } from '@game/stores/baseStore'
 import { isValidPlacement, snapToGrid } from './footprints'
 
-// ── Module-level pointer tracking ──
+// ── Module-level allocation-free scratch state (no listeners here) ──
 const raycaster = new THREE.Raycaster()
 const mouse = new THREE.Vector2(9999, 9999)
 const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
 const intersectPoint = new THREE.Vector3()
-
-if (typeof window !== 'undefined') {
-  window.addEventListener('pointermove', (e) => {
-    mouse.x = (e.clientX / window.innerWidth) * 2 - 1
-    mouse.y = -(e.clientY / window.innerHeight) * 2 + 1
-  })
-}
 
 // ── Shared materials ──
 const matValid = new THREE.MeshBasicMaterial({
@@ -92,6 +91,24 @@ interface GhostPlacementProps {
 export function GhostPlacement({ tableBounds }: GhostPlacementProps) {
   const meshRef = useRef<THREE.Mesh>(null!)
   const { camera } = useThree()
+
+  // Track the pointer in normalized device coords. Scoped to the
+  // component lifecycle so the listener is removed when the player
+  // leaves /game-concept.
+  useEffect(() => {
+    const handlePointerMove = (e: PointerEvent): void => {
+      mouse.x = (e.clientX / window.innerWidth) * 2 - 1
+      mouse.y = -(e.clientY / window.innerHeight) * 2 + 1
+    }
+    window.addEventListener('pointermove', handlePointerMove)
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove)
+      // Park the cursor off-screen so a stale coord doesn't produce a
+      // phantom ghost the next time the component remounts.
+      mouse.x = 9999
+      mouse.y = 9999
+    }
+  }, [])
 
   useFrame(() => {
     if (!meshRef.current) return

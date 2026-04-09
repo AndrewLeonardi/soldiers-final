@@ -12,14 +12,28 @@
  * Physics gravity matches the rest of the game (Game.tsx, PhysicsTest.tsx)
  * so physics feel is consistent across scenes.
  */
-import { Suspense } from 'react'
+import { Suspense, useEffect } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { Physics } from '@react-three/rapier'
 import { BaseScene } from './base/BaseScene'
 import { BaseHUD } from './ui/BaseHUD'
 import { LoadingFallback } from './ui/LoadingFallback'
+import { TrainingObservationHUD } from './ui/TrainingObservationHUD'
+import { GraduationCutscene } from './training/GraduationCutscene'
+import { useTrainingStore } from '@game/stores/trainingStore'
 
 export default function GameConcept() {
+  // Seed the Phase 3a training slot on mount. Idempotent — re-mounts
+  // and reloads won't create duplicates. Step 4 (TrainingGroundsInterior)
+  // will consume the slot; for now this just makes sure the store's
+  // module-level dev hook (`window.__training`) is populated and that
+  // Andrew can hand-verify the full observe → train → graduate → commit
+  // cycle from devtools before the visual surface lands.
+  const seedFirstTimeTrainingSlot = useTrainingStore((s) => s.seedFirstTimeTrainingSlot)
+  useEffect(() => {
+    seedFirstTimeTrainingSlot()
+  }, [seedFirstTimeTrainingSlot])
+
   return (
     <div
       style={{
@@ -42,6 +56,8 @@ export default function GameConcept() {
       </Canvas>
       <LoadingFallback />
       <BaseHUD />
+      <TrainingObservationHUD />
+      <GraduationCutscene />
     </div>
   )
 }

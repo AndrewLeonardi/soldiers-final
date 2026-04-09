@@ -6,8 +6,9 @@
  * integrity, rubble) lives inside the `DestructibleDefense` components
  * themselves and is tracked through a shared `wallBlocksRef` map.
  *
- * Phase 1a uses a hardcoded starter layout. Phase 2 will replace that with
- * a player-editable, persisted layout.
+ * The full persisted layout type (`BaseLayout`) lives in
+ * `@game/stores/baseStore` alongside the store that owns it — single source
+ * of truth for the shape that actually gets written to localStorage.
  */
 
 export type BuildingKind = 'vault' | 'trainingGrounds' | 'collector'
@@ -18,9 +19,4 @@ export interface BuildingInstance {
   position: [number, number, number]
   /** Radians around the Y axis. 0 = default orientation. */
   rotation: number
-}
-
-export interface BaseLayout {
-  buildings: BuildingInstance[]
-  // Walls, turrets, decorations, etc. land in later phases.
 }
