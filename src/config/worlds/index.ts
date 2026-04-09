@@ -5,12 +5,14 @@
 import type { WorldConfig, BattleConfig, WorldRegistry } from './types'
 import { kitchenWorld, kitchenBattle1, kitchenBattle2 } from './kitchen'
 import { workshopWorld, workshopBattle1, workshopBattle2 } from './workshop'
+import { baseKitchenWorld } from './baseKitchen'
 
 // ── All worlds and battles ───────────────────────────
 
 const WORLDS: WorldConfig[] = [
   kitchenWorld,
   workshopWorld,
+  baseKitchenWorld,
   // backyardWorld,   -- Phase 3
 ]
 

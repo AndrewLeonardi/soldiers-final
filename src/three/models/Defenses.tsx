@@ -61,7 +61,9 @@ interface BlockSpec {
 }
 
 // ── Layout builders ──────────────────────────────────────
-export type DefenseStyle = 'wall' | 'sandbag' | 'tower'
+export type DefenseStyle =
+  | 'wall' | 'sandbag' | 'tower'                // combat defenses (existing)
+  | 'vault' | 'trainingGrounds' | 'collector'   // base buildings (Phase 1a+)
 
 function buildWallBlocks(): BlockSpec[] {
   const specs: BlockSpec[] = []
@@ -191,12 +193,202 @@ function buildTowerBlocks(): BlockSpec[] {
   return specs
 }
 
+// ── Base buildings (Phase 1a+) ──
+// These three styles back the player's command base. They share the same
+// destructible physics as walls/sandbags/towers — every base building can
+// be torn apart block by block. Layouts are chunky toy-box quality and can
+// be iterated as rivals start actually attacking them.
+
+function buildVaultBlocks(): BlockSpec[] {
+  // Chunky armored strongbox. Steel body with a brass lid.
+  const specs: BlockSpec[] = []
+  const bodyColor = 0x3a4550     // dark steel-blue
+  const lidColor = 0x8B6914      // brass
+  const size: [number, number, number] = [0.3, 0.3, 0.3]
+  const cols = 4    // X
+  const rows = 3    // Y (height)
+  const depth = 3   // Z
+  const totalW = cols * size[0]
+  const totalD = depth * size[2]
+
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      for (let d = 0; d < depth; d++) {
+        const x = col * size[0] - totalW / 2 + size[0] / 2
+        const y = row * size[1] + size[1] / 2
+        const z = d * size[2] - totalD / 2 + size[2] / 2
+        const isLid = row === rows - 1
+        specs.push({
+          position: [x, y, z],
+          size,
+          color: isLid ? lidColor : bodyColor,
+          row,
+          // Encode depth into col so row-collapse counting stays sensible
+          // (unique (row, col) per block in this row).
+          col: col * depth + d,
+          groundSupported: row === 0,
+        })
+      }
+    }
+  }
+  return specs
+}
+
+function buildTrainingGroundsBlocks(): BlockSpec[] {
+  // Open-roofed parade shelter: four wooden posts, cross-beams at the top,
+  // canvas roof panels. Uses explicit `supportedBy` topology — kicking out a
+  // post collapses the beams and roof above it.
+  const specs: BlockSpec[] = []
+  const postColor = 0x6b4226     // brown wood (matches tower legs)
+  const beamColor = 0x6b4226     // same wood
+  const canvasColor = 0xA89070   // tan canvas (matches sandbags)
+
+  // ── Corner posts (ground-supported) ──
+  const postSize: [number, number, number] = [0.14, 1.0, 0.14]
+  const postPositions: [number, number, number][] = [
+    [-0.9, 0.5, -0.9],
+    [ 0.9, 0.5, -0.9],
+    [-0.9, 0.5,  0.9],
+    [ 0.9, 0.5,  0.9],
+  ]
+  const postIndices: number[] = []
+  for (let i = 0; i < 4; i++) {
+    postIndices.push(specs.length)
+    specs.push({
+      position: postPositions[i],
+      size: postSize,
+      color: postColor,
+      row: 0,
+      col: i,
+      groundSupported: true,
+    })
+  }
+  const [plFL, plFR, plBL, plBR] = postIndices
+
+  // ── Cross-beams on top of posts (row 1) ──
+  // Front beam connects FL and FR
+  const frontBeamIdx = specs.length
+  specs.push({
+    position: [0, 1.05, -0.9],
+    size: [1.9, 0.1, 0.12],
+    color: beamColor,
+    row: 1,
+    col: 0,
+    supportedBy: [plFL, plFR],
+  })
+  // Back beam connects BL and BR
+  const backBeamIdx = specs.length
+  specs.push({
+    position: [0, 1.05, 0.9],
+    size: [1.9, 0.1, 0.12],
+    color: beamColor,
+    row: 1,
+    col: 1,
+    supportedBy: [plBL, plBR],
+  })
+
+  // ── Canvas roof panels (row 2) ──
+  // Three panels spanning front-to-back, each resting on both beams.
+  const roofBeams = [frontBeamIdx, backBeamIdx]
+  for (let i = 0; i < 3; i++) {
+    const x = (i - 1) * 0.65
+    specs.push({
+      position: [x, 1.17, 0],
+      size: [0.62, 0.06, 1.85],
+      color: canvasColor,
+      row: 2,
+      col: i,
+      supportedBy: roofBeams,
+    })
+  }
+
+  return specs
+}
+
+function buildCollectorBlocks(): BlockSpec[] {
+  // Small compute generator — a squat toy tank with a glowing pipe on top.
+  const specs: BlockSpec[] = []
+  const bodyColor = 0x3a5a6a     // compute blue-gray
+  const accentColor = 0x4ADE80   // green (matches --green)
+  const bodySize: [number, number, number] = [0.25, 0.25, 0.25]
+  const cols = 3    // X
+  const rows = 2    // Y
+  const depth = 2   // Z
+  const totalW = cols * bodySize[0]
+  const totalD = depth * bodySize[2]
+
+  const topRowFirstIdx = depth * cols // index of the first block in row 1
+
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      for (let d = 0; d < depth; d++) {
+        const x = col * bodySize[0] - totalW / 2 + bodySize[0] / 2
+        const y = row * bodySize[1] + bodySize[1] / 2
+        const z = d * bodySize[2] - totalD / 2 + bodySize[2] / 2
+        specs.push({
+          position: [x, y, z],
+          size: bodySize,
+          color: bodyColor,
+          row,
+          col: col * depth + d,
+          groundSupported: row === 0,
+        })
+      }
+    }
+  }
+
+  // ── Glowing pipe on top (row 2) ──
+  // Supported by a center-top body block. If that block is destroyed, the
+  // pipe drops.
+  const pipeSupport = topRowFirstIdx + 1 * depth + 0 // row 1, col 1, d 0
+  specs.push({
+    position: [0, 0.6, 0],
+    size: [0.1, 0.18, 0.1],
+    color: accentColor,
+    row: 2,
+    col: 0,
+    supportedBy: [pipeSupport],
+  })
+  specs.push({
+    position: [0, 0.77, 0],
+    size: [0.14, 0.06, 0.14],
+    color: accentColor,
+    row: 2,
+    col: 1,
+    supportedBy: [pipeSupport],
+  })
+
+  return specs
+}
+
 function buildBlocks(style: DefenseStyle): BlockSpec[] {
   switch (style) {
     case 'wall': return buildWallBlocks()
     case 'sandbag': return buildSandbagBlocks()
     case 'tower': return buildTowerBlocks()
+    case 'vault': return buildVaultBlocks()
+    case 'trainingGrounds': return buildTrainingGroundsBlocks()
+    case 'collector': return buildCollectorBlocks()
   }
+}
+
+/**
+ * XZ-plane footprint half-extents for each destructible style, at 0° rotation.
+ * Derived from the same data the static Rapier collider uses in
+ * `getStaticCollider` below, but stripped to the 2D top-down footprint that
+ * placement validation cares about.
+ *
+ * Consumers: `src/game/base/footprints.ts` for overlap checks and ghost
+ * preview sizing. When a new DefenseStyle is added, add it here too — the
+ * TypeScript `Record<DefenseStyle, ...>` type makes omissions a compile error.
+ */
+export const BUILDING_FOOTPRINTS: Record<DefenseStyle, { halfW: number; halfD: number }> = {
+  wall: { halfW: (WALL_COLS * BLOCK_W) / 2, halfD: BLOCK_D / 2 + 0.1 },
+  sandbag: { halfW: 0.9, halfD: 0.25 },
+  tower: { halfW: 0.55, halfD: 0.55 },
+  vault: { halfW: 0.6, halfD: 0.45 },
+  trainingGrounds: { halfW: 0.95, halfD: 0.95 },
+  collector: { halfW: 0.4, halfD: 0.25 },
 }
 
 // ── Static collider footprint per style ──
@@ -212,6 +404,15 @@ function getStaticCollider(style: DefenseStyle): { half: [number, number, number
       return { half: [0.9, 0.25, 0.25], offset: [0, 0.2, 0.15] }
     case 'tower':
       return { half: [0.55, 0.9, 0.55], offset: [0, 0.9, 0] }
+    case 'vault':
+      // Footprint: 4 × 0.3 wide, 3 × 0.3 tall, 3 × 0.3 deep → 1.2 × 0.9 × 0.9
+      return { half: [0.6, 0.45, 0.45], offset: [0, 0.45, 0] }
+    case 'trainingGrounds':
+      // Footprint: 1.9 × 1.2 tall × 1.9 → half extents with a little inset
+      return { half: [0.95, 0.6, 0.95], offset: [0, 0.6, 0] }
+    case 'collector':
+      // Footprint: 3 × 0.25 wide × 0.5 tall × 2 × 0.25 deep → 0.75 × 0.5 × 0.5
+      return { half: [0.4, 0.25, 0.25], offset: [0, 0.25, 0] }
   }
 }
 
@@ -483,4 +684,18 @@ export function SandbagDefense(props: Omit<DefenseProps, 'style'>) {
 }
 export function WatchTower(props: Omit<DefenseProps, 'style'>) {
   return <DestructibleDefense {...props} style="tower" />
+}
+
+// ── Base building wrappers (Phase 1a+) ───────────────────
+// Symmetry with the combat-defense wrappers above. Each base building gets
+// its own named export so consumers in `src/game/buildings/*` can import a
+// semantically-named component rather than dealing with a style string.
+export function VaultDefense(props: Omit<DefenseProps, 'style'>) {
+  return <DestructibleDefense {...props} style="vault" />
+}
+export function TrainingGroundsDefense(props: Omit<DefenseProps, 'style'>) {
+  return <DestructibleDefense {...props} style="trainingGrounds" />
+}
+export function CollectorDefense(props: Omit<DefenseProps, 'style'>) {
+  return <DestructibleDefense {...props} style="collector" />
 }

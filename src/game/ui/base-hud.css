@@ -1,0 +1,93 @@
+/*
+ * BaseHUD — scoped styles for the /game-concept overlay.
+ *
+ * Uses global CSS variables from styles/global.css (--font-display,
+ * --gold-text, --text-white, etc.). No flat CSS colors — buttons are
+ * beveled with gradients and press states per the UX non-negotiables.
+ * No web patterns (no cards, no hairline borders, no system icons).
+ */
+
+.base-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-family: var(--font-display);
+}
+
+.base-hud__title {
+  position: absolute;
+  top: calc(var(--sp-2) + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--gold-text);
+  font-size: var(--fs-xl);
+  letter-spacing: 4px;
+  text-shadow:
+    0 2px 0 rgba(0, 0, 0, 0.6),
+    0 4px 12px rgba(0, 0, 0, 0.5);
+  user-select: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.base-hud__back {
+  pointer-events: auto;
+  position: absolute;
+  top: calc(var(--sp-2) + env(safe-area-inset-top, 0px));
+  left: var(--sp-2);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px 10px 12px;
+  color: var(--text-white);
+  font-family: var(--font-display);
+  font-size: var(--fs-sm);
+  letter-spacing: 1.5px;
+  text-decoration: none;
+  text-transform: uppercase;
+  border-radius: 8px;
+  /* Beveled wood/metal look — gradient body + inset highlights + drop shadow */
+  background: linear-gradient(180deg, #3a4a2e 0%, #2a3a20 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.35),
+    0 3px 0 rgba(0, 0, 0, 0.4),
+    0 6px 14px rgba(0, 0, 0, 0.45);
+  transition:
+    transform 0.08s ease-out,
+    box-shadow 0.08s ease-out;
+  cursor: pointer;
+}
+
+.base-hud__back:hover {
+  background: linear-gradient(180deg, #435539 0%, #31422a 100%);
+}
+
+.base-hud__back:active {
+  transform: translateY(2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.25),
+    0 1px 0 rgba(0, 0, 0, 0.4),
+    0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.base-hud__back-icon {
+  display: inline-flex;
+  align-items: center;
+  margin-top: -1px;
+}
+
+/*
+ * On narrow viewports (phones), the BACK button and title collide if both
+ * sit in the top strip. Drop the title below the back button and make it
+ * smaller — still visible, still gold, still the command-base label, but
+ * out of the thumb/back zone.
+ */
+@media (max-width: 600px) {
+  .base-hud__title {
+    top: calc(58px + env(safe-area-inset-top, 0px));
+    font-size: var(--fs-md);
+    letter-spacing: 2.5px;
+  }
+}

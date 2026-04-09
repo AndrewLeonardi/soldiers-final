@@ -26,7 +26,8 @@
       "@assets/*": ["./src/assets/*"],
       "@api/*": ["./src/api/*"],
       "@pages/*": ["./src/pages/*"],
-      "@styles/*": ["./src/styles/*"]
+      "@styles/*": ["./src/styles/*"],
+      "@game/*": ["./src/game/*"]
     }
   },
   "include": ["src"]

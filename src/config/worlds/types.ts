@@ -60,6 +60,14 @@ export interface GroundConfig {
     angle: number                     // radians
     axis: 'x' | 'z'
   }
+  /**
+   * If true, the visual ground is a perfectly flat plane with no procedural
+   * bumps. The default (false) adds Gaussian bumps + random noise to the
+   * visual mesh for terrain variation, but the physics collider stays flat —
+   * which means units settle inside visible hills. Set this true for any
+   * world where units must sit cleanly on the surface (base, training arena).
+   */
+  flat?: boolean
 }
 
 export interface WorldConfig {

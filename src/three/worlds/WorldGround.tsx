@@ -24,22 +24,29 @@ export function WorldGround({ ground, edges, tableFrame }: WorldGroundProps) {
   const wallThick = tableFrame.thickness
   const wallHeight = 1.0 // default, overridden per edge
 
-  // Generate slightly bumpy ground mesh
+  // Generate ground mesh. When `ground.flat` is true, use a perfectly flat
+  // plane so units sit cleanly on the surface (the physics collider is always
+  // flat, so bumpy visuals mean units visually embed in hills that physics
+  // doesn't know about). When false, add subtle procedural bumps for
+  // combat-scene terrain variation — accepting the cosmetic embedding.
+  const flat = ground.flat === true
   const geometry = useMemo(() => {
     const geo = new THREE.PlaneGeometry(gw, gd, 40, 30)
-    const pos = geo.attributes.position as THREE.BufferAttribute
-    for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i)
-      const y = pos.getY(i)
-      // Subtle height variation for visual interest
-      let h = (Math.random() - 0.5) * 0.04
-      h += 0.12 * Math.exp(-((x + 2) ** 2 + (y - 1) ** 2) / 4)
-      h += 0.08 * Math.exp(-((x - 3) ** 2 + (y + 1) ** 2) / 5)
-      pos.setZ(i, pos.getZ(i) + h)
+    if (!flat) {
+      const pos = geo.attributes.position as THREE.BufferAttribute
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i)
+        const y = pos.getY(i)
+        // Subtle height variation for visual interest
+        let h = (Math.random() - 0.5) * 0.04
+        h += 0.12 * Math.exp(-((x + 2) ** 2 + (y - 1) ** 2) / 4)
+        h += 0.08 * Math.exp(-((x - 3) ** 2 + (y + 1) ** 2) / 5)
+        pos.setZ(i, pos.getZ(i) + h)
+      }
+      geo.computeVertexNormals()
     }
-    geo.computeVertexNormals()
     return geo
-  }, [gw, gd])
+  }, [gw, gd, flat])
 
   // Build border configs
   const borders = edges.map(edge => {

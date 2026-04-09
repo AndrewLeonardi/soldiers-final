@@ -462,6 +462,25 @@ export default function HomePage() {
           <Link to="/play" className="hp-hero-cta">
             PLAY FREE
           </Link>
+          {import.meta.env.DEV && (
+            <div style={{ marginTop: 18, display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <Link
+                to="/game-concept"
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 11,
+                  letterSpacing: 1.5,
+                  color: 'rgba(232, 198, 90, 0.7)',
+                  textDecoration: 'none',
+                  padding: '4px 10px',
+                  border: '1px solid rgba(232, 198, 90, 0.3)',
+                  borderRadius: 4,
+                }}
+              >
+                [DEV] /game-concept
+              </Link>
+            </div>
+          )}
         </div>
 
         <div className="hp-scroll-hint">SCROLL &#9660;</div>
