@@ -753,3 +753,155 @@ This is the standard every file, every commit, every PR gets held to. When somet
 15. **Do we adopt a stricter tsconfig (`strict: true`, `noUncheckedIndexedAccess: true`, `exactOptionalPropertyTypes: true`) at the start of the rewrite?** My lean: yes, and we fix any fallout in the reused modules in the same PR that adds the flag. The pain is front-loaded but capped.
 16. **What's the error boundary strategy?** My lean: one top-level `ErrorBoundary` around the `/game-concept` route that shows a "Something went wrong — reload" toy-styled fallback. Plus local boundaries around the Rapier `<Physics>` tree and the training scenario code (the two places a runtime error would otherwise nuke the whole app).
 
+---
+
+## 2026-04-08 — Shipped: Phase 1a — `/game-concept` foundation slice
+
+First code-writing sprint after plan approval. Carved Phase 1 of the build sequence into a tight "foundation only" slice that proves the three architectural bets (universal destructibility, production-quality from day one, heavy reuse of existing assets) before sprawling.
+
+**What shipped:**
+
+- New `/game-concept` route, lazy-loaded alongside `/play` and `/physics-test`
+- New `@game/*` path alias added to `tsconfig.json` and `vite.config.ts`
+- New domain folder `src/game/` with clean subfolders: `base/`, `buildings/`, `soldiers/`, `ui/`
+- New `baseKitchenWorld` config in `src/config/worlds/baseKitchen.ts` — clone of kitchen theme/ground/edges with an empty `props: []` because level-01 clutter doesn't belong on a peaceful base
+- New `GroundConfig.flat` flag added to `src/config/worlds/types.ts`; `WorldGround.tsx` honors it by skipping the procedural bump generator. Set `true` on baseKitchen. **Directly fixed the soldier-base-embedding bug** — visual ground was bumping up to 0.12 units tall where the flat physics collider couldn't match, so soldiers settled into visible hills. Combat worlds keep their bumps; base worlds are now perfectly flat.
+- Extended `DefenseStyle` union in `src/three/models/Defenses.tsx` from `'wall' | 'sandbag' | 'tower'` to also include `'vault' | 'trainingGrounds' | 'collector'`. Added three new `buildXBlocks()` layout functions, extended the `buildBlocks()` and `getStaticCollider()` dispatchers, added three new convenience wrapper exports (`VaultDefense`, `TrainingGroundsDefense`, `CollectorDefense`). **Additive only — zero changes to existing wall/sandbag/tower runtime.** Universal destructibility architectural bet validated on first use: all new building types render through the same `DestructibleDefense` pipeline with the same cascade, debris, static-collider-removal, and support-topology logic that walls already use.
+- New base-building wrapper components: `Vault.tsx`, `TrainingGrounds.tsx`, `Collector.tsx` (thin pass-through wrappers for forward-compat)
+- New `StarterBuildings.tsx` — hardcoded Phase 1a layout (vault at `[-5, 0, 0]`, training grounds at `[0, 0, -1]`, collector at `[4, 0, 2]`)
+- New `StarterSquad.tsx` — three idle toy soldiers at loiter positions around the buildings, rendered via existing `SoldierBody` + `SoldierUnit` + `flexSoldier` stack with `status: 'idle'` and `weapon: 'rifle'`
+- New `BaseCameraRig.tsx` — a fresh `OrbitControls` wrapper with base-viewing defaults. Simpler than the existing `src/three/camera/CameraRig.tsx` because it has no battle-state coupling (no result phase, no auto-rotate on victory, no game store reads). Pan disabled to anchor the player on their base.
+- New `BaseScene.tsx` — composes `WorldRenderer` (with `baseKitchenWorld`), `BaseCameraRig`, `StarterBuildings`, `StarterSquad`. Derives `tableBounds` from `baseKitchenWorld.ground.size` so the table size lives in one place.
+- New `GameConcept.tsx` — page entry with full-bleed `<Canvas>`, `<Physics gravity={[0, -15, 0]}>` (same gravity as `/play` and `/physics-test`), `<BaseScene />` inside, `<BaseHUD />` as HTML overlay outside
+- New minimal `BaseHUD.tsx` + `base-hud.css` — toy-styled back button (React Router `<Link>`) and "COMMAND BASE" title in Black Ops One gold. Beveled gradient button with 3D press state. Mobile breakpoint drops the title below the back button on narrow viewports.
+- Dev-only homepage link `[DEV] /game-concept` gated behind `import.meta.env.DEV` so iteration doesn't require typing the URL
+
+**Production discipline enforced from the first commit:**
+- Zero `any`, zero `console.log`, zero `TODO`, zero `@ts-ignore` across all of `src/game/`
+- File-level header docstrings on every new file
+- Clean module boundaries (`engine/` still renderer-free, `three/` still logic-free, new `game/` consumes both)
+- `tsc --noEmit` exits clean
+
+**Reuse instead of rebuild:**
+- `WorldRenderer`, `WorldGround`, `WorldLighting` — rendered as-is
+- `flexSoldier`, `SoldierBody`, `SoldierUnit` — the existing soldier rendering stack works with no changes
+- `DestructibleDefense`, `WallBlock` — the entire destructible block system accepts the new styles with zero runtime changes
+- `Physics` + Rapier — same gravity, same collision groups, same physics feel across scenes
+- `BackArrowIcon` from `ToyIcons` — reused for the back button
+- Global CSS variables (`--font-display`, `--gold-text`, `--text-white`) — reused for the HUD chrome
+- `HomePage.tsx` `<Link>`-based navigation pattern — reused (not PhysicsTest's plain `<a href>`)
+
+**Verified end-to-end via preview MCP tools:**
+- Route loads without console or server errors
+- Scene renders the kitchen table, three destructible buildings, three idle soldiers
+- Orbit camera works (drag rotates)
+- Back button navigates to homepage
+- Squint test passes at mobile (375×812) — after fixing a title/back button collision with a media query
+- `/play` regression check clean — barracks and tutorial modal still load identically
+
+**Files:** 12 new files in `src/game/` + `src/config/worlds/baseKitchen.ts` (~624 lines), 6 existing files modified additively.
+
+---
+
+## 2026-04-08 — Shipped: Phase 2a — drag-to-place base editing
+
+The endowment effect loop. Player can now toggle into BUILD mode, pick a brush (Vault / Training Grounds / Collector / Wall), see a live ghost preview that colors green/red based on validity, and commit placements to a persistent base layout. Reloading the page restores what they built. This is where "my base" becomes a real thing.
+
+**What shipped:**
+
+- New persisted store `src/game/stores/baseStore.ts` using Zustand with the `persist` middleware. Schema `version: 1`, seeded with the Phase 1a starter layout as the first-time-user default. `partialize` exports only `layout` so session-only state (mode, brush) never leaks to localStorage. Actions: `setMode`, `toggleMode`, `selectBuildingBrush`, `selectWallBrush`, `clearBrush`, `rotateBrush`, `placeBuilding`, `placeWall`, `resetToStarterLayout`. Every placement action runs validation through the pure helper and returns `boolean`.
+- New `Brush` discriminated union: `{ kind: 'building'; buildingKind: BuildingKind; rotation: number } | { kind: 'wall'; rotation: number } | null`. TypeScript enforces exhaustive handling at every call site.
+- New pure math module `src/game/base/footprints.ts` — zero React, zero Three.js, zero Zustand imports. Exports: `FootprintAABB`, `getBuildingFootprint`, `getWallFootprint`, `aabbOverlap`, `withinTableBounds`, `snapToGrid`, and `isValidPlacement`. The full validation function is the single source of truth called by both the store (on commit) and the ghost preview (for green/red coloring) — the two cannot disagree.
+- Rotation math (`rotateHalfExtents` internal helper) handles all four 90° quadrants exactly, plus negative rotations and rotations > 2π via normalization. Arbitrary angles fall through to a conservative axis-aligned bounding rectangle.
+- New exported `BUILDING_FOOTPRINTS` constant in `Defenses.tsx` — `Record<DefenseStyle, { halfW, halfD }>` derived from the existing `getStaticCollider` data. Single source of truth for XZ-plane footprints. Adding a new DefenseStyle is now a compile-time error until this record is extended, which keeps footprint math and collider data from drifting.
+- New `GhostPlacement.tsx` — module-level raycaster + mouse vec + ground plane (allocation-free per frame), module-level `window.addEventListener('pointermove')` listener, pre-built shared valid/invalid materials. `useFrame` reads the current brush from the store, raycasts to the Y=0 plane, snaps to the 0.5 grid, runs `isValidPlacement`, updates geometry/material/position/rotation on a single mesh. When no brush is active the mesh is hidden.
+- New `PlacementSurface.tsx` — an invisible plane covering the table that captures commit taps via R3F's `onPointerUp`. Uses `e.point.x/z` (world-space) — no manual raycasting. Only rendered when mode is 'build' AND a brush is active.
+- New `BuildGridOverlay.tsx` — a single `lineSegments` mesh drawing a subtle 0.5-unit dotted grid on the table in BUILD mode only. Uses the global `--text-white` color at 0.08 opacity.
+- New `LoadingFallback.tsx` + `loading-fallback.css` — toy-styled overlay with "DEPLOYING COMMAND BASE..." pulsing gold text. CSS `@keyframes` handles the pulse + fade-out sequence; fade starts at 600ms and completes at 1.6s. No React state, no Suspense restructuring.
+- Refactored `StarterBuildings.tsx` → renamed to `BaseBuildings.tsx`. Now reads `layout.buildings` from the store and dispatches each instance to the appropriate wrapper. The Phase 1a hardcoded layout moved into `baseStore.ts` as `STARTER_LAYOUT`.
+- New `BaseWalls.tsx` — reads `layout.walls` from the store and renders each via the existing `WallDefense` component. Walls use the exact same destructible pipeline as buildings.
+- Updated `BaseCameraRig.tsx` to accept a `brushActive: boolean` prop. When true, `enableRotate={false}` and `enableZoom={false}` so the player's drag-to-place input isn't competing with camera orbit. Pan was already off.
+- Updated `BaseScene.tsx` to wire everything together: reads `mode` and `brush` from the store, passes `brushActive` to the camera, conditionally renders `PlacementSurface`, `GhostPlacement`, and `BuildGridOverlay` when in build mode.
+- New `BuildTray.tsx` + `build-tray.css` — bottom-of-screen brush selection with four chunky beveled buttons (VAULT, TRAINING, COLLECTOR, WALL). The selected brush has a gold glow border. Tapping the already-selected brush clears it. Color swatches on each button match the building's body color.
+- Updated `BaseHUD.tsx` to add the `ModeToggle` (VIEW ↔ BUILD button top-right), `BuildTray` (bottom-center, visible in BUILD mode), `Rotate` and `Cancel` corner buttons (visible when a brush is active), and a dev-only `RESET BASE` button under the back button gated behind `import.meta.env.DEV`.
+- Updated `GameConcept.tsx` to render `LoadingFallback` as a sibling overlay to `BaseHUD`. CSS fade-out dismisses it cleanly without any React state management.
+
+**Verified end-to-end via preview MCP tools:**
+- Store seeds starter layout on first load (localStorage cleared → three Phase 1a buildings appear)
+- Mode toggle flips VIEW ↔ BUILD, `BuildTray` appears/disappears, HUD button color changes to gold in BUILD mode
+- All four brushes selectable; gold border highlights the active selection
+- Ghost preview follows pointer via raycast-to-Y=0-plane, 0.5 grid snap working
+- Ghost colors **red over existing buildings** (verified by screenshot with wall ghost over the Collector)
+- Ghost colors **green in empty areas** (verified by screenshot with wall ghost on empty right side of table)
+- CANCEL and ROTATE buttons appear in bottom corners when brush is active
+- Placement commits work via the store action (verified by direct action call → `BaseWalls` reactively renders the new wall in the scene)
+- Persistence verified: placed wall survives page reload with `mode: 'view'`, `brush: null`, but `layout.walls: [{ position: [6, 0, -3], rotation: 0 }]`
+- Dev reset button wipes placed walls and restores the exact starter 3-building layout
+- Mobile viewport layout verified via DOM bounding rects: BuildTray at y=741-800 (thumb zone), Cancel/Rotate at y=691-722, no collisions with back button or title
+- `/play` regression check clean — barracks and tutorial modal still load identically
+
+**Files:** 10 new files (`baseStore.ts`, `footprints.ts`, `GhostPlacement.tsx`, `PlacementSurface.tsx`, `BuildGridOverlay.tsx`, `LoadingFallback.tsx`, `BaseBuildings.tsx`, `BaseWalls.tsx`, `BuildTray.tsx`, three CSS files), 7 modified files. `StarterBuildings.tsx` deleted in the same commit that made it dead. Zero `any`, zero `console.log`, zero `TODO` across all new code. `tsc --noEmit` clean.
+
+---
+
+## 2026-04-08 — Shipped: Phase 1b — housekeeping sprint
+
+Closed the "day one" drift from the production-build directive (open questions 14, 15, 16) before Phase 3 could compound it. All additive — no runtime behavior changes to existing features.
+
+**Testing infrastructure:**
+
+- Added `vitest` as a dev dependency (latest 4.1.3)
+- New `vitest.config.ts` that extends `vite.config.ts` via `mergeConfig` so tests inherit all `@game/*`, `@engine/*`, `@three/*` etc. path aliases. `environment: 'node'` by default since we're only unit-testing pure logic.
+- New `package.json` scripts: `typecheck` (whole project), `typecheck:game` (scoped strict), `test` (one-shot), `test:watch`
+- First test file `src/game/base/footprints.test.ts` — **33 tests, all passing** in ~300ms:
+  - `snapToGrid`: correct rounding, always-zero Y, idempotent, handles signed-zero
+  - `aabbOverlap`: clear overlap, no overlap, strict edge-touching (not counted), single-axis overlap, short-circuit on Z
+  - `getBuildingFootprint` rotation: unchanged at 0°/180°, swapped at 90°/270°, normalized for negative rotations, normalized for rotations > 2π, correct footprint center placement
+  - `getWallFootprint`: correctly long-along-X at 0°, swapped long-along-Z at 90°
+  - `withinTableBounds`: inside, past X edge, past Z edge, exactly at max, past negative edge, inset margin scaling
+  - `isValidPlacement`: null brush rejected, empty base accepts, past-edge rejected, overlap rejected, starter-layout integrity (all three hardcoded starter positions verified mutually valid), rotation-dependent overlap (same position valid at 0° but invalid at 90° — the exact class of silent bug that would make a green ghost lie)
+- Writing the tests caught two genuine test-side bugs (JavaScript signed-zero in `Math.round(-0.2)/2`, and a miscalculation of wall footprint reach) — neither was a code bug, but both were assertions I'd have been wrong about without the test runner catching me.
+
+**CI:**
+
+- New `.github/workflows/ci.yml` — runs on push to main and on pull requests
+- Node 20, `npm ci`, cached
+- Three gates: `npm run typecheck`, `npm run typecheck:game`, `npm test`
+- Pipeline will fail loudly if any of the three breaks. No more manual `tsc --noEmit` runs as the only safety net.
+
+**Strict types for new code:**
+
+- New `tsconfig.game.json` — extends main tsconfig, adds `noUncheckedIndexedAccess: true`, includes only `src/game` and `src/vite-env.d.ts`
+- Main `tsconfig.json` deliberately left alone — flipping `noUncheckedIndexedAccess` globally produces 318 errors across 24 files of pre-existing legacy code (BattleScene, jeep.ts, neural net visualizations, etc). Fixing that is over-engineering per the plan.md YAGNI rule; all of it retires in Phase 4. The scoped config enforces the stricter bar on new code only.
+- Fallout on new code was minimal but real:
+  - `buildTrainingGroundsBlocks` in `Defenses.tsx` was using indexed post-position access + dispatched destructuring — restructured to use a `pushPost(pos, col) → index` helper with named locals (`plFL`, `plFR`, `plBL`, `plBR`). Cleaner code as a side effect.
+  - The tower-legs loop `buildTowerBlocks` had the same indexed-access pattern — added an `if (!legPos) continue` guard.
+  - **Caught a genuine latent bug in the pending-collapse loop** (`DestructibleDefense` `useFrame`): the loop iterated backwards for splicing but dereferenced `pendingCollapses.current[i]` without checking for undefined. The iteration invariant makes it technically safe today, but strict indexed access surfaced the missing guard — added `if (!pc) continue`. This is exactly the class of silent bug the flag exists to catch.
+
+**Typed analytics event emitter:**
+
+- New `src/game/analytics/events.ts` — `EventMap` catalog with compile-time-checked payloads for every game event: `base_mode_toggled`, `base_brush_selected`, `base_brush_cleared`, `base_brush_rotated`, `base_building_placed`, `base_building_place_rejected`, `base_wall_placed`, `base_wall_place_rejected`, `base_reset_to_starter`
+- `track<K>(event, data)` function with generic type narrowing: TypeScript will refuse to compile if the payload shape doesn't match `EventMap[K]`
+- Dev-only ring buffer capped at 500 entries, exposed on `window.__events` for inspection during development. Production telemetry sink is a single swap point — no retrofitting every call site later.
+- Wired `track()` calls into every mutating action in `baseStore.ts`: mode toggle, brush selection/clear/rotate, successful placements, rejected placements, dev reset
+- **Verified end-to-end:** toggled mode + selected wall brush in the preview, read `window.__events` → two entries present: `base_mode_toggled { to: 'build' }` and `base_brush_selected { kind: 'wall' }`. Typed payloads flowing correctly.
+
+**Error boundary:**
+
+- New `src/game/GameConceptBoundary.tsx` — class component (React error boundaries only work as classes) with `getDerivedStateFromError` and `componentDidCatch`. Toy-styled fallback: "COMMAND BASE OFFLINE" headline in gold, chunky "REDEPLOY" (reload) and "HOME" (back to `/`) buttons with beveled gradients and 3D press states, dev-only stack-trace panel. No white-screen-of-death if anything in the render tree throws.
+- Dev-only `console.error` in `componentDidCatch` for stack visibility — gated behind `import.meta.env.DEV` per the no-console-log-in-prod rule.
+- Wired into `App.tsx`: `/game-concept` route now renders `<GameConceptBoundary><GameConcept /></GameConceptBoundary>`. Old routes (`/`, `/play`, `/physics-test`) unchanged.
+
+**Security:**
+
+- `npm audit` caught a pre-existing high-severity vulnerability in Vite 8.0.3 (path traversal in dev server). Patched to 8.0.7 via `npm audit fix`. Zero vulnerabilities post-patch.
+
+**Verified end-to-end:**
+- `npm run typecheck` → clean (0 errors across whole project)
+- `npm run typecheck:game` → clean under strict `noUncheckedIndexedAccess`
+- `npm test` → 33/33 passing in ~300ms
+- `/game-concept` renders with full Phase 2a visual parity after the refactoring (verified by screenshot)
+- Analytics events fire correctly end-to-end (verified `window.__events` population in preview)
+- `/play` regression check clean
+- No server errors, no console errors
+
