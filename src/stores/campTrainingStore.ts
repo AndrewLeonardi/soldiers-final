@@ -1,15 +1,15 @@
 /**
- * campTrainingStore — the training lifecycle for base camp.
+ * campTrainingStore — multi-slot training lifecycle for base camp.
  *
- * Sprint 2. Manages the full commit→train→graduate flow:
- *   1. Player commits a soldier + weapon + compute tier
+ * Sprint 2→3. Manages up to 3 parallel training slots, each with its
+ * own commit→train→graduate flow:
+ *   1. Player picks a slot, commits a soldier + weapon + compute tier
  *   2. GA population spawns, sim ticks every frame
  *   3. Timer counts down, milestones fire, fitness climbs
  *   4. Graduation: best weights written to campStore soldier record
  *
- * Adapted from trainingStore.ts but uses campStore for compute/roster,
- * runs a fixed-duration timer instead of fitness-gated graduation,
- * and tracks milestones for the spectacle callout system.
+ * Sprint 3 refactor: single-slot state → `slots: TrainingSlot[]`.
+ * All actions take a slotIndex. `tick(dt)` iterates all active slots.
  */
 
 import { create } from 'zustand'
@@ -27,11 +27,11 @@ import {
   TRAINING_SIM_DURATION,
   BREAKTHROUGH_THRESHOLD,
 } from '@game/camp/trainingConstants'
-import { NN_INPUT_SIZE, NN_HIDDEN_SIZE, NN_OUTPUT_SIZE } from '@game/training/nullBrain'
+import { getWeaponShape } from '@game/training/weaponShapes'
 
-const WEIGHT_COUNT = NeuralNet.weightCount(NN_INPUT_SIZE, NN_HIDDEN_SIZE, NN_OUTPUT_SIZE)
+const MAX_SLOTS = 3
 
-// GA instance for training — 25 pop, 5 elite, 0.2 mutation rate, 0.6 strength, 0.35 crossover
+// GA instance for training — shared across slots (stateless)
 const ga = new GeneticAlgorithm(TRAINING_POP_SIZE, TRAINING_ELITE_COUNT, 0.2, 0.6, 0.35)
 
 // ── Types ──
@@ -61,407 +61,481 @@ export interface GhostSnapshot {
   justFired: boolean
 }
 
-// ── State ──
-
-interface CampTrainingState {
-  // Training slot
+/** All per-slot state */
+export interface TrainingSlot {
   trainingPhase: TrainingPhase
   slotSoldierId: string | null
   slotSoldierName: string | null
   slotWeapon: string | null
-  computeTier: number  // 1-4
+  computeTier: number
 
-  // GA progress
   generation: number
   bestFitness: number
   bestWeights: number[]
   fitnessHistory: number[]
-  currentIndividual: number
 
-  // Timer
   timerTotal: number
   timerElapsed: number
 
-  // Milestones
   milestones: MilestoneEvent[]
   totalHits: number
   totalKills: number
   bestStreak: number
   activeMilestone: MilestoneEvent | null
 
-  // Ghost snapshot — positions of all individuals in current generation
   ghostSnapshots: GhostSnapshot[]
   championIndex: number
 
   // Internal (not rendered directly)
   population: number[][]
   fitnesses: number[]
-  simStates: SimState[]     // One per individual
-  nns: NeuralNet[]           // One per individual
+  simStates: SimState[]
+  nns: NeuralNet[]
   simConfig: SimConfig | null
   tickCounter: number
+}
+
+function createEmptySlot(): TrainingSlot {
+  return {
+    trainingPhase: 'empty',
+    slotSoldierId: null,
+    slotSoldierName: null,
+    slotWeapon: null,
+    computeTier: 1,
+    generation: 0,
+    bestFitness: 0,
+    bestWeights: [],
+    fitnessHistory: [],
+    timerTotal: TRAINING_BASE_DURATION,
+    timerElapsed: 0,
+    milestones: [],
+    totalHits: 0,
+    totalKills: 0,
+    bestStreak: 0,
+    activeMilestone: null,
+    ghostSnapshots: [],
+    championIndex: 0,
+    population: [],
+    fitnesses: [],
+    simStates: [],
+    nns: [],
+    simConfig: null,
+    tickCounter: 0,
+  }
+}
+
+// ── State ──
+
+interface CampTrainingState {
+  slots: TrainingSlot[]
+
+  // Global active milestone (for the callout system — shows latest from any slot)
+  activeMilestone: MilestoneEvent | null
 
   // Actions
+  commitToTrain: (slotIndex: number, soldierId: string, soldierName: string, weapon: string, tier: number) => boolean
+  tick: (dt: number) => void
+  startCeremonyDone: (slotIndex: number) => void
+  graduate: (slotIndex: number) => void
+  endCeremonyDone: (slotIndex: number) => void
+  resetSlot: (slotIndex: number) => void
+
+  // Convenience — check if a soldier is already in any slot
+  isSoldierInTraining: (soldierId: string) => boolean
+
+  // Legacy compat selectors (read from slot 0 for single-slot consumers)
+  // These are computed getters, not stored state
+  trainingPhase: TrainingPhase
+  slotSoldierId: string | null
+  slotSoldierName: string | null
+  slotWeapon: string | null
+  computeTier: number
+  generation: number
+  bestFitness: number
+  bestWeights: number[]
+  fitnessHistory: number[]
+  timerTotal: number
+  timerElapsed: number
+  milestones: MilestoneEvent[]
+  totalHits: number
+  totalKills: number
+  bestStreak: number
+  ghostSnapshots: GhostSnapshot[]
+  championIndex: number
+  tickCounter: number
+
+  // Legacy compat actions (operate on slot 0)
   openTrainingSheet: () => void
   closeTrainingSheet: () => void
-  commitToTrain: (soldierId: string, soldierName: string, weapon: string, tier: number) => boolean
-  tick: (dt: number) => void
-  startCeremonyDone: () => void
-  graduate: () => void
-  endCeremonyDone: () => void
   reset: () => void
 }
 
-export const useCampTrainingStore = create<CampTrainingState>()((set, get) => ({
-  // Training slot
-  trainingPhase: 'empty',
-  slotSoldierId: null,
-  slotSoldierName: null,
-  slotWeapon: null,
-  computeTier: 1,
-
-  // GA progress
-  generation: 0,
-  bestFitness: 0,
-  bestWeights: [],
-  fitnessHistory: [],
-  currentIndividual: 0,
-
-  // Timer
-  timerTotal: TRAINING_BASE_DURATION,
-  timerElapsed: 0,
-
-  // Milestones
-  milestones: [],
-  totalHits: 0,
-  totalKills: 0,
-  bestStreak: 0,
-  activeMilestone: null,
-
-  // Ghosts
-  ghostSnapshots: [],
-  championIndex: 0,
-
-  // Internal
-  population: [],
-  fitnesses: [],
-  simStates: [],
-  nns: [],
-  simConfig: null,
-  tickCounter: 0,
-
-  // ── Actions ──
-
-  openTrainingSheet: () => {
-    const state = get()
-    if (state.trainingPhase === 'empty') {
-      set({ trainingPhase: 'selecting' })
-    }
-  },
-
-  closeTrainingSheet: () => {
-    const state = get()
-    if (state.trainingPhase === 'selecting') {
-      set({ trainingPhase: 'empty' })
-    }
-  },
-
-  commitToTrain: (soldierId, soldierName, weapon, tier) => {
-    const tierConfig = COMPUTE_TIERS[tier - 1]
-    if (!tierConfig) return false
-
-    const cost = TRAINING_BASE_COST * tierConfig.costMultiplier
-    const spent = useCampStore.getState().spendCompute(cost)
-    if (!spent) return false
-
-    // Init GA population
-    const existingSoldier = useCampStore.getState().soldiers.find(s => s.id === soldierId)
-    const existingWeights = existingSoldier?.weights
-
-    const population = existingWeights
-      ? ga.initSeededPopulation(WEIGHT_COUNT, existingWeights)
-      : ga.initPopulation(WEIGHT_COUNT)
-
-    // Create NNs and sim states for all individuals
-    const simConfig: SimConfig = {
-      weaponType: weapon,
-      simDuration: TRAINING_SIM_DURATION,
-    }
-
-    const nns: NeuralNet[] = []
-    const simStates: SimState[] = []
-    for (let i = 0; i < TRAINING_POP_SIZE; i++) {
-      const nn = new NeuralNet(NN_INPUT_SIZE, NN_HIDDEN_SIZE, NN_OUTPUT_SIZE)
-      nn.setWeights(population[i] ?? [])
-      nns.push(nn)
-      simStates.push(initSim(simConfig))
-    }
-
-    const timerTotal = TRAINING_BASE_DURATION / tierConfig.multiplier
-
+export const useCampTrainingStore = create<CampTrainingState>()((set, get) => {
+  // Helper to update a specific slot immutably
+  const updateSlot = (index: number, updates: Partial<TrainingSlot>) => {
+    const { slots } = get()
+    const newSlots = slots.map((slot, i) =>
+      i === index ? { ...slot, ...updates } : slot,
+    )
+    // Also sync legacy compat fields from slot 0
+    const slot0 = index === 0 ? { ...slots[0]!, ...updates } : newSlots[0]!
     set({
-      trainingPhase: 'ceremony-start',
-      slotSoldierId: soldierId,
-      slotSoldierName: soldierName,
-      slotWeapon: weapon,
-      computeTier: tier,
-      generation: 0,
-      bestFitness: 0,
-      bestWeights: [],
-      fitnessHistory: [],
-      currentIndividual: 0,
-      timerTotal,
-      timerElapsed: 0,
-      milestones: [],
-      totalHits: 0,
-      totalKills: 0,
-      bestStreak: 0,
-      activeMilestone: null,
-      ghostSnapshots: [],
-      championIndex: 0,
-      population,
-      fitnesses: new Array(TRAINING_POP_SIZE).fill(0),
-      simStates,
-      nns,
-      simConfig,
-      tickCounter: 0,
+      slots: newSlots,
+      // Legacy compat — mirror slot 0
+      trainingPhase: slot0.trainingPhase,
+      slotSoldierId: slot0.slotSoldierId,
+      slotSoldierName: slot0.slotSoldierName,
+      slotWeapon: slot0.slotWeapon,
+      computeTier: slot0.computeTier,
+      generation: slot0.generation,
+      bestFitness: slot0.bestFitness,
+      bestWeights: slot0.bestWeights,
+      fitnessHistory: slot0.fitnessHistory,
+      timerTotal: slot0.timerTotal,
+      timerElapsed: slot0.timerElapsed,
+      milestones: slot0.milestones,
+      totalHits: slot0.totalHits,
+      totalKills: slot0.totalKills,
+      bestStreak: slot0.bestStreak,
+      ghostSnapshots: slot0.ghostSnapshots,
+      championIndex: slot0.championIndex,
+      tickCounter: slot0.tickCounter,
     })
+  }
 
-    return true
-  },
+  const emptySlot0 = createEmptySlot()
 
-  startCeremonyDone: () => {
-    set({ trainingPhase: 'running' })
-  },
+  return {
+    slots: [createEmptySlot()],
 
-  tick: (dt) => {
-    const state = get()
-    if (state.trainingPhase !== 'running') return
-    if (!state.simConfig) return
+    activeMilestone: null,
 
-    const tierConfig = COMPUTE_TIERS[state.computeTier - 1]
-    if (!tierConfig) return
+    // Legacy compat — initial values from slot 0
+    trainingPhase: 'empty',
+    slotSoldierId: null,
+    slotSoldierName: null,
+    slotWeapon: null,
+    computeTier: 1,
+    generation: 0,
+    bestFitness: 0,
+    bestWeights: [],
+    fitnessHistory: [],
+    timerTotal: TRAINING_BASE_DURATION,
+    timerElapsed: 0,
+    milestones: [],
+    totalHits: 0,
+    totalKills: 0,
+    bestStreak: 0,
+    ghostSnapshots: [],
+    championIndex: 0,
+    tickCounter: 0,
 
-    // Advance wall-clock timer
-    const newElapsed = state.timerElapsed + dt
-    if (newElapsed >= state.timerTotal) {
-      // Time's up — graduate
-      set({ timerElapsed: state.timerTotal, trainingPhase: 'graduated' })
-      return
-    }
+    // ── Actions ──
 
-    // Run sim ticks — more ticks per frame at higher tiers
-    const SIM_DT = 1 / 60
-    const stepsPerFrame = Math.max(1, Math.ceil(tierConfig.multiplier * 0.5))
+    isSoldierInTraining: (soldierId) => {
+      return get().slots.some(slot =>
+        slot.slotSoldierId === soldierId &&
+        slot.trainingPhase !== 'empty',
+      )
+    },
 
-    let { population, fitnesses, generation, bestFitness, bestWeights, fitnessHistory,
-      currentIndividual, simStates, nns, totalHits, totalKills, bestStreak, milestones,
-      activeMilestone } = state
-    const config = state.simConfig
+    commitToTrain: (slotIndex, soldierId, soldierName, weapon, tier) => {
+      const state = get()
+      const slot = state.slots[slotIndex]
+      if (!slot) return false
+      if (slot.trainingPhase !== 'empty' && slot.trainingPhase !== 'selecting') return false
 
-    // Make mutable copies
-    fitnesses = [...fitnesses]
-    milestones = [...milestones]
+      // Prevent same soldier in multiple slots
+      if (state.slots.some((s, i) => i !== slotIndex && s.slotSoldierId === soldierId && s.trainingPhase !== 'empty')) {
+        return false
+      }
 
-    for (let step = 0; step < stepsPerFrame; step++) {
-      // Tick all individuals simultaneously (parallel eval for ghost rendering)
+      const tierConfig = COMPUTE_TIERS[tier - 1]
+      if (!tierConfig) return false
+
+      const cost = TRAINING_BASE_COST * tierConfig.costMultiplier
+      const spent = useCampStore.getState().spendCompute(cost)
+      if (!spent) return false
+
+      // Use per-weapon NN shape
+      const shape = getWeaponShape(weapon)
+      const weightCount = NeuralNet.weightCount(shape.input, shape.hidden, shape.output)
+
+      // Init GA population — seed from existing brain if available
+      const existingSoldier = useCampStore.getState().soldiers.find(s => s.id === soldierId)
+      const existingWeights = existingSoldier?.trainedBrains?.[weapon]
+        ?? existingSoldier?.weights  // fallback for pre-v3 data
+
+      const population = (existingWeights && existingWeights.length === weightCount)
+        ? ga.initSeededPopulation(weightCount, existingWeights)
+        : ga.initPopulation(weightCount)
+
+      // Create NNs and sim states for all individuals
+      const simConfig: SimConfig = {
+        weaponType: weapon,
+        simDuration: TRAINING_SIM_DURATION,
+      }
+
+      const nns: NeuralNet[] = []
+      const simStates: SimState[] = []
       for (let i = 0; i < TRAINING_POP_SIZE; i++) {
-        const sim = simStates[i]
-        const nn = nns[i]
-        if (!sim || !nn) continue
+        const nn = new NeuralNet(shape.input, shape.hidden, shape.output)
+        nn.setWeights(population[i] ?? [])
+        nns.push(nn)
+        simStates.push(initSim(simConfig))
+      }
 
-        if (sim.elapsed < config.simDuration) {
-          simTick(sim, nn, SIM_DT, config)
+      const timerTotal = TRAINING_BASE_DURATION / tierConfig.multiplier
 
-          // Track milestone stats from individual sims
-          if ('lastHit' in sim && (sim as any).lastHit) {
-            totalHits++
-            if (totalHits === 1) {
-              const m: MilestoneEvent = {
-                type: 'FIRST_HIT',
-                label: 'FIRST HIT',
-                generation,
-                timestamp: newElapsed,
-              }
-              milestones.push(m)
-              activeMilestone = m
-            }
-          }
+      updateSlot(slotIndex, {
+        trainingPhase: 'ceremony-start',
+        slotSoldierId: soldierId,
+        slotSoldierName: soldierName,
+        slotWeapon: weapon,
+        computeTier: tier,
+        generation: 0,
+        bestFitness: 0,
+        bestWeights: [],
+        fitnessHistory: [],
+        timerTotal,
+        timerElapsed: 0,
+        milestones: [],
+        totalHits: 0,
+        totalKills: 0,
+        bestStreak: 0,
+        activeMilestone: null,
+        ghostSnapshots: [],
+        championIndex: 0,
+        population,
+        fitnesses: new Array(TRAINING_POP_SIZE).fill(0),
+        simStates,
+        nns,
+        simConfig,
+        tickCounter: 0,
+      })
 
-          if ('targets' in sim) {
-            const targets = (sim as any).targets as Array<{ alive: boolean }>
-            const killed = targets.filter((t: any) => !t.alive).length
-            if (killed > totalKills) {
-              const newKills = killed - totalKills
-              totalKills = killed
-              if (newKills > 0 && totalKills === 1) {
-                const existing = milestones.find(m => m.type === 'FIRST_KILL')
-                if (!existing) {
-                  const m: MilestoneEvent = {
-                    type: 'FIRST_KILL',
-                    label: 'FIRST KILL',
-                    generation,
-                    timestamp: newElapsed,
-                  }
+      return true
+    },
+
+    startCeremonyDone: (slotIndex) => {
+      updateSlot(slotIndex, { trainingPhase: 'running' })
+    },
+
+    tick: (dt) => {
+      const state = get()
+      const SIM_DT = 1 / 60
+      let globalMilestone: MilestoneEvent | null = null
+
+      const newSlots = state.slots.map((slot, slotIndex) => {
+        if (slot.trainingPhase !== 'running') return slot
+        if (!slot.simConfig) return slot
+
+        const tierConfig = COMPUTE_TIERS[slot.computeTier - 1]
+        if (!tierConfig) return slot
+
+        // Advance wall-clock timer
+        const newElapsed = slot.timerElapsed + dt
+        if (newElapsed >= slot.timerTotal) {
+          return { ...slot, timerElapsed: slot.timerTotal, trainingPhase: 'graduated' as const }
+        }
+
+        // Run sim ticks
+        const stepsPerFrame = Math.max(1, Math.ceil(tierConfig.multiplier * 0.5))
+
+        let { population, fitnesses, generation, bestFitness, bestWeights, fitnessHistory,
+          simStates, nns, totalHits, totalKills, bestStreak, milestones, activeMilestone } = slot
+        const config = slot.simConfig
+
+        fitnesses = [...fitnesses]
+        milestones = [...milestones]
+
+        for (let step = 0; step < stepsPerFrame; step++) {
+          for (let i = 0; i < TRAINING_POP_SIZE; i++) {
+            const sim = simStates[i]
+            const nn = nns[i]
+            if (!sim || !nn) continue
+
+            if (sim.elapsed < config.simDuration) {
+              simTick(sim, nn, SIM_DT, config)
+
+              if ('lastHit' in sim && (sim as any).lastHit) {
+                totalHits++
+                if (totalHits === 1) {
+                  const m: MilestoneEvent = { type: 'FIRST_HIT', label: 'FIRST HIT', generation, timestamp: newElapsed }
                   milestones.push(m)
                   activeMilestone = m
+                  globalMilestone = m
+                }
+              }
+
+              if ('targets' in sim) {
+                const targets = (sim as any).targets as Array<{ alive: boolean }>
+                const killed = targets.filter((t: any) => !t.alive).length
+                if (killed > totalKills) {
+                  totalKills = killed
+                  if (totalKills === 1 && !milestones.find(m => m.type === 'FIRST_KILL')) {
+                    const m: MilestoneEvent = { type: 'FIRST_KILL', label: 'FIRST KILL', generation, timestamp: newElapsed }
+                    milestones.push(m)
+                    activeMilestone = m
+                    globalMilestone = m
+                  }
+                }
+              }
+
+              if ('bestStreak' in sim) {
+                const streak = (sim as any).bestStreak as number
+                if (streak > bestStreak) {
+                  bestStreak = streak
+                  if (bestStreak >= 10 && !milestones.find(m => m.type === 'STREAK_10')) {
+                    const m: MilestoneEvent = { type: 'STREAK_10', label: '10 IN A ROW', generation, timestamp: newElapsed }
+                    milestones.push(m)
+                    activeMilestone = m
+                    globalMilestone = m
+                  }
                 }
               }
             }
           }
 
-          if ('bestStreak' in sim) {
-            const streak = (sim as any).bestStreak as number
-            if (streak > bestStreak) {
-              bestStreak = streak
-              if (bestStreak >= 10) {
-                const existing = milestones.find(m => m.type === 'STREAK_10')
-                if (!existing) {
-                  const m: MilestoneEvent = {
-                    type: 'STREAK_10',
-                    label: '10 IN A ROW',
-                    generation,
-                    timestamp: newElapsed,
-                  }
-                  milestones.push(m)
-                  activeMilestone = m
-                }
+          // Check if generation done
+          const allDone = simStates.every(s => s && s.elapsed >= config.simDuration)
+          if (allDone) {
+            for (let i = 0; i < TRAINING_POP_SIZE; i++) {
+              const sim = simStates[i]
+              if (sim) fitnesses[i] = scoreFitness(sim, config)
+            }
+
+            const genBest = Math.max(...fitnesses)
+            if (genBest > bestFitness) {
+              bestFitness = genBest
+              const bestIdx = fitnesses.indexOf(genBest)
+              const bestPop = population[bestIdx]
+              if (bestPop) bestWeights = [...bestPop]
+            }
+
+            fitnessHistory = [...fitnessHistory, genBest].slice(-30)
+            population = ga.evolve(population, fitnesses, generation)
+            generation++
+            fitnesses = new Array(TRAINING_POP_SIZE).fill(0)
+
+            const newSimStates: SimState[] = []
+            for (let i = 0; i < TRAINING_POP_SIZE; i++) {
+              const nn = nns[i]
+              if (nn) nn.setWeights(population[i] ?? [])
+              newSimStates.push(initSim(config))
+            }
+            simStates = newSimStates
+
+            if (bestFitness >= BREAKTHROUGH_THRESHOLD && generation >= 3) {
+              return {
+                ...slot,
+                trainingPhase: 'graduated' as const,
+                timerElapsed: newElapsed,
+                generation, population, fitnesses, bestFitness, bestWeights,
+                fitnessHistory, simStates, totalHits, totalKills, bestStreak,
+                milestones, activeMilestone,
+                ghostSnapshots: slot.ghostSnapshots,
+                tickCounter: slot.tickCounter + 1,
               }
             }
           }
         }
-      }
 
-      // Check if all individuals in this generation are done
-      const allDone = simStates.every(s => s && s.elapsed >= config.simDuration)
-      if (allDone) {
-        // Score all individuals
-        for (let i = 0; i < TRAINING_POP_SIZE; i++) {
-          const sim = simStates[i]
-          if (sim) {
-            fitnesses[i] = scoreFitness(sim, config)
+        // Build ghost snapshots
+        const ghostSnapshots: GhostSnapshot[] = simStates.map(sim => ({
+          x: 'soldierX' in sim ? (sim as any).soldierX : 0,
+          z: 'soldierZ' in sim ? (sim as any).soldierZ : 0,
+          rotation: 'soldierRotation' in sim ? (sim as any).soldierRotation : 0,
+          justFired: 'justFired' in sim ? (sim as any).justFired : false,
+        }))
+
+        let championIndex = 0
+        let highestFit = -1
+        for (let i = 0; i < fitnesses.length; i++) {
+          if ((fitnesses[i] ?? 0) > highestFit) {
+            highestFit = fitnesses[i] ?? 0
+            championIndex = i
           }
         }
 
-        // Find best in generation
-        const genBest = Math.max(...fitnesses)
-        if (genBest > bestFitness) {
-          bestFitness = genBest
-          const bestIdx = fitnesses.indexOf(genBest)
-          const bestPop = population[bestIdx]
-          if (bestPop) {
-            bestWeights = [...bestPop]
-          }
+        return {
+          ...slot,
+          timerElapsed: newElapsed,
+          generation, population, fitnesses, bestFitness, bestWeights,
+          fitnessHistory, simStates, totalHits, totalKills, bestStreak,
+          milestones, activeMilestone, ghostSnapshots, championIndex,
+          tickCounter: slot.tickCounter + 1,
         }
+      })
 
-        // Record history
-        fitnessHistory = [...fitnessHistory, genBest].slice(-30)
+      // Sync legacy compat from slot 0
+      const slot0 = newSlots[0]!
+      set({
+        slots: newSlots,
+        activeMilestone: globalMilestone ?? state.activeMilestone,
+        trainingPhase: slot0.trainingPhase,
+        slotSoldierId: slot0.slotSoldierId,
+        slotSoldierName: slot0.slotSoldierName,
+        slotWeapon: slot0.slotWeapon,
+        computeTier: slot0.computeTier,
+        generation: slot0.generation,
+        bestFitness: slot0.bestFitness,
+        bestWeights: slot0.bestWeights,
+        fitnessHistory: slot0.fitnessHistory,
+        timerTotal: slot0.timerTotal,
+        timerElapsed: slot0.timerElapsed,
+        milestones: slot0.milestones,
+        totalHits: slot0.totalHits,
+        totalKills: slot0.totalKills,
+        bestStreak: slot0.bestStreak,
+        ghostSnapshots: slot0.ghostSnapshots,
+        championIndex: slot0.championIndex,
+        tickCounter: slot0.tickCounter,
+      })
+    },
 
-        // Evolve
-        population = ga.evolve(population, fitnesses, generation)
-        generation++
-        fitnesses = new Array(TRAINING_POP_SIZE).fill(0)
+    graduate: (slotIndex) => {
+      const slot = get().slots[slotIndex]
+      if (!slot) return
+      const { slotSoldierId, slotWeapon, bestWeights, bestFitness, generation } = slot
+      if (!slotSoldierId || !slotWeapon || bestWeights.length === 0) return
 
-        // Reset sims and load new weights
-        const newSimStates: SimState[] = []
-        for (let i = 0; i < TRAINING_POP_SIZE; i++) {
-          const nn = nns[i]
-          if (nn) {
-            nn.setWeights(population[i] ?? [])
-          }
-          newSimStates.push(initSim(config))
-        }
-        simStates = newSimStates
+      useCampStore.getState().updateSoldierBrain(
+        slotSoldierId,
+        slotWeapon,
+        bestWeights,
+        bestFitness,
+        generation,
+      )
 
-        // Check breakthrough
-        if (bestFitness >= BREAKTHROUGH_THRESHOLD && generation >= 3) {
-          set({
-            timerElapsed: newElapsed,
-            trainingPhase: 'graduated',
-            generation, population, fitnesses, bestFitness, bestWeights,
-            fitnessHistory, simStates, totalHits, totalKills, bestStreak,
-            milestones, activeMilestone,
-            tickCounter: state.tickCounter + 1,
-          })
-          return
-        }
+      updateSlot(slotIndex, { trainingPhase: 'ceremony-end' })
+    },
+
+    endCeremonyDone: (slotIndex) => {
+      get().resetSlot(slotIndex)
+    },
+
+    resetSlot: (slotIndex) => {
+      updateSlot(slotIndex, createEmptySlot())
+    },
+
+    // Legacy compat actions (operate on slot 0)
+    openTrainingSheet: () => {
+      const slot = get().slots[0]
+      if (slot && slot.trainingPhase === 'empty') {
+        updateSlot(0, { trainingPhase: 'selecting' })
       }
-    }
+    },
 
-    // Build ghost snapshots for rendering
-    const ghostSnapshots: GhostSnapshot[] = simStates.map(sim => ({
-      x: 'soldierX' in sim ? (sim as any).soldierX : 0,
-      z: 'soldierZ' in sim ? (sim as any).soldierZ : 0,
-      rotation: 'soldierRotation' in sim ? (sim as any).soldierRotation : 0,
-      justFired: 'justFired' in sim ? (sim as any).justFired : false,
-    }))
-
-    // Champion = individual with highest current fitness so far (or best weight holder)
-    let championIndex = 0
-    let highestFit = -1
-    for (let i = 0; i < fitnesses.length; i++) {
-      if ((fitnesses[i] ?? 0) > highestFit) {
-        highestFit = fitnesses[i] ?? 0
-        championIndex = i
+    closeTrainingSheet: () => {
+      const slot = get().slots[0]
+      if (slot && slot.trainingPhase === 'selecting') {
+        updateSlot(0, { trainingPhase: 'empty' })
       }
-    }
+    },
 
-    set({
-      timerElapsed: newElapsed,
-      generation, population, fitnesses, bestFitness, bestWeights,
-      fitnessHistory, currentIndividual: 0, simStates,
-      totalHits, totalKills, bestStreak, milestones, activeMilestone,
-      ghostSnapshots, championIndex,
-      tickCounter: state.tickCounter + 1,
-    })
-  },
-
-  graduate: () => {
-    const { slotSoldierId, bestWeights, bestFitness, generation } = get()
-    if (!slotSoldierId || bestWeights.length === 0) return
-
-    // Write trained weights to campStore
-    useCampStore.getState().updateSoldier(slotSoldierId, {
-      trained: true,
-      weights: bestWeights,
-      fitnessScore: bestFitness,
-      generationsTrained: generation,
-    })
-
-    set({ trainingPhase: 'ceremony-end' })
-  },
-
-  endCeremonyDone: () => {
-    get().reset()
-  },
-
-  reset: () => {
-    set({
-      trainingPhase: 'empty',
-      slotSoldierId: null,
-      slotSoldierName: null,
-      slotWeapon: null,
-      computeTier: 1,
-      generation: 0,
-      bestFitness: 0,
-      bestWeights: [],
-      fitnessHistory: [],
-      currentIndividual: 0,
-      timerTotal: TRAINING_BASE_DURATION,
-      timerElapsed: 0,
-      milestones: [],
-      totalHits: 0,
-      totalKills: 0,
-      bestStreak: 0,
-      activeMilestone: null,
-      ghostSnapshots: [],
-      championIndex: 0,
-      population: [],
-      fitnesses: [],
-      simStates: [],
-      nns: [],
-      simConfig: null,
-      tickCounter: 0,
-    })
-  },
-}))
+    reset: () => {
+      updateSlot(0, createEmptySlot())
+    },
+  }
+})

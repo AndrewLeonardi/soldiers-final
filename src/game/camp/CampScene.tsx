@@ -22,45 +22,46 @@ import type { WallBlock } from '@three/models/Defenses'
 
 function TrainingTickDriver() {
   const tick = useCampTrainingStore((s) => s.tick)
-  const trainingPhase = useCampTrainingStore((s) => s.trainingPhase)
+  const slots = useCampTrainingStore((s) => s.slots)
   const startCeremonyDone = useCampTrainingStore((s) => s.startCeremonyDone)
   const graduate = useCampTrainingStore((s) => s.graduate)
   const endCeremonyDone = useCampTrainingStore((s) => s.endCeremonyDone)
-  const ceremonyTimer = useRef(0)
+  const ceremonyTimers = useRef<number[]>([0, 0, 0])
 
   useFrame((_, delta) => {
-    if (trainingPhase === 'running') {
+    // Always tick the training engine (it iterates all active slots)
+    const hasRunning = slots.some(s => s.trainingPhase === 'running')
+    if (hasRunning) {
       tick(delta)
     }
 
-    // Auto-advance ceremonies after brief delay
-    if (trainingPhase === 'ceremony-start') {
-      ceremonyTimer.current += delta
-      if (ceremonyTimer.current >= 1.5) {
-        ceremonyTimer.current = 0
-        startCeremonyDone()
-      }
-    }
+    // Auto-advance ceremonies per slot
+    for (let i = 0; i < slots.length; i++) {
+      const slot = slots[i]
+      if (!slot) continue
+      const timer = ceremonyTimers.current[i] ?? 0
 
-    if (trainingPhase === 'graduated') {
-      ceremonyTimer.current += delta
-      if (ceremonyTimer.current >= 0.5) {
-        ceremonyTimer.current = 0
-        graduate()
+      if (slot.trainingPhase === 'ceremony-start') {
+        ceremonyTimers.current[i] = timer + delta
+        if (ceremonyTimers.current[i]! >= 1.5) {
+          ceremonyTimers.current[i] = 0
+          startCeremonyDone(i)
+        }
+      } else if (slot.trainingPhase === 'graduated') {
+        ceremonyTimers.current[i] = timer + delta
+        if (ceremonyTimers.current[i]! >= 0.5) {
+          ceremonyTimers.current[i] = 0
+          graduate(i)
+        }
+      } else if (slot.trainingPhase === 'ceremony-end') {
+        ceremonyTimers.current[i] = timer + delta
+        if (ceremonyTimers.current[i]! >= 2.0) {
+          ceremonyTimers.current[i] = 0
+          endCeremonyDone(i)
+        }
+      } else {
+        ceremonyTimers.current[i] = 0
       }
-    }
-
-    if (trainingPhase === 'ceremony-end') {
-      ceremonyTimer.current += delta
-      if (ceremonyTimer.current >= 2.0) {
-        ceremonyTimer.current = 0
-        endCeremonyDone()
-      }
-    }
-
-    // Reset timer when not in a ceremony
-    if (trainingPhase === 'empty' || trainingPhase === 'selecting' || trainingPhase === 'running') {
-      ceremonyTimer.current = 0
     }
   })
 

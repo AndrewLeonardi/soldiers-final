@@ -1,10 +1,8 @@
 /**
  * ProgressRing — world-space arc ring showing training timer progress.
  *
- * Sprint 2, Phase B2. Mounted above the training camp building.
- * Partial arc fills 0→2π as timer progresses.
- * Color from tier config. Timer countdown text via Html.
- * Only visible when trainingPhase === 'running'.
+ * Sprint 2→3. Mounted above the training camp building.
+ * Renders one ring per active training slot, stacked vertically.
  */
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
@@ -12,28 +10,21 @@ import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { useCampTrainingStore } from '@stores/campTrainingStore'
 import { COMPUTE_TIERS } from './trainingConstants'
+import type { TrainingSlot } from '@stores/campTrainingStore'
 
 const RING_RADIUS = 1.2
 const RING_TUBE = 0.06
 const SEGMENTS = 64
+const VERTICAL_SPACING = 0.6
 
-export function ProgressRing() {
-  const trainingPhase = useCampTrainingStore((s) => s.trainingPhase)
-  const timerTotal = useCampTrainingStore((s) => s.timerTotal)
-  const timerElapsed = useCampTrainingStore((s) => s.timerElapsed)
-  const computeTier = useCampTrainingStore((s) => s.computeTier)
-  const generation = useCampTrainingStore((s) => s.generation)
-  const bestFitness = useCampTrainingStore((s) => s.bestFitness)
-
+function SlotRing({ slot, yOffset }: { slot: TrainingSlot; yOffset: number }) {
   const ringRef = useRef<THREE.Mesh>(null!)
 
-  const isVisible = trainingPhase === 'running' || trainingPhase === 'graduated'
-  const progress = timerTotal > 0 ? Math.min(timerElapsed / timerTotal, 1) : 0
-  const remaining = Math.max(0, timerTotal - timerElapsed)
-  const tierConfig = COMPUTE_TIERS[computeTier - 1]
+  const progress = slot.timerTotal > 0 ? Math.min(slot.timerElapsed / slot.timerTotal, 1) : 0
+  const remaining = Math.max(0, slot.timerTotal - slot.timerElapsed)
+  const tierConfig = COMPUTE_TIERS[slot.computeTier - 1]
   const tierColor = tierConfig?.color ?? '#00e5ff'
 
-  // Create arc geometry based on progress
   const arcGeometry = useMemo(() => {
     const arcAngle = progress * Math.PI * 2
     if (arcAngle < 0.01) {
@@ -42,17 +33,14 @@ export function ProgressRing() {
     return new THREE.TorusGeometry(RING_RADIUS, RING_TUBE, 8, SEGMENTS, arcAngle)
   }, [progress])
 
-  // Slowly rotate the ring
-  useFrame((state) => {
+  useFrame(() => {
     if (ringRef.current) {
-      ringRef.current.rotation.z = -Math.PI / 2 // Start from top
+      ringRef.current.rotation.z = -Math.PI / 2
     }
   })
 
-  if (!isVisible) return null
-
   return (
-    <group position={[0, 2.8, 0]}>
+    <group position={[0, 2.8 + yOffset, 0]}>
       {/* Background ring (dim) */}
       <mesh rotation-x={-Math.PI / 2}>
         <torusGeometry args={[RING_RADIUS, RING_TUBE * 0.6, 8, SEGMENTS]} />
@@ -60,11 +48,7 @@ export function ProgressRing() {
       </mesh>
 
       {/* Progress arc */}
-      <mesh
-        ref={ringRef}
-        rotation-x={-Math.PI / 2}
-        geometry={arcGeometry}
-      >
+      <mesh ref={ringRef} rotation-x={-Math.PI / 2} geometry={arcGeometry}>
         <meshBasicMaterial color={tierColor} transparent opacity={0.9} />
       </mesh>
 
@@ -75,26 +59,47 @@ export function ProgressRing() {
           fontFamily: "'Black Ops One', monospace",
           userSelect: 'none',
         }}>
-          {/* Timer */}
           <div style={{
             color: tierColor,
-            fontSize: 18,
+            fontSize: 14,
             letterSpacing: 2,
             textShadow: `0 0 8px ${tierColor}40`,
           }}>
             {remaining.toFixed(1)}s
           </div>
-          {/* Gen + fitness */}
           <div style={{
             color: 'rgba(255,255,255,0.5)',
-            fontSize: 9,
+            fontSize: 8,
             letterSpacing: 1,
-            marginTop: 2,
+            marginTop: 1,
+            whiteSpace: 'nowrap',
           }}>
-            GEN {generation} | FIT {(bestFitness * 100).toFixed(0)}%
+            {slot.slotSoldierName ?? ''} | GEN {slot.generation} | {(slot.bestFitness * 100).toFixed(0)}%
           </div>
         </div>
       </Html>
+    </group>
+  )
+}
+
+export function ProgressRing() {
+  const slots = useCampTrainingStore((s) => s.slots)
+
+  const activeSlots = slots.filter(s =>
+    s.trainingPhase === 'running' || s.trainingPhase === 'graduated',
+  )
+
+  if (activeSlots.length === 0) return null
+
+  return (
+    <group>
+      {activeSlots.map((slot, i) => (
+        <SlotRing
+          key={`ring-${i}`}
+          slot={slot}
+          yOffset={i * VERTICAL_SPACING}
+        />
+      ))}
     </group>
   )
 }

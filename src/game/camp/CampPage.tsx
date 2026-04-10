@@ -1,47 +1,53 @@
 /**
  * CampPage — the main entry point for the base camp diorama.
  *
- * Sprint 1. This is the route component that wires together:
+ * Sprint 1-3. This is the route component that wires together:
  *   - Boot screen (Subsystem 4)
  *   - Canvas + Physics + CampScene (Subsystem 1-3)
- *   - HUD overlay: compute counter + settings gear (Subsystem 5)
- *   - Settings sheet stub (Subsystem 4)
+ *   - CampHUD: bottom bar + compute counter (Sprint 3)
+ *   - Settings sheet (Subsystem 4)
+ *   - Training sheet (Sprint 2)
+ *   - Store sheet (Sprint 3)
+ *   - Roster sheet (Sprint 3)
+ *   - Compute modal (Sprint 3)
+ *   - Milestone callout (Sprint 2)
  *   - Ambient audio bed (Subsystem 5)
- *
- * Foundation: lifted from /physics-test's page structure.
- * NOT from BaseScene.tsx or GameConcept.
  */
 import { Suspense, useState, useCallback, useEffect } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { Physics } from '@react-three/rapier'
 import { CampScene } from './CampScene'
 import { BootScreen } from './BootScreen'
-import { ComputeCounter } from './ComputeCounter'
+import { CampHUD } from './CampHUD'
 import { SettingsSheet } from './SettingsSheet'
 import { TrainingSheet } from './TrainingSheet'
 import { MilestoneCallout } from './MilestoneCallout'
+import { StoreSheet } from './StoreSheet'
+import { RosterSheet } from './RosterSheet'
+import { ComputeModal } from './ComputeModal'
 import { AudioBed } from '@audio/AudioBed'
 import { useSceneStore } from '@stores/sceneStore'
 import '@styles/camp-ui.css'
 
 export default function CampPage() {
   const [booted, setBooted] = useState(false)
-  const toggleSettings = useSceneStore((s) => s.toggleSettings)
 
   const handleBootDone = useCallback(() => setBooted(true), [])
   const setTrainingSheetOpen = useSceneStore((s) => s.setTrainingSheetOpen)
+  const setStoreSheetOpen = useSceneStore((s) => s.setStoreSheetOpen)
+  const setRosterSheetOpen = useSceneStore((s) => s.setRosterSheetOpen)
 
-  // Dev shortcut: T opens training sheet
+  // Dev shortcuts: T=train, S=store, R=roster
   useEffect(() => {
     if (!import.meta.env.DEV) return
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 't' || e.key === 'T') {
-        setTrainingSheetOpen(true)
-      }
+      if (e.key === 't' || e.key === 'T') setTrainingSheetOpen(true)
+      if (e.key === 's' || e.key === 'S') setStoreSheetOpen(true)
+      if (e.key === 'r' || e.key === 'R') setRosterSheetOpen(true)
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [setTrainingSheetOpen])
+  }, [setTrainingSheetOpen, setStoreSheetOpen, setRosterSheetOpen])
 
   return (
     <div style={{ width: '100%', height: '100svh', position: 'relative', background: '#111' }}>
@@ -61,17 +67,8 @@ export default function CampPage() {
         </Suspense>
       </Canvas>
 
-      {/* HUD overlay — compute counter + settings gear */}
-      <div className="camp-hud">
-        <ComputeCounter />
-        <button
-          className="settings-gear"
-          onClick={toggleSettings}
-          aria-label="Settings"
-        >
-          &#x2699;
-        </button>
-      </div>
+      {/* HUD overlay — bottom bar + top compute counter */}
+      <CampHUD />
 
       {/* Settings sheet (bottom sheet pattern) */}
       <SettingsSheet />
@@ -79,8 +76,17 @@ export default function CampPage() {
       {/* Training sheet (commit soldier to training) */}
       <TrainingSheet />
 
+      {/* Store sheet (compute packs, daily, offers) */}
+      <StoreSheet />
+
+      {/* Roster sheet (soldier list + neural net thumbnails) */}
+      <RosterSheet />
+
       {/* Milestone callout banners */}
       <MilestoneCallout />
+
+      {/* Compute underflow modal */}
+      <ComputeModal />
 
       {/* Ambient audio bed — synthesized camp ambience */}
       <AudioBed />
@@ -88,7 +94,7 @@ export default function CampPage() {
       {/* Dev indicator */}
       {import.meta.env.DEV && (
         <div className="dev-indicator">
-          DEV | G=grenade T=train
+          DEV | G=grenade T=train S=store R=roster
         </div>
       )}
     </div>

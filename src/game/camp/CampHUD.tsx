@@ -1,0 +1,83 @@
+/**
+ * CampHUD — the persistent heads-up display overlay.
+ *
+ * Sprint 3, Phase 1. Replaces the old top-right gear + counter.
+ * Layout:
+ *   - Top center: compute counter (cyan) + gold counter (gold, placeholder)
+ *   - Bottom bar: 5 beveled buttons — TRAIN · ATTACK · STORE · ROSTER · SETTINGS
+ *
+ * ATTACK is dimmed (Sprint 4). Each button fires a sceneStore action.
+ */
+import { useCallback } from 'react'
+import { ComputeCounter } from './ComputeCounter'
+import { useSceneStore } from '@stores/sceneStore'
+import * as sfx from '@audio/sfx'
+import '@styles/camp-ui.css'
+
+export function CampHUD() {
+  const setTrainingSheetOpen = useSceneStore((s) => s.setTrainingSheetOpen)
+  const setStoreSheetOpen = useSceneStore((s) => s.setStoreSheetOpen)
+  const setRosterSheetOpen = useSceneStore((s) => s.setRosterSheetOpen)
+  const setSettingsOpen = useSceneStore((s) => s.setSettingsOpen)
+
+  const handleTrain = useCallback(() => {
+    sfx.buttonTap()
+    setTrainingSheetOpen(true)
+  }, [setTrainingSheetOpen])
+
+  const handleAttack = useCallback(() => {
+    // Sprint 4 — dimmed for now
+  }, [])
+
+  const handleStore = useCallback(() => {
+    sfx.buttonTap()
+    setStoreSheetOpen(true)
+  }, [setStoreSheetOpen])
+
+  const handleRoster = useCallback(() => {
+    sfx.buttonTap()
+    setRosterSheetOpen(true)
+  }, [setRosterSheetOpen])
+
+  const handleSettings = useCallback(() => {
+    sfx.buttonTap()
+    setSettingsOpen(true)
+  }, [setSettingsOpen])
+
+  return (
+    <>
+      {/* Top center — compute counter */}
+      <div className="camp-top-bar">
+        <ComputeCounter />
+      </div>
+
+      {/* Bottom bar — 5 beveled action buttons */}
+      <div className="camp-bottom-bar">
+        <button className="camp-bottom-btn" onClick={handleTrain}>
+          <span className="camp-bottom-btn-icon">⚔</span>
+          <span className="camp-bottom-btn-label">TRAIN</span>
+        </button>
+
+        <button className="camp-bottom-btn dimmed" onClick={handleAttack} disabled>
+          <span className="camp-bottom-btn-icon">💥</span>
+          <span className="camp-bottom-btn-label">ATTACK</span>
+        </button>
+
+        <button className="camp-bottom-btn" onClick={handleStore}>
+          <span className="camp-bottom-btn-icon">🏪</span>
+          <span className="camp-bottom-btn-label">STORE</span>
+        </button>
+
+        <button className="camp-bottom-btn" onClick={handleRoster}>
+          <span className="camp-bottom-btn-icon">📋</span>
+          <span className="camp-bottom-btn-label">ROSTER</span>
+        </button>
+
+        <button className="camp-bottom-btn" onClick={handleSettings}>
+          <span className="camp-bottom-btn-icon">⚙</span>
+          <span className="camp-bottom-btn-label">SETTINGS</span>
+        </button>
+      </div>
+    </>
+  )
+}

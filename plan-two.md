@@ -459,3 +459,26 @@ Three corrections from Andrew on the first draft, plus targeted mobile-game UX r
 Andrew greenlit (1) the 4-verb tactical vocabulary, (2) the bullet-consolidation pass on Sprints 2-4, and (3) desktop-first dev for Sprint 1. Then asked for Sprint 1 to be planned out with clear acceptance criteria as the foundation moment.
 
 **Sprint 1 rewritten** from a 7-bullet sketch into 6 named subsystems with ~30 binary acceptance criteria total: (1) Scene foundation, (2) Destructible base elements, (3) Toy soldiers + wander brain, (4) App shell + persistence, (5) Mobile-game look-and-feel pass, (6) Playtest capture. Each criterion is testable and binary — done or not done. The look-and-feel pass moved from Sprint 3 to Sprint 1 because every later sprint inherits it; cutting it for time defeats the foundation argument and is now a trip-wire. App-boot screen, persistence schema with versioned migration shim, settings sheet stub, ambient camp audio bed, animated compute counter, and beveled CSS pattern are all locked into Sprint 1 from day one. Dev-only test grenade key (`G`) added so destructibility on tower and barbedWire can be verified without waiting for Sprint 4. Per-sprint playtest video capture committed to `playtests/sprint-N.mp4` becomes the sprint deliverable artifact and the drift check for every later sprint. Also completed in this revision: bullet consolidation on Sprints 2-4 (each now has 6 named subsystems matching Sprint 1's format), tactical verbs greenlit and `[Pending Andrew greenlight]` tags removed, pending decision section retitled to "GREENLIT 2026-04-10." The entire plan doc is now consistent and ready for coding.
+
+## 2026-04-10 — Sprint 1 + Sprint 2 core shipped
+
+Sprint 1 (all 5 coding subsystems) and Sprint 2 core (Phases A-C) shipped in a single session. 57 files changed, 5,848 insertions. Pushed to main.
+
+**Sprint 1 delivered:** /camp route with CampScene (CampLighting + CampGround + CampLayout), destructible walls/towers/barbed wire, 8 wandering soldiers with WanderBrain FSM, BootScreen, ComputeCounter, SettingsSheet, AudioBed, beveled camp-ui.css, campStore (persisted) + sceneStore (ephemeral), TestGrenade (G key).
+
+**Sprint 2 core delivered:** rifleScenario.ts (hitscan [7,8,4] network), campTrainingStore.ts (full commit→train→graduate lifecycle), trainingConstants.ts (4 compute tiers), TrainingCampBuilding.tsx (procedural 3D building), TrainingSheet.tsx (bottom sheet with roster picker + tier selector), TrainingSpectacle.tsx (25 ghost soldiers + champion), ProgressRing.tsx (world-space timer arc), MilestoneCallout.tsx, GhostSoldier.tsx, TrainingTarget.tsx, SpringController.ts. nullBrain.ts updated to [7,8,4], campStore bumped to v2 with weights/fitnessScore migration.
+
+**Verified end-to-end:** select Pvt. Henson → rifle → Tier 1 → START → compute 500→450 → GA runs → 92% fitness in 3 generations → auto-graduate → 100 weights persisted → TRAINED badge in roster.
+
+**Deferred polish (revisit before Sprint 4):**
+
+Sprint 1 polish:
+- [ ] Base 2x bigger (BASE_HALF_W/D from 8/6 → 16/12)
+- [ ] Soldiers get stuck on walls/each other (add wall avoidance to WanderBrain)
+- [ ] Replace compute counter emoji with SVG chip icon (never use emojis)
+
+Sprint 2 polish (Phases D-F):
+- [ ] Phase D: Rifle weapon-feel — muzzle flash (additive sprite), tracer line, ejected casing, dust/debris at impact, screen shake on hit, hit-pause on target destruction, sfx.rifleShot() integration
+- [ ] Phase E: Start ceremony (<2s, camera push toward camp, soldier walks to footprint, light flash + SFX) and graduation ceremony (<2s, ghosts fade, champion victory pose, gold particle burst, "TRAINED!" banner, stats display)
+- [ ] Phase F: Compute spend effect — cyan particle burst from counter → camp building (2D canvas overlay), GPU-whoosh SFX (synthComputeWhoosh)
+- [ ] Camp neural net viz — small SVG node/edge diagram showing live weights of best brain during training
