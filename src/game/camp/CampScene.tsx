@@ -17,7 +17,12 @@ import { CampLayout } from './CampLayout'
 import { TestGrenade } from './TestGrenade'
 import { AmbientSoldiers } from './AmbientSoldiers'
 import { TrainingSpectacle } from './TrainingSpectacle'
+import { PlacementGroundHandler } from './PlacementOverlay'
+import { PlacementMarkers } from './PlacementMarkers'
+import { CampBattleLoop } from './CampBattleLoop'
+import { BattleEntities } from './BattleEntities'
 import { useCampTrainingStore } from '@stores/campTrainingStore'
+import { useSceneStore } from '@stores/sceneStore'
 import type { WallBlock } from '@three/models/Defenses'
 
 function TrainingTickDriver() {
@@ -70,6 +75,8 @@ function TrainingTickDriver() {
 
 export function CampScene() {
   const wallBlocksRef = useRef<Map<string, WallBlock[]>>(new Map())
+  const battlePhase = useSceneStore((s) => s.battlePhase)
+  const inBattle = battlePhase === 'placing' || battlePhase === 'fighting' || battlePhase === 'result'
 
   return (
     <>
@@ -92,14 +99,22 @@ export function CampScene() {
         minPolarAngle={Math.PI / 8}
       />
 
-      {/* 6-10 wandering toy soldiers with selection */}
-      <AmbientSoldiers />
+      {/* Hide ambient soldiers during battle — replaced by placed battle units */}
+      {!inBattle && <AmbientSoldiers />}
 
-      {/* Training spectacle — ghost soldiers + targets */}
-      <TrainingSpectacle />
+      {/* Hide training during battle */}
+      {!inBattle && <TrainingSpectacle />}
 
       {/* Training tick driver — runs GA each frame */}
       <TrainingTickDriver />
+
+      {/* Placement phase: ground click handler + placed soldier markers */}
+      <PlacementGroundHandler />
+      <PlacementMarkers />
+
+      {/* Battle loop + entities (fighting phase) */}
+      <CampBattleLoop wallBlocksRef={wallBlocksRef} />
+      <BattleEntities />
 
       {/* Dev-only: press G to test destructibility */}
       <TestGrenade wallBlocksRef={wallBlocksRef} />

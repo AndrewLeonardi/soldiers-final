@@ -25,6 +25,10 @@ import { MilestoneCallout } from './MilestoneCallout'
 import { StoreSheet } from './StoreSheet'
 import { RosterSheet } from './RosterSheet'
 import { ComputeModal } from './ComputeModal'
+import { BattlePickerSheet } from './BattlePickerSheet'
+import { PlacementOverlay } from './PlacementOverlay'
+import { BattleHUD } from './BattleHUD'
+import { ResultOverlay } from './ResultOverlay'
 import { AudioBed } from '@audio/AudioBed'
 import { useSceneStore } from '@stores/sceneStore'
 import '@styles/camp-ui.css'
@@ -84,6 +88,18 @@ export default function CampPage() {
 
       {/* Milestone callout banners */}
       <MilestoneCallout />
+
+      {/* Battle picker (select which battle to fight) */}
+      <BattlePickerSheet />
+
+      {/* Placement overlay (drag soldiers onto field) */}
+      <PlacementOverlay />
+
+      {/* Battle HUD (wave counter, timer during fighting) */}
+      <BattleHUD />
+
+      {/* Result overlay (victory/defeat after battle) */}
+      <ResultOverlay />
 
       {/* Compute underflow modal */}
       <ComputeModal />

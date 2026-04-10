@@ -54,6 +54,9 @@ interface CampState {
   // Roster
   soldiers: SoldierRecord[]
 
+  // Battle progress
+  battlesCompleted: Record<string, { stars: number }>
+
   // Settings
   muted: boolean
 
@@ -74,6 +77,9 @@ interface CampState {
   addSoldier: (soldier: SoldierRecord) => void
   updateSoldier: (id: string, updates: Partial<SoldierRecord>) => void
   updateSoldierBrain: (id: string, weapon: string, weights: number[], fitness: number, generations: number) => void
+
+  // Actions — battles
+  completeBattle: (battleId: string, stars: number, reward: number) => void
 
   // Actions — settings
   setMuted: (muted: boolean) => void
@@ -104,6 +110,9 @@ export const useCampStore = create<CampState>()(
 
       // Roster
       soldiers: [],
+
+      // Battle progress
+      battlesCompleted: {},
 
       // Settings
       muted: false,
@@ -201,6 +210,18 @@ export const useCampStore = create<CampState>()(
         }),
       })),
 
+      // ── Battle progress ──
+      completeBattle: (battleId, stars, reward) => {
+        const state = get()
+        const existing = state.battlesCompleted[battleId]
+        // Only update if new star count is higher
+        const bestStars = existing ? Math.max(existing.stars, stars) : stars
+        set({
+          battlesCompleted: { ...state.battlesCompleted, [battleId]: { stars: bestStars } },
+          compute: state.compute + reward,
+        })
+      },
+
       // ── Settings ──
       setMuted: (muted) => set({ muted }),
 
@@ -209,7 +230,7 @@ export const useCampStore = create<CampState>()(
     }),
     {
       name: 'toy-soldiers-camp',
-      version: 3,
+      version: 4,
       migrate: (persistedState: any, version: number) => {
         if (version < 2) {
           // v1 → v2: network shape changed from [6,12,4] to [7,8,4].
@@ -245,6 +266,11 @@ export const useCampStore = create<CampState>()(
           state.unlockedSlots = state.unlockedSlots ?? 1
           state.lastDailyClaimTime = state.lastDailyClaimTime ?? 0
           state.starterPackShown = state.starterPackShown ?? false
+        }
+        if (version < 4) {
+          // v3 → v4: add battlesCompleted
+          const state = persistedState as any
+          state.battlesCompleted = state.battlesCompleted ?? {}
         }
         return persistedState as CampState
       },

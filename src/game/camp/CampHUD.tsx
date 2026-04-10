@@ -1,12 +1,12 @@
 /**
  * CampHUD — the persistent heads-up display overlay.
  *
- * Sprint 3, Phase 1. Replaces the old top-right gear + counter.
+ * Sprint 3-4. Replaces the old top-right gear + counter.
  * Layout:
  *   - Top center: compute counter (cyan) + gold counter (gold, placeholder)
  *   - Bottom bar: 5 beveled buttons — TRAIN · ATTACK · STORE · ROSTER · SETTINGS
  *
- * ATTACK is dimmed (Sprint 4). Each button fires a sceneStore action.
+ * Hidden during fighting/result battle phases.
  */
 import { useCallback } from 'react'
 import { ComputeCounter } from './ComputeCounter'
@@ -15,6 +15,8 @@ import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
 
 export function CampHUD() {
+  const battlePhase = useSceneStore((s) => s.battlePhase)
+  const setBattlePhase = useSceneStore((s) => s.setBattlePhase)
   const setTrainingSheetOpen = useSceneStore((s) => s.setTrainingSheetOpen)
   const setStoreSheetOpen = useSceneStore((s) => s.setStoreSheetOpen)
   const setRosterSheetOpen = useSceneStore((s) => s.setRosterSheetOpen)
@@ -26,8 +28,9 @@ export function CampHUD() {
   }, [setTrainingSheetOpen])
 
   const handleAttack = useCallback(() => {
-    // Sprint 4 — dimmed for now
-  }, [])
+    sfx.buttonTap()
+    setBattlePhase('picking')
+  }, [setBattlePhase])
 
   const handleStore = useCallback(() => {
     sfx.buttonTap()
@@ -44,6 +47,9 @@ export function CampHUD() {
     setSettingsOpen(true)
   }, [setSettingsOpen])
 
+  // Hide HUD during active battle phases
+  if (battlePhase === 'fighting' || battlePhase === 'result') return null
+
   return (
     <>
       {/* Top center — compute counter */}
@@ -58,7 +64,7 @@ export function CampHUD() {
           <span className="camp-bottom-btn-label">TRAIN</span>
         </button>
 
-        <button className="camp-bottom-btn dimmed" onClick={handleAttack} disabled>
+        <button className="camp-bottom-btn attack" onClick={handleAttack}>
           <span className="camp-bottom-btn-icon">💥</span>
           <span className="camp-bottom-btn-label">ATTACK</span>
         </button>

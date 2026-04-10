@@ -29,6 +29,7 @@ const DRAG_THRESHOLD = 6
 export function TrainingCampBuilding() {
   const trainingPhase = useCampTrainingStore((s) => s.trainingPhase)
   const setTrainingSheetOpen = useSceneStore((s) => s.setTrainingSheetOpen)
+  const battlePhase = useSceneStore((s) => s.battlePhase)
   const pointerDownPos = useRef<{ x: number; y: number } | null>(null)
   const flagRef = useRef<THREE.Mesh>(null!)
   const [hovered, setHovered] = useState(false)
@@ -154,8 +155,8 @@ export function TrainingCampBuilding() {
         <meshBasicMaterial />
       </mesh>
 
-      {/* "+TRAIN" floating label when idle */}
-      {isIdle && (
+      {/* "+TRAIN" floating label when idle — hidden during battle */}
+      {isIdle && battlePhase === 'idle' && (
         <Html
           position={[0, 2.2, 0]}
           center
