@@ -36,10 +36,12 @@ import { BASE_HALF_W, BASE_HALF_D } from './campConstants'
 import {
   PROJECTILE_GRAVITY, PROJECTILE_MAX_AGE,
   BULLET_SPEED, ROCKET_SPEED, GRENADE_SPEED, MG_BULLET_SPEED,
-  HIT_RADIUS, WALL_HIT_RADIUS, BLAST, STAGGER, RAGDOLL,
+  HIT_RADIUS, WALL_HIT_RADIUS, BLAST, STAGGER, RAGDOLL, SHAKE,
   BLOCK_W, BLOCK_H,
   idealElevation, randRange,
 } from '@engine/physics/battlePhysics'
+import { triggerShake } from '@three/effects/ScreenShake'
+import { triggerHitpause, getHitpauseScale } from '@engine/physics/hitpause'
 import * as sfx from '@audio/sfx'
 
 // ── Reusable THREE vectors (avoid per-frame alloc) ──
@@ -256,8 +258,9 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
       return
     }
 
-    // Clamp delta to avoid spiral of death
-    const dt = Math.min(delta, 0.05)
+    // Clamp delta to avoid spiral of death, apply hitpause scale
+    const rawDt = Math.min(delta, 0.05)
+    const dt = rawDt * getHitpauseScale(rawDt)
     timeRef.current += dt
 
     const state = useCampBattleStore.getState()
@@ -705,6 +708,8 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
         if (p.age >= BLAST.GRENADE.fuseTime) {
           applyExplosion(p.position, BLAST.GRENADE, p.team, players, enemies, explosions, wallBlocksRef)
           sfx.explosionSmall()
+          triggerShake(SHAKE.GRENADE)
+          triggerHitpause(3)
           projectiles.splice(i, 1)
           continue
         }
@@ -714,6 +719,8 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
       if (p.type === 'rocket' && p.position[1] < 0.1) {
         applyExplosion(p.position, BLAST.ROCKET, p.team, players, enemies, explosions, wallBlocksRef)
         sfx.explosionLarge()
+        triggerShake(SHAKE.ROCKET)
+        triggerHitpause(4)
         projectiles.splice(i, 1)
         continue
       }
@@ -746,19 +753,25 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
           if (p.type === 'rocket') {
             applyExplosion(p.position, BLAST.ROCKET, p.team, players, enemies, explosions, wallBlocksRef)
             sfx.explosionLarge()
+            triggerShake(SHAKE.ROCKET)
+            triggerHitpause(4)
           } else if (p.type === 'grenade') {
             applyExplosion(p.position, BLAST.GRENADE, p.team, players, enemies, explosions, wallBlocksRef)
             sfx.explosionSmall()
+            triggerShake(SHAKE.GRENADE)
+            triggerHitpause(3)
           } else {
             // Direct bullet damage
             unit.health -= p.damage
             sfx.bulletImpact()
+            triggerShake(SHAKE.BULLET_IMPACT)
 
             if (unit.health <= 0) {
               unit.status = 'dead'
               unit.stateAge = 0
               unit.spinSpeed = randRange(RAGDOLL.TUMBLE_SPIN_MIN, RAGDOLL.TUMBLE_SPIN_MAX)
               sfx.deathThud()
+              triggerHitpause(3)
             } else {
               unit.status = 'hit'
               unit.stateAge = 0
@@ -806,8 +819,15 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
       const timeLimit = config.stars.three.threshold
       if (allSurvived && timeLimit && time <= timeLimit) stars = 3  // speed run
 
+      // Check if weapon reward is new (not already unlocked)
+      const alreadyUnlocked = config.weaponReward
+        ? useCampStore.getState().unlockedWeapons.includes(config.weaponReward)
+        : true
+      const newWeapon = config.weaponReward && !alreadyUnlocked ? config.weaponReward : null
+
       useCampBattleStore.getState().setResult('victory', stars)
-      useCampStore.getState().completeBattle(config.id, stars, config.reward)
+      if (newWeapon) useCampBattleStore.getState().setWeaponUnlocked(newWeapon)
+      useCampStore.getState().completeBattle(config.id, stars, config.reward, config.weaponReward)
       sfx.graduationFanfare()
       setBattlePhase('result')
     }
@@ -816,6 +836,7 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
     if (livingPlayers.length === 0 && players.length > 0) {
       useCampBattleStore.getState().setResult('defeat', 0)
       sfx.deathThud()
+      triggerShake(SHAKE.DEFEAT)
       setBattlePhase('result')
     }
 
@@ -901,9 +922,13 @@ function checkWallHit(
         if (p.type === 'rocket') {
           applyExplosion(p.position, BLAST.ROCKET, p.team, players, enemies, explosions, wallBlocksRef)
           sfx.explosionLarge()
+          triggerShake(SHAKE.ROCKET)
+          triggerHitpause(4)
         } else if (p.type === 'grenade') {
           applyExplosion(p.position, BLAST.GRENADE, p.team, players, enemies, explosions, wallBlocksRef)
           sfx.explosionSmall()
+          triggerShake(SHAKE.GRENADE)
+          triggerHitpause(3)
         } else {
           // Bullet destroys the block it hits + launches it
           block.alive = false
@@ -917,6 +942,7 @@ function checkWallHit(
           // Cascade: drop unsupported blocks above
           cascadeAbove(block, blocks)
           sfx.bulletImpact()
+          triggerShake(SHAKE.BULLET_IMPACT)
         }
         return true
       }

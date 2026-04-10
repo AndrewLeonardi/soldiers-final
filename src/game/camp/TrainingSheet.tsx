@@ -6,7 +6,7 @@
  *
  * Sprint 3: multi-slot support, weapon carousel, per-weapon training.
  */
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useCampStore } from '@stores/campStore'
 import { useSceneStore } from '@stores/sceneStore'
 import { useCampTrainingStore } from '@stores/campTrainingStore'
@@ -30,8 +30,19 @@ export function TrainingSheet() {
   const unlockedSlots = useCampStore((s) => s.unlockedSlots)
   const unlockSlot = useCampStore((s) => s.unlockSlot)
 
+  const preselectedId = useSceneStore((s) => s.preselectedTrainingSoldierId)
+  const clearPreselection = useSceneStore((s) => s.setPreselectedTrainingSoldierId)
+
   const [activeSlotIndex, setActiveSlotIndex] = useState(0)
   const [selectedSoldierId, setSelectedSoldierId] = useState<string | null>(null)
+
+  // Auto-select soldier when coming from SoldierSheet "TRAIN NOW"
+  useEffect(() => {
+    if (preselectedId && trainingSheetOpen) {
+      setSelectedSoldierId(preselectedId)
+      clearPreselection(null)
+    }
+  }, [preselectedId, trainingSheetOpen, clearPreselection])
   const [selectedWeapon, setSelectedWeapon] = useState<WeaponType>('rifle')
   const [selectedTier, setSelectedTier] = useState(1)
 

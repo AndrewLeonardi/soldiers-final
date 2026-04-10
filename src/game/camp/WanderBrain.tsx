@@ -4,9 +4,9 @@
  * Sprint 1, Subsystem 3. Each soldier runs:
  *   idle (1-3s) → pickTarget inside SOLDIER_BOUNDS → walk → arrive → idle
  *
- * No combat hooks, no training hooks. Pure ambient.
- * Drives a SoldierBody via setLinvel() each frame — same pattern as
- * PhysicsTest's WalkingController.
+ * Sprint 5: Added stuck detection — if a soldier hasn't moved 0.05 units in
+ * 0.5s while walking, it picks a new random target. Also clamps position
+ * back inside SOLDIER_BOUNDS if physics pushes it out.
  */
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
@@ -19,6 +19,8 @@ const WALK_SPEED = 1.2
 const ARRIVE_DIST = 0.4
 const IDLE_MIN = 1.0
 const IDLE_MAX = 3.0
+const STUCK_THRESHOLD = 0.05  // min distance moved in check interval
+const STUCK_CHECK_INTERVAL = 0.5  // seconds
 
 interface WanderBrainProps {
   bodyRef: React.RefObject<RapierRigidBody | null>
@@ -33,6 +35,10 @@ export function WanderBrain({ bodyRef, soldier }: WanderBrainProps) {
   const stateRef = useRef<WanderState>('idle')
   const timerRef = useRef(Math.random() * 2) // stagger initial idle
   const targetRef = useRef<[number, number]>([0, 0])
+
+  // Stuck detection
+  const lastPosRef = useRef<{ x: number; z: number }>({ x: 0, z: 0 })
+  const stuckTimerRef = useRef(0)
 
   useFrame((_, rawDelta) => {
     const delta = Math.min(rawDelta, 0.05)
@@ -55,6 +61,8 @@ export function WanderBrain({ bodyRef, soldier }: WanderBrainProps) {
         const tz = (Math.random() * 2 - 1) * SOLDIER_BOUNDS.halfD
         targetRef.current = [tx, tz]
         stateRef.current = 'walk'
+        lastPosRef.current = { x: pos.x, z: pos.z }
+        stuckTimerRef.current = 0
       }
     } else {
       // Walk toward target
@@ -71,6 +79,24 @@ export function WanderBrain({ bodyRef, soldier }: WanderBrainProps) {
         timerRef.current = IDLE_MIN + Math.random() * (IDLE_MAX - IDLE_MIN)
         soldier.status = 'idle'
         return
+      }
+
+      // Stuck detection: if we haven't moved enough in STUCK_CHECK_INTERVAL, re-pick target
+      stuckTimerRef.current += delta
+      if (stuckTimerRef.current >= STUCK_CHECK_INTERVAL) {
+        const movedX = pos.x - lastPosRef.current.x
+        const movedZ = pos.z - lastPosRef.current.z
+        const movedDist = Math.sqrt(movedX * movedX + movedZ * movedZ)
+
+        if (movedDist < STUCK_THRESHOLD) {
+          // Stuck! Pick a new target closer to center
+          const newTx = (Math.random() * 2 - 1) * SOLDIER_BOUNDS.halfW * 0.6
+          const newTz = (Math.random() * 2 - 1) * SOLDIER_BOUNDS.halfD * 0.6
+          targetRef.current = [newTx, newTz]
+        }
+
+        lastPosRef.current = { x: pos.x, z: pos.z }
+        stuckTimerRef.current = 0
       }
 
       // Move toward target

@@ -95,6 +95,7 @@ interface CampBattleState {
   // Result
   result: 'victory' | 'defeat' | null
   starsEarned: number
+  weaponUnlocked: string | null  // weapon unlocked on this victory
 
   // Actions
   initBattle: (config: CampBattleConfig) => void
@@ -102,6 +103,7 @@ interface CampBattleState {
   removePlacedSoldier: (soldierId: string) => void
   selectForPlacement: (soldierId: string | null) => void
   setResult: (result: 'victory' | 'defeat', stars: number) => void
+  setWeaponUnlocked: (weapon: string | null) => void
   reset: () => void
 }
 
@@ -118,6 +120,7 @@ export const useCampBattleStore = create<CampBattleState>()((set, get) => ({
   wavesSpawned: [],
   result: null,
   starsEarned: 0,
+  weaponUnlocked: null,
 
   initBattle: (config) => {
     set({
@@ -133,6 +136,7 @@ export const useCampBattleStore = create<CampBattleState>()((set, get) => ({
       wavesSpawned: new Array(config.waves.length).fill(false),
       result: null,
       starsEarned: 0,
+      weaponUnlocked: null,
     })
   },
 
@@ -161,6 +165,10 @@ export const useCampBattleStore = create<CampBattleState>()((set, get) => ({
     set({ result, starsEarned: stars })
   },
 
+  setWeaponUnlocked: (weapon) => {
+    set({ weaponUnlocked: weapon })
+  },
+
   reset: () => {
     set({
       battleConfig: null,
@@ -175,6 +183,7 @@ export const useCampBattleStore = create<CampBattleState>()((set, get) => ({
       wavesSpawned: [],
       result: null,
       starsEarned: 0,
+      weaponUnlocked: null,
     })
   },
 }))

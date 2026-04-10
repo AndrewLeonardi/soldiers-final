@@ -29,6 +29,7 @@ import { BattlePickerSheet } from './BattlePickerSheet'
 import { PlacementOverlay } from './PlacementOverlay'
 import { BattleHUD } from './BattleHUD'
 import { ResultOverlay } from './ResultOverlay'
+import { SoldierSheet } from './SoldierSheet'
 import { AudioBed } from '@audio/AudioBed'
 import { useSceneStore } from '@stores/sceneStore'
 import '@styles/camp-ui.css'
@@ -100,6 +101,9 @@ export default function CampPage() {
 
       {/* Result overlay (victory/defeat after battle) */}
       <ResultOverlay />
+
+      {/* Soldier stats sheet (tap ambient soldier) */}
+      <SoldierSheet />
 
       {/* Compute underflow modal */}
       <ComputeModal />

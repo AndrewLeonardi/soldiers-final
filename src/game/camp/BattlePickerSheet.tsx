@@ -11,6 +11,13 @@ import { useCampBattleStore } from '@stores/campBattleStore'
 import { useCampStore } from '@stores/campStore'
 import { CAMP_BATTLES } from '@config/campBattles'
 import type { CampBattleConfig } from '@config/campBattles'
+
+const WEAPON_LABELS: Record<string, string> = {
+  rocketLauncher: '🚀 ROCKET LAUNCHER',
+  grenade: '💣 GRENADES',
+  machineGun: '🔫 MACHINE GUN',
+  tank: '🪖 TANK',
+}
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
 
@@ -19,6 +26,7 @@ export function BattlePickerSheet() {
   const setBattlePhase = useSceneStore((s) => s.setBattlePhase)
   const initBattle = useCampBattleStore((s) => s.initBattle)
   const battlesCompleted = useCampStore((s) => s.battlesCompleted)
+  const unlockedWeapons = useCampStore((s) => s.unlockedWeapons)
 
   const handleSelect = useCallback((config: CampBattleConfig) => {
     sfx.buttonTap()
@@ -68,6 +76,14 @@ export function BattlePickerSheet() {
                   <span className="battle-card-enemies">{totalEnemies} ENEMIES</span>
                   <span className="battle-card-reward">+{battle.reward} ⚡</span>
                 </div>
+                {battle.weaponReward && (
+                  <div className={`battle-card-weapon-reward ${unlockedWeapons.includes(battle.weaponReward) ? 'earned' : ''}`}>
+                    {unlockedWeapons.includes(battle.weaponReward)
+                      ? `✓ ${WEAPON_LABELS[battle.weaponReward] ?? battle.weaponReward}`
+                      : `UNLOCKS: ${WEAPON_LABELS[battle.weaponReward] ?? battle.weaponReward}`
+                    }
+                  </div>
+                )}
                 {isLocked && (
                   <div className="battle-card-lock">LOCKED</div>
                 )}

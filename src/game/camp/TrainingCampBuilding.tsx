@@ -30,6 +30,9 @@ export function TrainingCampBuilding() {
   const trainingPhase = useCampTrainingStore((s) => s.trainingPhase)
   const setTrainingSheetOpen = useSceneStore((s) => s.setTrainingSheetOpen)
   const battlePhase = useSceneStore((s) => s.battlePhase)
+  const anySheetOpen = useSceneStore((s) =>
+    s.trainingSheetOpen || s.storeSheetOpen || s.rosterSheetOpen || s.soldierSheetId !== null
+  )
   const pointerDownPos = useRef<{ x: number; y: number } | null>(null)
   const flagRef = useRef<THREE.Mesh>(null!)
   const [hovered, setHovered] = useState(false)
@@ -156,7 +159,7 @@ export function TrainingCampBuilding() {
       </mesh>
 
       {/* "+TRAIN" floating label when idle — hidden during battle */}
-      {isIdle && battlePhase === 'idle' && (
+      {isIdle && battlePhase === 'idle' && !anySheetOpen && (
         <Html
           position={[0, 2.2, 0]}
           center

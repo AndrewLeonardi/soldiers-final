@@ -18,6 +18,7 @@ import { GROUP_SOLDIER } from '@three/physics/collisionGroups'
 import { WanderBrain } from './WanderBrain'
 import { SOLDIER_BOUNDS, AMBIENT_SOLDIER_COUNT } from './campConstants'
 import { useCampStore } from '@stores/campStore'
+import { useSceneStore } from '@stores/sceneStore'
 
 // ── Name pool ──
 const FIRST_NAMES = [
@@ -251,9 +252,15 @@ export function AmbientSoldiers() {
     return () => {}
   }, [gl])
 
+  const setSoldierSheetId = useSceneStore((s) => s.setSoldierSheetId)
+
   const handleSelect = useCallback((id: string) => {
-    setSelectedId(prev => prev === id ? null : id)
-  }, [])
+    setSelectedId(prev => {
+      const newId = prev === id ? null : id
+      setSoldierSheetId(newId)
+      return newId
+    })
+  }, [setSoldierSheetId])
 
   const handleHover = useCallback((id: string | null) => {
     setHoveredId(id)
@@ -265,7 +272,7 @@ export function AmbientSoldiers() {
       <mesh
         rotation-x={-Math.PI / 2}
         position={[0, 0.001, 0]}
-        onPointerUp={() => setSelectedId(null)}
+        onPointerUp={() => { setSelectedId(null); setSoldierSheetId(null) }}
         visible={false}
       >
         <planeGeometry args={[20, 16]} />

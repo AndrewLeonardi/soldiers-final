@@ -79,7 +79,7 @@ interface CampState {
   updateSoldierBrain: (id: string, weapon: string, weights: number[], fitness: number, generations: number) => void
 
   // Actions — battles
-  completeBattle: (battleId: string, stars: number, reward: number) => void
+  completeBattle: (battleId: string, stars: number, reward: number, weaponReward?: string) => void
 
   // Actions — settings
   setMuted: (muted: boolean) => void
@@ -211,14 +211,19 @@ export const useCampStore = create<CampState>()(
       })),
 
       // ── Battle progress ──
-      completeBattle: (battleId, stars, reward) => {
+      completeBattle: (battleId, stars, reward, weaponReward) => {
         const state = get()
         const existing = state.battlesCompleted[battleId]
         // Only update if new star count is higher
         const bestStars = existing ? Math.max(existing.stars, stars) : stars
+        // Unlock weapon if earned and not already unlocked
+        const weapons = weaponReward && !state.unlockedWeapons.includes(weaponReward)
+          ? [...state.unlockedWeapons, weaponReward]
+          : state.unlockedWeapons
         set({
           battlesCompleted: { ...state.battlesCompleted, [battleId]: { stars: bestStars } },
           compute: state.compute + reward,
+          unlockedWeapons: weapons,
         })
       },
 

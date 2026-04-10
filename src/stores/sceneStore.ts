@@ -22,6 +22,10 @@ interface SceneState {
   rosterSheetOpen: boolean
   computeModalOpen: boolean
 
+  // Soldier sheet
+  soldierSheetId: string | null
+  preselectedTrainingSoldierId: string | null
+
   // Battle phase
   battlePhase: 'idle' | 'picking' | 'placing' | 'fighting' | 'result'
 
@@ -35,6 +39,8 @@ interface SceneState {
   setStoreSheetOpen: (open: boolean) => void
   setRosterSheetOpen: (open: boolean) => void
   setComputeModalOpen: (open: boolean) => void
+  setSoldierSheetId: (id: string | null) => void
+  setPreselectedTrainingSoldierId: (id: string | null) => void
   setBattlePhase: (phase: 'idle' | 'picking' | 'placing' | 'fighting' | 'result') => void
 }
 
@@ -50,6 +56,10 @@ export const useSceneStore = create<SceneState>()((set) => ({
   rosterSheetOpen: false,
   computeModalOpen: false,
 
+  // Soldier sheet
+  soldierSheetId: null,
+  preselectedTrainingSoldierId: null,
+
   // Battle phase
   battlePhase: 'idle' as const,
 
@@ -63,5 +73,7 @@ export const useSceneStore = create<SceneState>()((set) => ({
   setStoreSheetOpen: (open) => set({ storeSheetOpen: open }),
   setRosterSheetOpen: (open) => set({ rosterSheetOpen: open }),
   setComputeModalOpen: (open) => set({ computeModalOpen: open }),
+  setSoldierSheetId: (id) => set({ soldierSheetId: id }),
+  setPreselectedTrainingSoldierId: (id) => set({ preselectedTrainingSoldierId: id }),
   setBattlePhase: (phase) => set({ battlePhase: phase }),
 }))

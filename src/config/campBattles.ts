@@ -36,6 +36,8 @@ export interface CampBattleConfig {
     two: CampStarCriteria
     three: CampStarCriteria
   }
+  /** Weapon unlocked on first victory */
+  weaponReward?: WeaponType
   /** Previous battle ID that must be completed to unlock this one (null = always unlocked) */
   requires?: string
 }
@@ -62,6 +64,7 @@ export const CAMP_BATTLES: CampBattleConfig[] = [
     ],
     reward: 50,
     maxSoldiers: 3,
+    weaponReward: 'rocketLauncher',
     stars: {
       one: { type: 'win', desc: 'Win the battle' },
       two: { type: 'no_losses', desc: 'No friendly casualties' },
@@ -90,6 +93,7 @@ export const CAMP_BATTLES: CampBattleConfig[] = [
     ],
     reward: 100,
     maxSoldiers: 5,
+    weaponReward: 'grenade',
     stars: {
       one: { type: 'win', desc: 'Win the battle' },
       two: { type: 'no_losses', desc: 'No friendly casualties' },
@@ -127,6 +131,7 @@ export const CAMP_BATTLES: CampBattleConfig[] = [
     ],
     reward: 200,
     maxSoldiers: 8,
+    weaponReward: 'machineGun',
     stars: {
       one: { type: 'win', desc: 'Win the battle' },
       two: { type: 'no_losses', desc: 'No friendly casualties' },
