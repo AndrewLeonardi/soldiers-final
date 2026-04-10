@@ -459,6 +459,86 @@
   50% { filter: brightness(1.18); }
 }
 
+/* ── Ambient training badge (bottom-right, training running without observation) ── */
+
+.thud-ambient {
+  pointer-events: auto;
+  position: absolute;
+  bottom: calc(var(--sp-4) + env(safe-area-inset-bottom, 0px));
+  right: var(--sp-3);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  background: linear-gradient(180deg, rgba(20, 30, 12, 0.94) 0%, rgba(10, 16, 6, 0.94) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.4),
+    0 3px 0 rgba(0, 0, 0, 0.45),
+    0 6px 18px rgba(0, 0, 0, 0.5);
+  transition: transform 0.08s ease-out, box-shadow 0.08s ease-out;
+  max-width: 260px;
+}
+
+.thud-ambient:active {
+  transform: translateY(2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3),
+    0 1px 0 rgba(0, 0, 0, 0.4),
+    0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+/* Pulsing green dot — "training is live" indicator */
+.thud-ambient__dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #5a9a32;
+  box-shadow: 0 0 6px rgba(90, 154, 50, 0.8);
+  animation: thud-ambient-dot-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes thud-ambient-dot-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 4px rgba(90, 154, 50, 0.7); }
+  50%       { opacity: 0.7; box-shadow: 0 0 10px rgba(90, 154, 50, 1); }
+}
+
+.thud-ambient__label {
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: var(--text-white);
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
+.thud-ambient__stats {
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--gold-text);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.thud-ambient__watch {
+  font-family: var(--font-display);
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  white-space: nowrap;
+  margin-left: 2px;
+}
+
 /* ── Narrow viewport tweaks ─────────────────────────────── */
 
 @media (max-width: 600px) {

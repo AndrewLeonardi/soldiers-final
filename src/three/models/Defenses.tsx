@@ -62,8 +62,8 @@ interface BlockSpec {
 
 // ── Layout builders ──────────────────────────────────────
 export type DefenseStyle =
-  | 'wall' | 'sandbag' | 'tower'                // combat defenses (existing)
-  | 'vault' | 'trainingGrounds' | 'collector'   // base buildings (Phase 1a+)
+  | 'wall' | 'sandbag' | 'tower' | 'barbedWire' // combat defenses
+  | 'vault' | 'trainingGrounds' | 'collector'    // base buildings (Phase 1a+)
 
 function buildWallBlocks(): BlockSpec[] {
   const specs: BlockSpec[] = []
@@ -237,73 +237,74 @@ function buildVaultBlocks(): BlockSpec[] {
 }
 
 function buildTrainingGroundsBlocks(): BlockSpec[] {
-  // Open-roofed parade shelter: four wooden posts, cross-beams at the top,
-  // canvas roof panels. Uses explicit `supportedBy` topology — kicking out a
-  // post collapses the beams and roof above it.
+  // Military training camp: entrance arch, three-sided sandbag perimeter,
+  // two target post+board pairs at the back, and a corner flag pole.
+  // The front face (x ≈ +0.8) is open — this is the shooting lane that
+  // faces the parade strip where TrainingGroundsInterior places the trainee.
+  //
+  // Support topology:
+  //   - All ground-level pieces are groundSupported (never fall from integrity).
+  //   - Upper pieces (crossbeam, target boards, flag pennant) use explicit
+  //     `supportedBy` so a rival shot that drops a post also drops what rests on it.
   const specs: BlockSpec[] = []
-  const postColor = 0x6b4226     // brown wood (matches tower legs)
-  const beamColor = 0x6b4226     // same wood
-  const canvasColor = 0xA89070   // tan canvas (matches sandbags)
+  const woodColor   = 0x5a3416   // dark walnut post/beam
+  const sandbagColor = 0xA89070  // tan sandbag (matches existing sandbag defense)
+  const targetRed   = 0xCC2222   // shooting-target red
+  const flagGreen   = 0x4a7a2e   // olive-drab pennant
 
-  // ── Corner posts (ground-supported) ──
-  // Each post pushed individually so its spec index is a named local
-  // variable. Downstream beams reference these by name rather than by
-  // array index, which keeps the code readable under strict indexed-
-  // access checking.
-  const postSize: [number, number, number] = [0.14, 1.0, 0.14]
-  const pushPost = (pos: [number, number, number], col: number): number => {
-    const idx = specs.length
-    specs.push({
-      position: pos,
-      size: postSize,
-      color: postColor,
-      row: 0,
-      col,
-      groundSupported: true,
-    })
-    return idx
-  }
-  const plFL = pushPost([-0.9, 0.5, -0.9], 0)
-  const plFR = pushPost([ 0.9, 0.5, -0.9], 1)
-  const plBL = pushPost([-0.9, 0.5,  0.9], 2)
-  const plBR = pushPost([ 0.9, 0.5,  0.9], 3)
+  // ── ENTRANCE ARCH (front face, x = +0.8, open shooting lane) ──────────
+  const archL = specs.length
+  specs.push({ position: [0.8, 0.55, -0.55], size: [0.12, 1.1, 0.12], color: woodColor,    row: 0, col: 0,  groundSupported: true })
+  const archR = specs.length
+  specs.push({ position: [0.8, 0.55,  0.55], size: [0.12, 1.1, 0.12], color: woodColor,    row: 0, col: 1,  groundSupported: true })
+  // Horizontal crossbeam bridging the arch posts
+  specs.push({ position: [0.8, 1.15,  0   ], size: [0.12, 0.10, 1.22], color: woodColor,   row: 1, col: 0,  supportedBy: [archL, archR] })
 
-  // ── Cross-beams on top of posts (row 1) ──
-  // Front beam connects FL and FR
-  const frontBeamIdx = specs.length
-  specs.push({
-    position: [0, 1.05, -0.9],
-    size: [1.9, 0.1, 0.12],
-    color: beamColor,
-    row: 1,
-    col: 0,
-    supportedBy: [plFL, plFR],
-  })
-  // Back beam connects BL and BR
-  const backBeamIdx = specs.length
-  specs.push({
-    position: [0, 1.05, 0.9],
-    size: [1.9, 0.1, 0.12],
-    color: beamColor,
-    row: 1,
-    col: 1,
-    supportedBy: [plBL, plBR],
-  })
+  // ── BACK SANDBAG WALL (x = −0.8, the back-stop) ───────────────────────
+  // Bottom row: three bags spanning z = −0.35 → +0.35
+  const sbW: [number, number, number] = [0.14, 0.17, 0.30]
+  const b0 = specs.length
+  specs.push({ position: [-0.8, 0.085, -0.35], size: sbW, color: sandbagColor, row: 0, col: 5,  groundSupported: true })
+  const b1 = specs.length
+  specs.push({ position: [-0.8, 0.085,  0.0 ], size: sbW, color: sandbagColor, row: 0, col: 6,  groundSupported: true })
+  const b2 = specs.length
+  specs.push({ position: [-0.8, 0.085,  0.35], size: sbW, color: sandbagColor, row: 0, col: 7,  groundSupported: true })
+  // Second row: two offset bags
+  const br0 = specs.length
+  specs.push({ position: [-0.8, 0.255, -0.175], size: sbW, color: sandbagColor, row: 1, col: 5, supportedBy: [b0, b1] })
+  const br1 = specs.length
+  specs.push({ position: [-0.8, 0.255,  0.175], size: sbW, color: sandbagColor, row: 1, col: 6, supportedBy: [b1, b2] })
+  // Top row: one cap bag
+  specs.push({ position: [-0.8, 0.425,  0    ], size: sbW, color: sandbagColor, row: 2, col: 5, supportedBy: [br0, br1] })
 
-  // ── Canvas roof panels (row 2) ──
-  // Three panels spanning front-to-back, each resting on both beams.
-  const roofBeams = [frontBeamIdx, backBeamIdx]
-  for (let i = 0; i < 3; i++) {
-    const x = (i - 1) * 0.65
-    specs.push({
-      position: [x, 1.17, 0],
-      size: [0.62, 0.06, 1.85],
-      color: canvasColor,
-      row: 2,
-      col: i,
-      supportedBy: roofBeams,
-    })
-  }
+  // ── LEFT SIDE SANDBAG WALL (z = −0.8) — four bags running x: −0.55 → +0.5 ─
+  const sbS: [number, number, number] = [0.30, 0.17, 0.14]  // rotated bag
+  specs.push({ position: [-0.55, 0.085, -0.8], size: sbS, color: sandbagColor, row: 0, col: 10, groundSupported: true })
+  specs.push({ position: [-0.2,  0.085, -0.8], size: sbS, color: sandbagColor, row: 0, col: 11, groundSupported: true })
+  specs.push({ position: [ 0.15, 0.085, -0.8], size: sbS, color: sandbagColor, row: 0, col: 12, groundSupported: true })
+  specs.push({ position: [ 0.5,  0.085, -0.8], size: sbS, color: sandbagColor, row: 0, col: 13, groundSupported: true })
+
+  // ── RIGHT SIDE SANDBAG WALL (z = +0.8) ────────────────────────────────
+  specs.push({ position: [-0.55, 0.085,  0.8], size: sbS, color: sandbagColor, row: 0, col: 20, groundSupported: true })
+  specs.push({ position: [-0.2,  0.085,  0.8], size: sbS, color: sandbagColor, row: 0, col: 21, groundSupported: true })
+  specs.push({ position: [ 0.15, 0.085,  0.8], size: sbS, color: sandbagColor, row: 0, col: 22, groundSupported: true })
+  specs.push({ position: [ 0.5,  0.085,  0.8], size: sbS, color: sandbagColor, row: 0, col: 23, groundSupported: true })
+
+  // ── TARGET POSTS + BOARDS (inside camp, near back wall) ───────────────
+  // Left target: post then flat red board mounted at eye height
+  const tpL = specs.length
+  specs.push({ position: [-0.25, 0.50, -0.35], size: [0.08, 1.0, 0.08], color: woodColor,  row: 0, col: 30, groundSupported: true })
+  specs.push({ position: [-0.21, 0.97, -0.35], size: [0.04, 0.40, 0.40], color: targetRed, row: 1, col: 30, supportedBy: [tpL] })
+
+  // Right target: same, mirrored in z
+  const tpR = specs.length
+  specs.push({ position: [-0.25, 0.50,  0.35], size: [0.08, 1.0, 0.08], color: woodColor,  row: 0, col: 31, groundSupported: true })
+  specs.push({ position: [-0.21, 0.97,  0.35], size: [0.04, 0.40, 0.40], color: targetRed, row: 1, col: 31, supportedBy: [tpR] })
+
+  // ── FLAG POLE + PENNANT (front-left corner for visual polish) ──────────
+  const fpole = specs.length
+  specs.push({ position: [0.6, 0.72, -0.65], size: [0.06, 1.44, 0.06],  color: woodColor,  row: 0, col: 40, groundSupported: true })
+  specs.push({ position: [0.6, 1.32, -0.49], size: [0.05, 0.20, 0.28],  color: flagGreen,  row: 1, col: 40, supportedBy: [fpole] })
 
   return specs
 }
@@ -364,6 +365,44 @@ function buildCollectorBlocks(): BlockSpec[] {
   return specs
 }
 
+function buildBarbedWireBlocks(): BlockSpec[] {
+  // Low coiled-wire obstacle — collapses sideways instead of crumbling down.
+  // Two wooden posts with thin wire coils strung between them.
+  const specs: BlockSpec[] = []
+  const postColor = 0x5a3416   // dark walnut
+  const wireColor = 0x888888   // steel grey
+
+  // Two end posts — ground-supported
+  const postL = specs.length
+  specs.push({
+    position: [-0.8, 0.2, 0], size: [0.08, 0.4, 0.08],
+    color: postColor, row: 0, col: 0, groundSupported: true,
+  })
+  const postR = specs.length
+  specs.push({
+    position: [0.8, 0.2, 0], size: [0.08, 0.4, 0.08],
+    color: postColor, row: 0, col: 1, groundSupported: true,
+  })
+
+  // Wire coils between posts — small thin boxes representing coiled wire
+  // Staggered z-offsets to give a tangled look. All supported by both posts.
+  const coilCount = 6
+  for (let i = 0; i < coilCount; i++) {
+    const t = (i / (coilCount - 1)) * 2 - 1 // -1 to 1
+    const x = t * 0.65
+    const zOff = (i % 2 === 0 ? 0.06 : -0.06)
+    const yOff = 0.15 + (i % 3) * 0.04
+    specs.push({
+      position: [x, yOff, zOff],
+      size: [0.22, 0.06, 0.12],
+      color: wireColor,
+      row: 1, col: i,
+      supportedBy: [postL, postR],
+    })
+  }
+  return specs
+}
+
 function buildBlocks(style: DefenseStyle): BlockSpec[] {
   switch (style) {
     case 'wall': return buildWallBlocks()
@@ -372,6 +411,7 @@ function buildBlocks(style: DefenseStyle): BlockSpec[] {
     case 'vault': return buildVaultBlocks()
     case 'trainingGrounds': return buildTrainingGroundsBlocks()
     case 'collector': return buildCollectorBlocks()
+    case 'barbedWire': return buildBarbedWireBlocks()
   }
 }
 
@@ -392,6 +432,7 @@ export const BUILDING_FOOTPRINTS: Record<DefenseStyle, { halfW: number; halfD: n
   vault: { halfW: 0.6, halfD: 0.45 },
   trainingGrounds: { halfW: 0.95, halfD: 0.95 },
   collector: { halfW: 0.4, halfD: 0.25 },
+  barbedWire: { halfW: 0.85, halfD: 0.15 },
 }
 
 // ── Static collider footprint per style ──
@@ -416,6 +457,9 @@ function getStaticCollider(style: DefenseStyle): { half: [number, number, number
     case 'collector':
       // Footprint: 3 × 0.25 wide × 0.5 tall × 2 × 0.25 deep → 0.75 × 0.5 × 0.5
       return { half: [0.4, 0.25, 0.25], offset: [0, 0.25, 0] }
+    case 'barbedWire':
+      // Low obstacle: ~1.7 wide, ~0.4 tall, ~0.3 deep
+      return { half: [0.85, 0.2, 0.15], offset: [0, 0.2, 0] }
   }
 }
 
@@ -702,4 +746,7 @@ export function TrainingGroundsDefense(props: Omit<DefenseProps, 'style'>) {
 }
 export function CollectorDefense(props: Omit<DefenseProps, 'style'>) {
   return <DestructibleDefense {...props} style="collector" />
+}
+export function BarbedWireDefense(props: Omit<DefenseProps, 'style'>) {
+  return <DestructibleDefense {...props} style="barbedWire" />
 }

@@ -62,14 +62,25 @@ function makeSoldier(
   }
 }
 
-// Placed near the starter buildings seeded in baseStore.ts — vault at
-// x=-5, training grounds at x=0, collector at x=4. Soldiers loiter
-// between them, facing roughly toward the center of the base so the
-// squad feels alert rather than asleep.
+// Phase 3b formation — 6 soldiers on the LEFT garrison half of the
+// 24×16 base (x: -12 to -2). Two-column loose formation, all facing
+// +x (toward the training zone on the right). Gives the visual read
+// of "these soldiers are oriented toward training, ready to go."
+//
+// Layout:
+//   Front pair  (closest to center): x=-5,   z=±1.5
+//   Middle trio (mid garrison):      x=-7.5,  z=-2.5/0/+2.5
+//   Rear anchor (sergeant position): x=-10,   z=0
+// Math.PI = facing +X in the SoldierUnit convention (empirically
+// established: old Phase 1a soldiers used Math.PI to face "right-ish",
+// where +X is toward the training zone on the right half of the base).
 const BASE_SOLDIERS: BaseSquadSoldier[] = [
-  makeSoldier('base-soldier-1', [-2.5, 0.5, 1.5], Math.PI), // near vault, facing right-ish
-  makeSoldier('base-soldier-2', [1.0, 0.5, 1.6], Math.PI),  // between TG and collector
-  makeSoldier('base-soldier-3', [3.5, 0.5, 0.5], Math.PI),  // near collector
+  makeSoldier('base-soldier-1', [-5.0, 0.5,  1.5], Math.PI),   // front-right, faces +x
+  makeSoldier('base-soldier-2', [-5.0, 0.5, -1.5], Math.PI),   // front-left,  faces +x
+  makeSoldier('base-soldier-3', [-7.5, 0.5,  2.5], Math.PI),   // mid-right
+  makeSoldier('base-soldier-4', [-7.5, 0.5,  0.0], Math.PI),   // mid-center
+  makeSoldier('base-soldier-5', [-7.5, 0.5, -2.5], Math.PI),   // mid-left
+  makeSoldier('base-soldier-6', [-10.0, 0.5, 0.0], Math.PI),   // rear sergeant
 ]
 
 export function BaseSquad() {

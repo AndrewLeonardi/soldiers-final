@@ -138,9 +138,9 @@ export function TraineeSoldier({ slotId, weapon }: TraineeSoldierProps) {
       return
     }
 
-    // Running path: mirror the live sim state.
-    const live = store.live
-    if (!live || live.slotId !== slotId) return
+    // Running path: mirror the live sim state for this slot.
+    const live = store.liveSlots[slotId]
+    if (!live) return
 
     const sim = live.simState
     // Every weapon scenario exposes `soldierX / soldierZ / soldierRotation`

@@ -6,6 +6,7 @@ const HomePage = lazy(() => import('./pages/HomePage'))
 const Game = lazy(() => import('./scenes/Game'))
 const PhysicsTest = lazy(() => import('./pages/PhysicsTest'))
 const GameConcept = lazy(() => import('./game/GameConcept'))
+const CampPage = lazy(() => import('./game/camp/CampPage'))
 
 function LoadingFallback() {
   return (
@@ -35,6 +36,7 @@ export function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/play" element={<Game />} />
         <Route path="/physics-test" element={<PhysicsTest />} />
+        <Route path="/camp" element={<CampPage />} />
         <Route
           path="/game-concept"
           element={

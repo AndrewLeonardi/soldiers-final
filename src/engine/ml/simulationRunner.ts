@@ -36,8 +36,16 @@ import {
   tickTankProjectiles,
   scoreTankFitness,
 } from './scenarios/tankScenario'
+import type { RifleSimState } from './scenarios/rifleScenario'
+import {
+  initRifleSim,
+  getRifleInputs,
+  applyRifleOutputs,
+  tickRifleProjectiles,
+  scoreRifleFitness,
+} from './scenarios/rifleScenario'
 
-export type SimState = RocketSimState | GrenadeSimState | MGSimState | TankSimState
+export type SimState = RocketSimState | GrenadeSimState | MGSimState | TankSimState | RifleSimState
 
 /** Bounds for target placement — derived from world config */
 export interface TrainingBounds {
@@ -53,6 +61,7 @@ export interface SimConfig {
 
 export function initSim(config: SimConfig): SimState {
   switch (config.weaponType) {
+    case 'rifle': return initRifleSim(config.bounds)
     case 'tank': return initTankSim(config.bounds)
     case 'machineGun': return initMGSim(config.bounds)
     case 'grenade': return initGrenadeSim(config.bounds)
@@ -62,6 +71,7 @@ export function initSim(config: SimConfig): SimState {
 
 export function getInputs(state: SimState, config: SimConfig): number[] {
   switch (config.weaponType) {
+    case 'rifle': return getRifleInputs(state as RifleSimState)
     case 'tank': return getTankInputs(state as TankSimState)
     case 'machineGun': return getMGInputs(state as MGSimState)
     case 'grenade': return getGrenadeInputs(state as GrenadeSimState)
@@ -71,6 +81,7 @@ export function getInputs(state: SimState, config: SimConfig): number[] {
 
 export function applyOutputs(state: SimState, outputs: number[], dt: number, config: SimConfig): void {
   switch (config.weaponType) {
+    case 'rifle': return applyRifleOutputs(state as RifleSimState, outputs, dt)
     case 'tank': return applyTankOutputs(state as TankSimState, outputs, dt)
     case 'machineGun': return applyMGOutputs(state as MGSimState, outputs, dt)
     case 'grenade': return applyGrenadeOutputs(state as GrenadeSimState, outputs, dt)
@@ -80,6 +91,7 @@ export function applyOutputs(state: SimState, outputs: number[], dt: number, con
 
 export function tickProjectiles(state: SimState, dt: number, config: SimConfig): void {
   switch (config.weaponType) {
+    case 'rifle': return tickRifleProjectiles(state as RifleSimState, dt)
     case 'tank': return tickTankProjectiles(state as TankSimState, dt)
     case 'machineGun': return tickMGProjectiles(state as MGSimState, dt)
     case 'grenade': return tickGrenadeProjectiles(state as GrenadeSimState, dt)
@@ -89,6 +101,7 @@ export function tickProjectiles(state: SimState, dt: number, config: SimConfig):
 
 export function scoreFitness(state: SimState, config: SimConfig): number {
   switch (config.weaponType) {
+    case 'rifle': return scoreRifleFitness(state as RifleSimState)
     case 'tank': return scoreTankFitness(state as TankSimState)
     case 'machineGun': return scoreMGFitness(state as MGSimState)
     case 'grenade': return scoreGrenadeFitness(state as GrenadeSimState)

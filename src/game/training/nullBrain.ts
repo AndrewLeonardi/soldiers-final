@@ -26,42 +26,31 @@
  *     Untrained soldiers are useless in a fight. The player learns to
  *     train them. That entire flywheel depends on this module.
  *
- * Shape constants are frozen at 6→12→4 to match the existing weapon
- * scenarios. If we ever change the network topology, this file and
- * every scenario need to be updated in lockstep — see the audit trail
- * in plan.md's Phase 3a section.
+ * Shape constants are locked at 7→8→4 for Sprint 2 rifle training.
+ * Sprint 2 update: [6,12,4] → [7,8,4]. Weight count 136 → 100.
+ * The v2 migration in campStore wipes any stale trained weights.
  */
 import { NeuralNet } from '@engine/ml/neuralNet'
 
-/** Input layer size used by every weapon scenario. */
-export const NN_INPUT_SIZE = 6
+/** Input layer size used by the rifle training scenario. */
+export const NN_INPUT_SIZE = 7
 
-/** Hidden layer size used by every weapon scenario. */
-export const NN_HIDDEN_SIZE = 12
+/** Hidden layer size used by the rifle training scenario. */
+export const NN_HIDDEN_SIZE = 8
 
-/** Output layer size used by every weapon scenario. */
+/** Output layer size used by the rifle training scenario. */
 export const NN_OUTPUT_SIZE = 4
 
 /**
- * Total weight count for a 6→12→4 network. Matches
- * `NeuralNet.weightCount(6, 12, 4) === 136`. Hardcoded as a constant so
+ * Total weight count for a 7→8→4 network. Matches
+ * `NeuralNet.weightCount(7, 8, 4) === 100`. Hardcoded as a constant so
  * callers can allocate arrays without instantiating a `NeuralNet`.
  */
-export const NULL_BRAIN_WEIGHT_COUNT = 136
+export const NULL_BRAIN_WEIGHT_COUNT = 100
 
 /**
- * A frozen, readonly array of 136 zeros. This is the canonical weight
- * vector for an untrained soldier. Any consumer that wants to persist
- * "this soldier has a null brain" or wants to compare a brain to the
- * null brain reads through this constant — not by constructing a new
- * zero array at the call site, which would risk drift if we ever change
- * the topology.
- *
- * The array is frozen so a caller who accidentally tries to mutate it
- * (e.g. by using it as a scratch buffer) crashes loudly in strict mode
- * instead of silently corrupting every future null-brain read. We
- * `freeze` at module load; the returned reference is shared across all
- * consumers.
+ * A frozen, readonly array of 100 zeros. This is the canonical weight
+ * vector for an untrained soldier.
  */
 export const NULL_BRAIN_WEIGHTS: readonly number[] = Object.freeze(
   new Array<number>(NULL_BRAIN_WEIGHT_COUNT).fill(0),

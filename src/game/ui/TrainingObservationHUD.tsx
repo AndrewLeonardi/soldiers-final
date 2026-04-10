@@ -30,10 +30,9 @@
  * selectors are the idiomatic pattern here.
  */
 import { useTrainingStore, type TrainingSpeed } from '@game/stores/trainingStore'
+import { useRosterStore } from '@stores/rosterStore'
+import { WEAPON_DISPLAY } from '@config/roster'
 import './training-hud.css'
-
-/** Phase 3a slot — hardcoded for the single-trainee build. */
-const PHASE_3A_SLOT_ID = 'slot-rocket-ace'
 
 /** Ordered list of selectable speed multipliers. */
 const SPEED_OPTIONS: readonly TrainingSpeed[] = [1, 10, 50] as const
@@ -95,7 +94,48 @@ export function TrainingObservationHUD() {
   const slot = useTrainingStore((s) =>
     s.observing ? s.slots[s.observing] : null,
   )
+  // Ambient badge: find the FIRST running slot when the player isn't observing.
+  // Supports all 3 training lanes — not just slot-1.
+  const ambientSlot = useTrainingStore((s) => {
+    if (s.observing) return null
+    const entry = Object.values(s.slots).find((sl) => sl.phase === 'running')
+    return entry ?? null
+  })
   const simSpeed = useTrainingStore((s) => s.simSpeed)
+
+  // Ambient training badge — visible when training is running but the
+  // player is NOT zoomed into observation mode. Shows a tap-to-watch hint.
+  const soldiers = useRosterStore((s) => s.soldiers)
+  if (!observing && ambientSlot?.phase === 'running') {
+    const genLabel = ambientSlot.generation < 100
+      ? String(ambientSlot.generation).padStart(2, '0')
+      : String(ambientSlot.generation)
+    const fitPct = Math.round(ambientSlot.bestFitness * 100)
+    const soldier = soldiers.find((s) => s.id === ambientSlot.soldierId)
+    const weaponDisplay = WEAPON_DISPLAY[ambientSlot.weapon]
+    // Zoom into whichever slot is ambient — could be slot-1, -2, or -3.
+    const handleZoomIn = () => useTrainingStore.getState().startObserving(ambientSlot.slotId)
+
+    return (
+      <div className="thud" aria-label="Training in progress">
+        <button
+          type="button"
+          className="thud-ambient"
+          onClick={handleZoomIn}
+          aria-label="Tap to watch training"
+        >
+          <span className="thud-ambient__dot" />
+          <span className="thud-ambient__label">
+            {soldier?.name ?? 'SOLDIER'} · {weaponDisplay?.name ?? ambientSlot.weapon}
+          </span>
+          <span className="thud-ambient__stats">
+            GEN {genLabel} · {fitPct}%
+          </span>
+          <span className="thud-ambient__watch">WATCH →</span>
+        </button>
+      </div>
+    )
+  }
 
   // Nothing to render when the player isn't observing anything.
   if (!observing || !slot) return null
@@ -107,14 +147,16 @@ export function TrainingObservationHUD() {
 
   const sparkline = buildSparkline(history, 200, 36)
 
+  // All slot-specific actions use `observing` — the slot we're actually
+  // watching — so they work correctly for any of the 3 training lanes.
   const handleTrain = () => {
-    useTrainingStore.getState().startTraining(PHASE_3A_SLOT_ID)
+    if (observing) useTrainingStore.getState().startTraining(observing)
   }
   const handleStop = () => {
-    useTrainingStore.getState().stopTraining(PHASE_3A_SLOT_ID)
+    if (observing) useTrainingStore.getState().stopTraining(observing)
   }
   const handleSave = () => {
-    useTrainingStore.getState().commitGraduation(PHASE_3A_SLOT_ID)
+    if (observing) useTrainingStore.getState().commitGraduation(observing)
   }
   const handleExit = () => {
     useTrainingStore.getState().stopObserving()

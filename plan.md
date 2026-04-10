@@ -4,6 +4,17 @@
 
 ---
 
+> ⚠️ **Superseded 2026-04-10: see `plan-two.md` for the current plan.**
+>
+> The `/game-concept` build described below was scrapped on 2026-04-10 after the
+> step-decomposition approach lost the thread. This document is preserved intact
+> as the historical record (including the shipping logs under `# Updates` at
+> the bottom) — the history of how we got it wrong is load-bearing context for
+> why the new plan looks the way it does. **Do not delete or edit anything
+> below this line.** All new planning lives in `plan-two.md`.
+
+---
+
 ## ⚠️ How to edit this document
 
 **Rule: additions only. Do not overwrite, do not delete, do not rewrite.**

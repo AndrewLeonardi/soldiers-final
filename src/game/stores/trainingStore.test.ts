@@ -60,7 +60,7 @@ import {
 
 // ── Test helpers ──────────────────────────────────────────
 
-const SEED_SLOT_ID = 'slot-rocket-ace'
+const SEED_SLOT_ID = 'slot-1'
 const SEED_SOLDIER_ID = 'soldier-2'
 
 function freshSlot(overrides: Partial<TrainingSlot> = {}): TrainingSlot {
@@ -112,7 +112,7 @@ beforeEach(() => {
     slots: {},
     observing: null,
     simSpeed: 10,
-    live: null,
+    liveSlots: {},
   })
   resetRoster()
   vi.mocked(track).mockClear()
@@ -147,11 +147,14 @@ describe('useTrainingStore — seedFirstTimeTrainingSlot', () => {
     })
   })
 
-  it('is idempotent — calling twice does not create a second slot or re-fire analytics', () => {
+  it('is idempotent — calling twice does not create duplicate slots or re-fire analytics', () => {
     useTrainingStore.getState().seedFirstTimeTrainingSlot()
+    // All 3 slots seeded on first call.
+    expect(Object.keys(useTrainingStore.getState().slots)).toHaveLength(3)
     vi.mocked(track).mockClear()
     useTrainingStore.getState().seedFirstTimeTrainingSlot()
-    expect(Object.keys(useTrainingStore.getState().slots)).toHaveLength(1)
+    // Second call is a no-op — no new slots, no new events.
+    expect(Object.keys(useTrainingStore.getState().slots)).toHaveLength(3)
     expect(track).not.toHaveBeenCalled()
   })
 })
@@ -246,8 +249,8 @@ describe('useTrainingStore — startTraining', () => {
 
   it('initializes the live GA context with a full population', () => {
     useTrainingStore.getState().startTraining(SEED_SLOT_ID)
-    const live = useTrainingStore.getState().live
-    expect(live).not.toBeNull()
+    const live = useTrainingStore.getState().liveSlots[SEED_SLOT_ID]
+    expect(live).toBeDefined()
     expect(live?.slotId).toBe(SEED_SLOT_ID)
     expect(live?.population).toHaveLength(30) // default populationSize
     expect(live?.currentIndividual).toBe(0)
@@ -290,7 +293,7 @@ describe('useTrainingStore — startTraining', () => {
   it('returns false for a slot that does not exist', () => {
     const ok = useTrainingStore.getState().startTraining('bogus-slot')
     expect(ok).toBe(false)
-    expect(useTrainingStore.getState().live).toBeNull()
+    expect(useTrainingStore.getState().liveSlots['bogus-slot']).toBeUndefined()
   })
 
   it('returns false when the slot weapon has no WEAPON_TRAINING entry (e.g. rifle)', () => {
@@ -315,10 +318,10 @@ describe('useTrainingStore — stopTraining', () => {
     useTrainingStore.getState().startTraining(SEED_SLOT_ID)
   })
 
-  it('nulls the live context and resets session fields', () => {
+  it('removes the live context and resets session fields', () => {
     useTrainingStore.getState().stopTraining(SEED_SLOT_ID)
-    const { live, slots } = useTrainingStore.getState()
-    expect(live).toBeNull()
+    const { liveSlots, slots } = useTrainingStore.getState()
+    expect(liveSlots[SEED_SLOT_ID]).toBeUndefined()
     expect(slots[SEED_SLOT_ID]?.phase).toBe('observing')
     expect(slots[SEED_SLOT_ID]?.generation).toBe(0)
     expect(slots[SEED_SLOT_ID]?.bestFitness).toBe(0)
@@ -327,7 +330,7 @@ describe('useTrainingStore — stopTraining', () => {
   it('is a no-op for an unknown slot', () => {
     useTrainingStore.getState().stopTraining('bogus-slot')
     // Live context of the real slot is unchanged
-    expect(useTrainingStore.getState().live).not.toBeNull()
+    expect(useTrainingStore.getState().liveSlots[SEED_SLOT_ID]).toBeDefined()
   })
 })
 
@@ -356,12 +359,12 @@ describe('useTrainingStore — tick (GA integration)', () => {
     // sim-seconds. A rocket individual is 6 sim-seconds, so crossing
     // one individual boundary takes ~8 tick() calls. We do 15 calls
     // to be comfortably past the first individual in all cases.
-    const initialElapsed = useTrainingStore.getState().live?.simState.elapsed ?? 0
+    const initialElapsed = useTrainingStore.getState().liveSlots[SEED_SLOT_ID]?.simState.elapsed ?? 0
     for (let i = 0; i < 15; i++) {
       useTrainingStore.getState().tick(1 / 60)
     }
-    const live = useTrainingStore.getState().live
-    expect(live).not.toBeNull()
+    const live = useTrainingStore.getState().liveSlots[SEED_SLOT_ID]
+    expect(live).toBeDefined()
     // Sim time has advanced OR we've moved past individual 0 OR we've
     // evolved at least one generation. Any of those proves progress.
     const advanced =
@@ -427,7 +430,8 @@ describe('useTrainingStore — graduation + commit', () => {
     const testWeights = Array.from({ length: NULL_BRAIN_WEIGHT_COUNT }, (_, i) => (i - 68) / 200)
     useTrainingStore.setState((state) => {
       const slot = state.slots[SEED_SLOT_ID]
-      if (!slot || !state.live) return state
+      const liveCtx = state.liveSlots[SEED_SLOT_ID]
+      if (!slot || !liveCtx) return state
       return {
         slots: {
           ...state.slots,
@@ -437,9 +441,12 @@ describe('useTrainingStore — graduation + commit', () => {
             bestFitness: 0.8,
           },
         },
-        live: {
-          ...state.live,
-          bestWeights: testWeights,
+        liveSlots: {
+          ...state.liveSlots,
+          [SEED_SLOT_ID]: {
+            ...liveCtx,
+            bestWeights: testWeights,
+          },
         },
       }
     })
@@ -452,8 +459,8 @@ describe('useTrainingStore — graduation + commit', () => {
     expect(ace?.trainedBrains?.rocketLauncher).toEqual(testWeights)
 
     // Live context cleared, slot back to observing
-    const { live, slots } = useTrainingStore.getState()
-    expect(live).toBeNull()
+    const { liveSlots, slots } = useTrainingStore.getState()
+    expect(liveSlots[SEED_SLOT_ID]).toBeUndefined()
     expect(slots[SEED_SLOT_ID]?.phase).toBe('observing')
     expect(slots[SEED_SLOT_ID]?.generation).toBe(0)
     expect(slots[SEED_SLOT_ID]?.bestFitness).toBe(0)
@@ -463,7 +470,7 @@ describe('useTrainingStore — graduation + commit', () => {
     useTrainingStore.getState().startTraining(SEED_SLOT_ID)
     useTrainingStore.setState((state) => {
       const slot = state.slots[SEED_SLOT_ID]
-      if (!slot || !state.live) return state
+      if (!slot || !state.liveSlots[SEED_SLOT_ID]) return state
       return {
         slots: { ...state.slots, [SEED_SLOT_ID]: { ...slot, phase: 'graduated' as const, bestFitness: 0.75 } },
       }
@@ -483,10 +490,11 @@ describe('useTrainingStore — graduation + commit', () => {
     const committedWeights = Array.from({ length: NULL_BRAIN_WEIGHT_COUNT }, () => 0.5)
     useTrainingStore.setState((state) => {
       const slot = state.slots[SEED_SLOT_ID]
-      if (!slot || !state.live) return state
+      const liveCtx = state.liveSlots[SEED_SLOT_ID]
+      if (!slot || !liveCtx) return state
       return {
         slots: { ...state.slots, [SEED_SLOT_ID]: { ...slot, phase: 'graduated' as const } },
-        live: { ...state.live, bestWeights: committedWeights },
+        liveSlots: { ...state.liveSlots, [SEED_SLOT_ID]: { ...liveCtx, bestWeights: committedWeights } },
       }
     })
     useTrainingStore.getState().commitGraduation(SEED_SLOT_ID)

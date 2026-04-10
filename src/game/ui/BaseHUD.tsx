@@ -18,6 +18,7 @@
 import { Link } from 'react-router-dom'
 import { BackArrowIcon } from '@ui/ToyIcons'
 import { useBaseStore } from '@game/stores/baseStore'
+import { useTrainingStore } from '@game/stores/trainingStore'
 import { BuildTray } from './BuildTray'
 import './base-hud.css'
 import './build-tray.css'
@@ -30,8 +31,35 @@ export function BaseHUD() {
   const clearBrush = useBaseStore((s) => s.clearBrush)
   const resetToStarterLayout = useBaseStore((s) => s.resetToStarterLayout)
 
+  // Check ALL slots — any running/observing slot turns the button "active";
+  // any graduated slot hides it (cutscene takes over).
+  const anyRunningSlotId = useTrainingStore((s) => {
+    const entry = Object.entries(s.slots).find(([, sl]) => sl.phase === 'running')
+    return entry?.[0] ?? null
+  })
+  const anyGraduated = useTrainingStore((s) =>
+    Object.values(s.slots).some((sl) => sl.phase === 'graduated'),
+  )
+  const allIdle = useTrainingStore((s) =>
+    Object.values(s.slots).every((sl) => sl.phase === 'idle'),
+  )
+
   const isBuild = mode === 'build'
   const brushActive = brush !== null
+
+  const isTraining = anyRunningSlotId !== null
+  const isGraduated = anyGraduated
+
+  const handleTrainTap = () => {
+    const store = useTrainingStore.getState()
+    if (allIdle) {
+      store.openTrainingSheet()
+    } else if (anyRunningSlotId) {
+      // Zoom into the first running slot
+      store.startObserving(anyRunningSlotId)
+    }
+    // graduated: cutscene auto-shows; observing: already in zoom view
+  }
 
   return (
     <div className="base-hud" aria-label="Command base interface">
@@ -61,6 +89,19 @@ export function BaseHUD() {
           title="Reset base layout (dev only)"
         >
           Reset Base
+        </button>
+      )}
+
+      {/* TRAIN button — bottom-center, VIEW mode only */}
+      {!isBuild && !isGraduated && (
+        <button
+          type="button"
+          onClick={handleTrainTap}
+          className={`base-train-btn${isTraining ? ' base-train-btn--active' : ''}`}
+          aria-label={isTraining ? 'Watch training in progress' : 'Open training selection'}
+        >
+          {isTraining && <span className="base-train-btn__dot" aria-hidden="true" />}
+          {isTraining ? 'Training…' : 'Train'}
         </button>
       )}
 

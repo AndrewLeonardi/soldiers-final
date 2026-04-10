@@ -76,6 +76,7 @@ import {
   type SimConfig,
 } from '@engine/ml/simulationRunner'
 import { useRosterStore } from '@stores/rosterStore'
+import { useGameStore } from '@stores/gameStore'
 import { track } from '@game/analytics/events'
 import {
   NN_INPUT_SIZE,
@@ -135,11 +136,39 @@ interface TrainingState {
   slots: Record<string, TrainingSlot>
   observing: string | null
   simSpeed: TrainingSpeed
-  live: LiveTrainingContext | null
+  /**
+   * Live GA evaluation contexts, keyed by slotId. Multiple slots can
+   * be running simultaneously — each has its own GA loop that advances
+   * in `tick()`. Null-equivalent is an empty object `{}`.
+   * Session-only; never persisted.
+   */
+  liveSlots: Record<string, LiveTrainingContext>
+
+  /** Whether the training selection sheet is open. Session-only; not persisted. */
+  trainingSheetOpen: boolean
 
   // ── Seeding ──
   /** Idempotent: seeds the Phase 3a default slot if no slots exist yet. */
   seedFirstTimeTrainingSlot: () => void
+
+  // ── Training sheet (selection UI) ──
+  openTrainingSheet: () => void
+  closeTrainingSheet: () => void
+
+  /**
+   * Reconfigure a slot to a new soldier + weapon. If training is currently
+   * running on that slot, it is stopped first. Compute is NOT charged here —
+   * call `deployTraining` to charge compute and start the run atomically.
+   */
+  configureSlot: (slotId: string, soldierId: string, weapon: WeaponType) => void
+
+  /**
+   * Charge compute, find the first free slot, configure it, and start
+   * training. Returns false if the player doesn't have enough compute,
+   * no slots are free, or the config is invalid.
+   * This is the single action the "Deploy" button calls.
+   */
+  deployTraining: (soldierId: string, weapon: WeaponType) => boolean
 
   // ── Observation ──
   startObserving: (slotId: string) => void
@@ -167,21 +196,17 @@ const SIM_DT = 1 / 60
 const FITNESS_HISTORY_CAP = 30
 
 /**
- * The Phase 3a default slot. Points at the existing PVT ACE recruit
- * already present in `STARTER_ROSTER` with an empty `trainedBrains`
- * map, so the first `getEffectiveBrain` read returns the null brain
- * and the player sees a statue on first load. Matches plan.md decision
- * 1 ("one trainee, keep architecture multi-trainee-ready").
+ * All training slot IDs — up to 3 simultaneous training lanes.
+ * First slot is Phase 3a default; 3b enables lanes 2 and 3.
  */
-const PHASE_3A_SEED_SLOT: Readonly<TrainingSlot> = Object.freeze({
-  slotId: 'slot-rocket-ace',
-  soldierId: 'soldier-2',
-  weapon: 'rocketLauncher',
-  phase: 'idle',
-  generation: 0,
-  bestFitness: 0,
-  fitnessHistory: Object.freeze([]) as readonly number[] as number[],
-})
+export const TRAINING_SLOT_IDS = ['slot-1', 'slot-2', 'slot-3'] as const
+export type TrainingSlotId = typeof TRAINING_SLOT_IDS[number]
+
+/** Backward-compat alias — existing call sites that reference the single slot still compile. */
+export const PHASE_3A_SLOT_ID: string = TRAINING_SLOT_IDS[0]
+
+/** Seed identity for each slot (soldier-2 = PVT ACE from STARTER_ROSTER). */
+const SLOT_SEED_SOLDIER_ID = 'soldier-2'
 
 // ── Helpers ──────────────────────────────────────────────
 
@@ -216,28 +241,89 @@ export const useTrainingStore = create<TrainingState>()(
       slots: {},
       observing: null,
       simSpeed: 10,
-      live: null,
+      liveSlots: {},
+      trainingSheetOpen: false,
 
-      // ── Seeding ────────────────────────────────────────
+      // ── Training sheet ─────────────────────────────────
 
-      seedFirstTimeTrainingSlot: () => {
-        const { slots } = get()
-        if (slots[PHASE_3A_SEED_SLOT.slotId]) return
+      openTrainingSheet: () => set({ trainingSheetOpen: true }),
+      closeTrainingSheet: () => set({ trainingSheetOpen: false }),
+
+      configureSlot: (slotId, soldierId, weapon) => {
+        const { liveSlots, slots } = get()
         const slot: TrainingSlot = {
-          slotId: PHASE_3A_SEED_SLOT.slotId,
-          soldierId: PHASE_3A_SEED_SLOT.soldierId,
-          weapon: PHASE_3A_SEED_SLOT.weapon,
+          slotId,
+          soldierId,
+          weapon,
           phase: 'idle',
           generation: 0,
           bestFitness: 0,
           fitnessHistory: [],
         }
-        set({ slots: { ...slots, [slot.slotId]: slot } })
-        track('training_slot_seeded', {
-          slotId: slot.slotId,
-          soldierId: slot.soldierId,
-          weapon: slot.weapon,
+        // Remove any live context for this slot if training was running.
+        const nextLiveSlots = { ...liveSlots }
+        delete nextLiveSlots[slotId]
+        set({
+          slots: { ...slots, [slotId]: slot },
+          liveSlots: nextLiveSlots,
+          observing: get().observing === slotId ? null : get().observing,
         })
+        track('training_slot_configured', { slotId, soldierId, weapon })
+      },
+
+      deployTraining: (soldierId, weapon) => {
+        const config = WEAPON_TRAINING[weapon]
+        if (!config) return false
+        // Find the first idle slot. If all 3 are busy, deployment is blocked.
+        const { slots } = get()
+        const targetSlotId = TRAINING_SLOT_IDS.find(
+          (id) => !slots[id] || slots[id]!.phase === 'idle',
+        )
+        if (!targetSlotId) return false
+        // Charge compute. This IS the business model.
+        if (!useGameStore.getState().spendCompute(config.computeCost)) return false
+        get().configureSlot(targetSlotId, soldierId, weapon)
+        const started = get().startTraining(targetSlotId)
+        if (!started) {
+          useGameStore.getState().addCompute(config.computeCost)
+          return false
+        }
+        track('training_deployed', {
+          slotId: targetSlotId,
+          soldierId,
+          weapon,
+          computeCost: config.computeCost,
+        })
+        return true
+      },
+
+      // ── Seeding ────────────────────────────────────────
+
+      seedFirstTimeTrainingSlot: () => {
+        const { slots } = get()
+        // Seed all 3 slots as idle so BaseTrainingZone can reference them.
+        // Idempotent — already-seeded slots are left alone.
+        const newSlots: Record<string, TrainingSlot> = { ...slots }
+        let didSeed = false
+        for (const slotId of TRAINING_SLOT_IDS) {
+          if (newSlots[slotId]) continue
+          newSlots[slotId] = {
+            slotId,
+            soldierId: SLOT_SEED_SOLDIER_ID,
+            weapon: 'rocketLauncher',
+            phase: 'idle',
+            generation: 0,
+            bestFitness: 0,
+            fitnessHistory: [],
+          }
+          track('training_slot_seeded', {
+            slotId,
+            soldierId: SLOT_SEED_SOLDIER_ID,
+            weapon: 'rocketLauncher',
+          })
+          didSeed = true
+        }
+        if (didSeed) set({ slots: newSlots })
       },
 
       // ── Observation ────────────────────────────────────
@@ -261,21 +347,23 @@ export const useTrainingStore = create<TrainingState>()(
       },
 
       stopObserving: () => {
-        const { observing, slots, live } = get()
+        const { observing, slots } = get()
         if (observing === null) return
         const slot = slots[observing]
-        // If a run is in progress, stopping observation aborts the run.
-        // Players who want to keep training should leave the base view
-        // alone, not exit observation.
-        const nextLive = slot && live?.slotId === slot.slotId ? null : live
+
+        // If the slot was actively running, let it keep running in the
+        // background — the ambient badge in TrainingObservationHUD will
+        // show progress. Only reset to idle when the slot was in the
+        // passive 'observing' state (paused, no GA active).
         const nextSlots: Record<string, TrainingSlot> = { ...slots }
-        if (slot) {
+        if (slot && slot.phase === 'observing') {
           nextSlots[slot.slotId] = {
             ...resetSessionFields(slot),
             phase: 'idle',
           }
         }
-        set({ observing: null, slots: nextSlots, live: nextLive })
+        // liveSlots is unchanged — the GA keeps ticking in useFrame.
+        set({ observing: null, slots: nextSlots })
         track('training_observe_stopped', { slotId: observing })
       },
 
@@ -323,7 +411,7 @@ export const useTrainingStore = create<TrainingState>()(
         if (!firstIndividual) return false
         brain.setWeights(firstIndividual)
 
-        const live: LiveTrainingContext = {
+        const liveCtx: LiveTrainingContext = {
           slotId,
           ga,
           population,
@@ -336,7 +424,7 @@ export const useTrainingStore = create<TrainingState>()(
         }
 
         set({
-          live,
+          liveSlots: { ...get().liveSlots, [slotId]: liveCtx },
           slots: {
             ...slots,
             [slotId]: {
@@ -357,12 +445,13 @@ export const useTrainingStore = create<TrainingState>()(
       },
 
       stopTraining: (slotId) => {
-        const { slots, live } = get()
+        const { slots, liveSlots } = get()
         const slot = slots[slotId]
         if (!slot) return
-        const nextLive = live?.slotId === slotId ? null : live
+        const nextLiveSlots = { ...liveSlots }
+        delete nextLiveSlots[slotId]
         set({
-          live: nextLive,
+          liveSlots: nextLiveSlots,
           slots: {
             ...slots,
             [slotId]: {
@@ -385,142 +474,131 @@ export const useTrainingStore = create<TrainingState>()(
       // ── GA tick (driven by useFrame) ──────────────────
 
       tick: (_dt) => {
-        const { live, slots, simSpeed } = get()
-        if (!live) return
-        const slot = slots[live.slotId]
-        if (!slot || slot.phase !== 'running') return
+        const { liveSlots, slots, simSpeed } = get()
+        if (Object.keys(liveSlots).length === 0) return
 
-        const config = WEAPON_TRAINING[slot.weapon]
-        if (!config) return
-
-        // Advance the GA loop for this frame. At 1x we do 1 tick per
-        // frame (60fps sim time matches real time); at 10x/50x we
-        // run more ticks per frame to accelerate training while
-        // keeping the display sim (step 4) readable.
-        //
-        // Note: the old /play TrainingScene uses the same pattern.
-        // We deliberately cap stepsPerFrame at simSpeed (not dt-based)
-        // so frame stutters don't cause variable-length generations.
+        // Advance ALL running slots this frame. Each slot gets its own
+        // full stepsPerFrame budget — simultaneous training is the goal.
+        const nextLiveSlots = { ...liveSlots }
+        const nextSlots = { ...slots }
         const stepsPerFrame = simSpeed
-        let localLive = live
-        let generation = slot.generation
-        let bestFitness = slot.bestFitness
-        let fitnessHistory = slot.fitnessHistory
-        let phaseChangedToGraduated = false
-        let newestGenerationBest = bestFitness
 
-        for (let step = 0; step < stepsPerFrame; step++) {
-          simTick(localLive.simState, localLive.brain, SIM_DT, localLive.simConfig)
+        for (const [slotId, live] of Object.entries(liveSlots)) {
+          const slot = slots[slotId]
+          if (!slot || slot.phase !== 'running') continue
 
-          if (localLive.simState.elapsed < config.simDuration) continue
+          const config = WEAPON_TRAINING[slot.weapon]
+          if (!config) continue
 
-          // Individual evaluation finished — score it.
-          const individualFitness = scoreFitness(localLive.simState, localLive.simConfig)
-          const nextFitnesses = [...localLive.fitnesses, individualFitness]
-          const nextIndividualIdx = localLive.currentIndividual + 1
+          let localLive = live
+          let generation = slot.generation
+          let bestFitness = slot.bestFitness
+          let fitnessHistory = slot.fitnessHistory
+          let phaseChangedToGraduated = false
+          let newestGenerationBest = bestFitness
 
-          if (nextIndividualIdx < localLive.ga.populationSize) {
-            // Move on to next individual in this generation.
-            const nextWeights = localLive.population[nextIndividualIdx]
-            if (!nextWeights) break
-            const nextBrain = new NeuralNet(NN_INPUT_SIZE, NN_HIDDEN_SIZE, NN_OUTPUT_SIZE)
-            nextBrain.setWeights(nextWeights)
-            const nextSimState = initSim(localLive.simConfig)
-            localLive = {
-              ...localLive,
-              currentIndividual: nextIndividualIdx,
-              fitnesses: nextFitnesses,
-              brain: nextBrain,
-              simState: nextSimState,
-            }
-          } else {
-            // Full generation complete — evolve.
-            let genBestFitness = -Infinity
-            let genBestIndex = 0
-            for (let i = 0; i < nextFitnesses.length; i++) {
-              const f = nextFitnesses[i] ?? -Infinity
-              if (f > genBestFitness) {
-                genBestFitness = f
-                genBestIndex = i
+          for (let step = 0; step < stepsPerFrame; step++) {
+            simTick(localLive.simState, localLive.brain, SIM_DT, localLive.simConfig)
+
+            if (localLive.simState.elapsed < config.simDuration) continue
+
+            const individualFitness = scoreFitness(localLive.simState, localLive.simConfig)
+            const nextFitnesses = [...localLive.fitnesses, individualFitness]
+            const nextIndividualIdx = localLive.currentIndividual + 1
+
+            if (nextIndividualIdx < localLive.ga.populationSize) {
+              const nextWeights = localLive.population[nextIndividualIdx]
+              if (!nextWeights) break
+              const nextBrain = new NeuralNet(NN_INPUT_SIZE, NN_HIDDEN_SIZE, NN_OUTPUT_SIZE)
+              nextBrain.setWeights(nextWeights)
+              const nextSimState = initSim(localLive.simConfig)
+              localLive = {
+                ...localLive,
+                currentIndividual: nextIndividualIdx,
+                fitnesses: nextFitnesses,
+                brain: nextBrain,
+                simState: nextSimState,
+              }
+            } else {
+              // Full generation complete — evolve.
+              let genBestFitness = -Infinity
+              let genBestIndex = 0
+              for (let i = 0; i < nextFitnesses.length; i++) {
+                const f = nextFitnesses[i] ?? -Infinity
+                if (f > genBestFitness) {
+                  genBestFitness = f
+                  genBestIndex = i
+                }
+              }
+              const genBestWeights = localLive.population[genBestIndex]
+              const nextBestWeights =
+                genBestFitness > bestFitness && genBestWeights
+                  ? [...genBestWeights]
+                  : localLive.bestWeights
+              newestGenerationBest = Math.max(bestFitness, genBestFitness)
+
+              const nextPopulation = localLive.ga.evolve(
+                localLive.population,
+                nextFitnesses,
+                generation,
+              )
+              generation += 1
+              bestFitness = newestGenerationBest
+              fitnessHistory = [...fitnessHistory, newestGenerationBest].slice(-FITNESS_HISTORY_CAP)
+
+              const firstOfNextGen = nextPopulation[0]
+              if (!firstOfNextGen) break
+              const nextBrain = new NeuralNet(NN_INPUT_SIZE, NN_HIDDEN_SIZE, NN_OUTPUT_SIZE)
+              nextBrain.setWeights(firstOfNextGen)
+              const nextSimState = initSim(localLive.simConfig)
+              localLive = {
+                ...localLive,
+                population: nextPopulation,
+                currentIndividual: 0,
+                fitnesses: [],
+                brain: nextBrain,
+                simState: nextSimState,
+                bestWeights: nextBestWeights,
+              }
+
+              track('training_generation_evolved', { slotId, generation, bestFitness })
+
+              if (bestFitness >= config.fitnessThreshold) {
+                phaseChangedToGraduated = true
+                break
               }
             }
-            const genBestWeights = localLive.population[genBestIndex]
-            const nextBestWeights =
-              genBestFitness > bestFitness && genBestWeights
-                ? [...genBestWeights]
-                : localLive.bestWeights
-            newestGenerationBest = Math.max(bestFitness, genBestFitness)
+          }
 
-            const nextPopulation = localLive.ga.evolve(
-              localLive.population,
-              nextFitnesses,
-              generation,
-            )
-            generation += 1
-            bestFitness = newestGenerationBest
-            fitnessHistory = [...fitnessHistory, newestGenerationBest].slice(-FITNESS_HISTORY_CAP)
+          nextLiveSlots[slotId] = localLive
+          nextSlots[slotId] = {
+            ...slot,
+            phase: phaseChangedToGraduated ? 'graduated' : 'running',
+            generation,
+            bestFitness,
+            fitnessHistory,
+          }
 
-            // Reset to first individual of next generation.
-            const firstOfNextGen = nextPopulation[0]
-            if (!firstOfNextGen) break
-            const nextBrain = new NeuralNet(NN_INPUT_SIZE, NN_HIDDEN_SIZE, NN_OUTPUT_SIZE)
-            nextBrain.setWeights(firstOfNextGen)
-            const nextSimState = initSim(localLive.simConfig)
-            localLive = {
-              ...localLive,
-              population: nextPopulation,
-              currentIndividual: 0,
-              fitnesses: [],
-              brain: nextBrain,
-              simState: nextSimState,
-              bestWeights: nextBestWeights,
-            }
-
-            track('training_generation_evolved', {
-              slotId: slot.slotId,
+          if (phaseChangedToGraduated) {
+            track('training_graduated', {
+              slotId,
+              weapon: slot.weapon,
               generation,
               bestFitness,
             })
-
-            // Check graduation threshold. Once the best fitness in
-            // this generation clears the weapon's threshold, we're
-            // done — the player gets the cutscene on the next frame.
-            if (bestFitness >= config.fitnessThreshold) {
-              phaseChangedToGraduated = true
-              break
-            }
           }
         }
 
-        const nextSlot: TrainingSlot = {
-          ...slot,
-          phase: phaseChangedToGraduated ? 'graduated' : 'running',
-          generation,
-          bestFitness,
-          fitnessHistory,
-        }
-
-        set({
-          live: localLive,
-          slots: { ...slots, [slot.slotId]: nextSlot },
-        })
-
-        if (phaseChangedToGraduated) {
-          track('training_graduated', {
-            slotId: slot.slotId,
-            weapon: slot.weapon,
-            generation,
-            bestFitness,
-          })
-        }
+        set({ liveSlots: nextLiveSlots, slots: nextSlots })
       },
 
       // ── Graduation ─────────────────────────────────────
 
       commitGraduation: (slotId) => {
-        const { slots, live } = get()
+        const { slots, liveSlots } = get()
         const slot = slots[slotId]
-        if (!slot || slot.phase !== 'graduated' || !live || live.slotId !== slotId) {
+        const live = liveSlots[slotId]
+        if (!slot || slot.phase !== 'graduated' || !live) {
           return false
         }
 
@@ -548,13 +626,11 @@ export const useTrainingStore = create<TrainingState>()(
           return { soldiers: nextSoldiers }
         })
 
-        // Reset the slot back to observing with cleared session
-        // fields — the camera stays zoomed in (observing !== null)
-        // so the player can see their newly-trained soldier in
-        // action on the very next frame via the render layer's
-        // display sim.
+        // Reset the slot to observing; camera stays zoomed on the zone.
+        const nextLiveSlots = { ...get().liveSlots }
+        delete nextLiveSlots[slotId]
         set({
-          live: null,
+          liveSlots: nextLiveSlots,
           slots: {
             ...slots,
             [slotId]: {
@@ -581,7 +657,7 @@ export const useTrainingStore = create<TrainingState>()(
       // and fire `migrate` warnings. The `-game-concept` suffix
       // guarantees isolation.
       name: 'toy-soldiers-training-game-concept',
-      version: 1,
+      version: 2,
       // Only persist slot identity. Every session-mutable field is
       // reset on rehydrate so the player never lands mid-run on
       // reload. `observing`, `simSpeed`, and `live` are dropped
@@ -603,7 +679,9 @@ export const useTrainingStore = create<TrainingState>()(
         ),
       }),
       migrate: (persisted, version) => {
-        if (version < 1 || !persisted) {
+        // v2: slot IDs changed from 'slot-rocket-ace' to 'slot-1/2/3'.
+        // Clear all old slot data so seedFirstTimeTrainingSlot re-seeds.
+        if (version < 2 || !persisted) {
           return { slots: {} }
         }
         return persisted as { slots: Record<string, TrainingSlot> }
@@ -631,6 +709,10 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
     getState: () => useTrainingStore.getState(),
     actions: {
       seedFirstTimeTrainingSlot: () => useTrainingStore.getState().seedFirstTimeTrainingSlot(),
+      configureSlot: (slotId: string, soldierId: string, weapon: WeaponType) => useTrainingStore.getState().configureSlot(slotId, soldierId, weapon),
+      deployTraining: (soldierId: string, weapon: WeaponType) => useTrainingStore.getState().deployTraining(soldierId, weapon),
+      openTrainingSheet: () => useTrainingStore.getState().openTrainingSheet(),
+      closeTrainingSheet: () => useTrainingStore.getState().closeTrainingSheet(),
       startObserving: (slotId: string) => useTrainingStore.getState().startObserving(slotId),
       stopObserving: () => useTrainingStore.getState().stopObserving(),
       startTraining: (slotId: string) => useTrainingStore.getState().startTraining(slotId),

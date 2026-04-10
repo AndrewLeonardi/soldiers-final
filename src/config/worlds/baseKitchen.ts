@@ -29,7 +29,7 @@ export const baseKitchenWorld: WorldConfig = {
   },
 
   ground: {
-    size: [16, 12],
+    size: [24, 16],
     // Flat visual mesh: units must sit cleanly on the surface here.
     // The combat worlds use bumpy visuals for terrain variation, but that
     // creates visible embedding because the physics collider is flat.

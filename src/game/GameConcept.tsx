@@ -19,6 +19,7 @@ import { BaseScene } from './base/BaseScene'
 import { BaseHUD } from './ui/BaseHUD'
 import { LoadingFallback } from './ui/LoadingFallback'
 import { TrainingObservationHUD } from './ui/TrainingObservationHUD'
+import { TrainingSelectionSheet } from './ui/TrainingSelectionSheet'
 import { GraduationCutscene } from './training/GraduationCutscene'
 import { useTrainingStore } from '@game/stores/trainingStore'
 
@@ -30,6 +31,7 @@ export default function GameConcept() {
   // Andrew can hand-verify the full observe → train → graduate → commit
   // cycle from devtools before the visual surface lands.
   const seedFirstTimeTrainingSlot = useTrainingStore((s) => s.seedFirstTimeTrainingSlot)
+  const trainingSheetOpen = useTrainingStore((s) => s.trainingSheetOpen)
   useEffect(() => {
     seedFirstTimeTrainingSlot()
   }, [seedFirstTimeTrainingSlot])
@@ -57,6 +59,7 @@ export default function GameConcept() {
       <LoadingFallback />
       <BaseHUD />
       <TrainingObservationHUD />
+      {trainingSheetOpen && <TrainingSelectionSheet />}
       <GraduationCutscene />
     </div>
   )

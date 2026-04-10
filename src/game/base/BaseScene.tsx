@@ -3,19 +3,19 @@
  *
  * Composes the reusable WorldRenderer (ground, lighting, Rapier ground
  * collider, edges, table frame) with the base-specific pieces: camera
- * rig, placed buildings, placed walls, base squad, and — when BUILD
- * mode is active — the ghost placement preview, commit surface, and grid
- * overlay.
+ * rig, placed buildings, placed walls, base squad, fence, props, the
+ * permanent training zone, and — when BUILD mode is active — the ghost
+ * placement preview, commit surface, and grid overlay.
  *
- * Also hosts the Phase 3a training observation wiring:
- *   - When `observing` is set in the training store, derives a camera
- *     `observingTarget` from the associated Training Grounds building's
- *     world position and passes it to `BaseCameraRig` for the
- *     cinematic zoom-in.
- *   - Runs a useFrame that calls `trainingStore.tick(dt)` every frame
- *     a run is live, turning the headless GA into a visible spectacle.
- *     The tick is driven from the same frame loop that renders the
- *     scene, so there's no drift between sim state and render.
+ * Phase 3b training wiring:
+ *   - BaseTrainingZone renders permanently on the right half of the
+ *     base. It receives all non-idle slots and renders the appropriate
+ *     TraineeSoldier + TargetCan inside each active training lane.
+ *   - When `observing` is set, the camera zooms to the training zone
+ *     center (world [+5, 0.4, 0]) — NOT the Training Grounds building
+ *     position, since training now happens in the zone.
+ *   - useFrame drives trainingStore.tick(dt) every frame; the store is
+ *     a no-op when nothing is live, so this is always cheap.
  */
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
@@ -23,14 +23,18 @@ import { WorldRenderer } from '@three/worlds/WorldRenderer'
 import type { WallBlock } from '@three/models/Defenses'
 import { baseKitchenWorld } from '@config/worlds/baseKitchen'
 import { BaseCameraRig, type ObservingTarget } from './BaseCameraRig'
+import { BaseFence } from './BaseFence'
+import { BaseProps } from './BaseProps'
 import { GhostPlacement } from './GhostPlacement'
 import { PlacementSurface } from './PlacementSurface'
 import { BuildGridOverlay } from './BuildGridOverlay'
 import { BaseBuildings } from '@game/buildings/BaseBuildings'
 import { BaseWalls } from '@game/buildings/BaseWalls'
 import { BaseSquad } from '@game/soldiers/BaseSquad'
+import { BaseTrainingZone } from '@game/training/BaseTrainingZone'
 import { useBaseStore } from '@game/stores/baseStore'
 import { useTrainingStore } from '@game/stores/trainingStore'
+import type { ActiveSlot } from '@game/training/BaseTrainingZone'
 
 const [GROUND_W, GROUND_D] = baseKitchenWorld.ground.size
 const TABLE_BOUNDS = {
@@ -39,50 +43,50 @@ const TABLE_BOUNDS = {
 } as const
 
 /**
- * Camera observation envelope for a Training Grounds close shot. The
- * trainee sits at TG-local (+2.2, 0, 0) and the target at roughly
- * (+5.5, 0, 0), so the camera anchors on the midpoint of the parade
- * strip at (+3.85, 0.4, 0) with enough distance to frame both.
+ * The training zone group is anchored at world [+5, 0, 0] in BaseTrainingZone.
+ * Observation zoom targets the midpoint between the firing line (x=+3) and
+ * the target stands (x=+8.5) — zone-local x=+0.75 → world x=+5.75, close
+ * enough to call the zone center at [+5, 0.4, 0] for the camera anchor.
  */
-const OBSERVE_MIN_DISTANCE = 6
-const OBSERVE_MAX_DISTANCE = 10
-const OBSERVE_STRIP_CENTER_OFFSET_X = 3.85
+const OBSERVE_ZONE_CENTER: [number, number, number] = [5, 0.4, 0]
+const OBSERVE_MIN_DISTANCE = 8
+const OBSERVE_MAX_DISTANCE = 16
 
 export function BaseScene() {
   const blocksRef = useRef<Map<string, WallBlock[]>>(new Map())
   const mode = useBaseStore((s) => s.mode)
   const brush = useBaseStore((s) => s.brush)
-  const buildings = useBaseStore((s) => s.layout.buildings)
 
-  const observing = useTrainingStore((s) => s.observing)
+  const observing  = useTrainingStore((s) => s.observing)
+  const slots      = useTrainingStore((s) => s.slots)
 
   const inBuildMode = mode === 'build'
   const brushActive = brush !== null
 
-  // Derive the camera observation target from the observed slot's
-  // associated building. Phase 3a hardcodes: the observed slot is
-  // always the first Training Grounds building. Phase 3c will read a
-  // `slotId → buildingId` map from the base store. The camera aims
-  // at the CENTER of the parade strip (TG-local +3.85x) so both the
-  // trainee and the target fit in frame at the default zoom.
+  // Collect all non-idle slots for BaseTrainingZone.
+  const activeSlots = useMemo<ActiveSlot[]>(
+    () =>
+      Object.entries(slots)
+        .filter(([, slot]) => slot.phase !== 'idle')
+        .map(([id, slot]) => ({
+          slotId: id,
+          phase: slot.phase,
+          weapon: slot.weapon,
+        })),
+    [slots],
+  )
+
+  // Observation zoom always targets the training zone, not the building.
   const observingTarget = useMemo<ObservingTarget | null>(() => {
     if (!observing) return null
-    const tg = buildings.find((b) => b.kind === 'trainingGrounds')
-    if (!tg) return null
     return {
-      position: [
-        tg.position[0] + OBSERVE_STRIP_CENTER_OFFSET_X,
-        tg.position[1] + 0.4,
-        tg.position[2],
-      ],
+      position: OBSERVE_ZONE_CENTER,
       minDistance: OBSERVE_MIN_DISTANCE,
       maxDistance: OBSERVE_MAX_DISTANCE,
     }
-  }, [observing, buildings])
+  }, [observing])
 
-  // Drive the GA loop from the render frame. The store's `tick()` is a
-  // no-op when `live === null`, so this is cheap when nothing is
-  // training — we don't gate the useFrame itself on the phase.
+  // Drive the GA loop from the render frame. No-op when nothing is live.
   useFrame((_, dt) => {
     useTrainingStore.getState().tick(dt)
   })
@@ -91,9 +95,12 @@ export function BaseScene() {
     <>
       <WorldRenderer worldConfig={baseKitchenWorld} />
       <BaseCameraRig brushActive={brushActive} observingTarget={observingTarget} />
+      <BaseFence />
+      <BaseProps />
       <BaseBuildings blocksRef={blocksRef} tableBounds={TABLE_BOUNDS} />
       <BaseWalls blocksRef={blocksRef} tableBounds={TABLE_BOUNDS} />
       <BaseSquad />
+      <BaseTrainingZone slots={activeSlots} />
 
       {inBuildMode && (
         <>

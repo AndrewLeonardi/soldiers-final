@@ -77,11 +77,14 @@ interface BaseState {
 
 // ── Starter layout (seed for first-time users) ──────────
 
+// Phase 3b starter layout — scaled to the 24×16 table.
+// Left half (x: -12 to -2) is garrison territory: vault, collector, training HQ.
+// Right half (x: +2 to +12) is the permanent BaseTrainingZone — no buildings there.
 const STARTER_LAYOUT: BaseLayout = {
   buildings: [
-    { id: 'vault-1', kind: 'vault', position: [-5, 0, 0], rotation: 0 },
-    { id: 'training-grounds-1', kind: 'trainingGrounds', position: [0, 0, -1], rotation: 0 },
-    { id: 'collector-1', kind: 'collector', position: [4, 0, 2], rotation: 0 },
+    { id: 'vault-1',             kind: 'vault',           position: [-8, 0, -3], rotation: 0 },
+    { id: 'training-grounds-1',  kind: 'trainingGrounds', position: [-3, 0,  0], rotation: 0 },
+    { id: 'collector-1',         kind: 'collector',       position: [-8, 0,  3], rotation: 0 },
   ],
   walls: [],
 }
@@ -219,11 +222,12 @@ export const useBaseStore = create<BaseState>()(
     }),
     {
       name: 'toy-soldiers-base',
-      version: 1,
+      version: 2,
       partialize: (state) => ({ layout: state.layout }),
       migrate: (persisted, version) => {
-        // First-time users or pre-v1 data get the starter layout.
-        if (version < 1 || !persisted) {
+        // v2: 24×16 table. Old building positions (v0/v1) no longer make
+        // sense on the larger ground, so reset everyone to the new starter.
+        if (version < 2 || !persisted) {
           return { layout: STARTER_LAYOUT }
         }
         return persisted as { layout: BaseLayout }

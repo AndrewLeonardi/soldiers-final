@@ -44,9 +44,6 @@ import { StarIcon } from '@ui/ToyIcons'
 import * as sfx from '@audio/sfx'
 import '@game/ui/training-hud.css'
 
-/** Phase 3a slot id — single-trainee Phase 3a hardcoding. */
-const PHASE_3A_SLOT_ID = 'slot-rocket-ace'
-
 export function GraduationCutscene() {
   // Atomic selectors per the feedback memory — no consolidated shallow
   // selector. The parent store rarely updates while the cutscene is
@@ -83,7 +80,9 @@ export function GraduationCutscene() {
 
   const handleCommit = (): void => {
     sfx.buttonTap()
-    useTrainingStore.getState().commitGraduation(PHASE_3A_SLOT_ID)
+    // Use `observing` — not a hardcoded slot ID — so graduation works
+    // for any of the 3 training slots, not just slot-1.
+    if (observing) useTrainingStore.getState().commitGraduation(observing)
   }
 
   return (

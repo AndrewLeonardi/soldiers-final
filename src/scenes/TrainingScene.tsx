@@ -355,7 +355,7 @@ function ProjectileTrails() {
     const simState = useTrainingStore.getState().simState
     if (!simState) return
 
-    const projectiles = simState.projectiles || []
+    const projectiles = 'projectiles' in simState ? (simState as any).projectiles : []
     const isExplosive = weapon === 'rocketLauncher' || weapon === 'grenade' || weapon === 'tank'
 
     // Detect projectile impacts: if count dropped, spawn explosions at last positions
@@ -380,7 +380,7 @@ function ProjectileTrails() {
     }
 
     // Track last positions
-    lastPositions.current = projectiles.map(p => ({
+    lastPositions.current = projectiles.map((p: any) => ({
       x: p.x,
       y: 'y' in p ? (p as { y: number }).y : 0.2,
       z: p.z,

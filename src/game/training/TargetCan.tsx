@@ -73,8 +73,8 @@ export function TargetCan({ slotId }: TargetCanProps) {
     const slot = store.slots[slotId]
     if (!slot) return
 
-    const live = store.live
-    const running = slot.phase === 'running' && live?.slotId === slotId
+    const live = store.liveSlots[slotId]
+    const running = slot.phase === 'running' && live !== undefined
 
     // Position: read from the live sim's first target, or fall back to
     // the default position when idle/graduated/observing.
