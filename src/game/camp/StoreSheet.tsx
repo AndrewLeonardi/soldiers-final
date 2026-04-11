@@ -11,6 +11,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { useCampStore } from '@stores/campStore'
 import { useSceneStore } from '@stores/sceneStore'
 import { COMPUTE_PACKS, DAILY_DRIP_AMOUNT, DAILY_DRIP_INTERVAL_MS } from '@config/store'
+import { ComputeIcon } from './ComputeIcon'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
 
@@ -92,7 +93,7 @@ export function StoreSheet() {
       <div className="game-sheet store-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="game-sheet-header">
           <span className="game-sheet-title">COMPUTE STORE</span>
-          <span className="store-balance">⚡ {compute}</span>
+          <span className="store-balance"><ComputeIcon size={14} /> {compute}</span>
         </div>
 
         {/* Tab bar */}
@@ -121,7 +122,7 @@ export function StoreSheet() {
                 >
                   {pack.featured && <span className="store-pack-badge">BEST VALUE</span>}
                   <span className="store-pack-name">{pack.name}</span>
-                  <span className="store-pack-compute">⚡ {pack.compute}</span>
+                  <span className="store-pack-compute"><ComputeIcon size={14} /> {pack.compute}</span>
                   <span className="store-pack-desc">{pack.description}</span>
                   <span className="store-pack-price">{pack.price}</span>
                 </button>
@@ -138,7 +139,7 @@ export function StoreSheet() {
                   <div className="store-offer-desc">
                     You've trained {trainedCount} soldiers — here's a boost to keep going!
                   </div>
-                  <div className="store-offer-value">⚡ 500 COMPUTE</div>
+                  <div className="store-offer-value"><ComputeIcon size={14} /> 500 COMPUTE</div>
                   <button className="game-btn" onClick={handleStarterPack}>
                     CLAIM FREE
                   </button>
@@ -153,7 +154,7 @@ export function StoreSheet() {
           {activeTab === 'daily' && (
             <div className="store-daily">
               <div className="store-daily-title">DAILY COMPUTE</div>
-              <div className="store-daily-amount">⚡ {DAILY_DRIP_AMOUNT}</div>
+              <div className="store-daily-amount"><ComputeIcon size={14} /> {DAILY_DRIP_AMOUNT}</div>
               {justClaimed ? (
                 <div className="store-daily-claimed">CLAIMED!</div>
               ) : canClaimDaily ? (

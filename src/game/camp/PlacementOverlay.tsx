@@ -67,7 +67,7 @@ export function PlacementOverlay() {
       {/* Bottom soldier tray */}
       <div className="placement-tray">
         <div className="placement-tray-scroll">
-          {soldiers.map((sol) => {
+          {soldiers.filter(s => !s.injuredUntil || s.injuredUntil <= Date.now()).map((sol) => {
             const isPlaced = placedIds.has(sol.id)
             const isSelected = selectedPlacementId === sol.id
             const hasBrain = sol.trainedBrains && Object.keys(sol.trainedBrains).length > 0
@@ -117,8 +117,8 @@ export function PlacementGroundHandler() {
 
     const point = e.point
     // Clamp within camp bounds
-    const x = Math.max(-7, Math.min(7, point.x))
-    const z = Math.max(-6, Math.min(6, point.z))
+    const x = Math.max(-11, Math.min(11, point.x))
+    const z = Math.max(-8, Math.min(8, point.z))
 
     const sol = soldiers.find(s => s.id === selectedPlacementId)
     if (!sol) return
@@ -143,7 +143,7 @@ export function PlacementGroundHandler() {
       rotation={[-Math.PI / 2, 0, 0]}
       onPointerUp={handleGroundClick}
     >
-      <planeGeometry args={[20, 16]} />
+      <planeGeometry args={[28, 22]} />
       <meshBasicMaterial transparent opacity={0} />
     </mesh>
   )

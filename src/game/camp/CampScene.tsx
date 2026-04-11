@@ -17,6 +17,7 @@ import { CampLayout } from './CampLayout'
 import { TestGrenade } from './TestGrenade'
 import { AmbientSoldiers } from './AmbientSoldiers'
 import { TrainingSpectacle } from './TrainingSpectacle'
+import { MedicalTentBuilding } from './MedicalTentBuilding'
 import { PlacementGroundHandler } from './PlacementOverlay'
 import { PlacementMarkers } from './PlacementMarkers'
 import { CampBattleLoop } from './CampBattleLoop'
@@ -93,11 +94,14 @@ export function CampScene() {
       <OrbitControls
         makeDefault
         target={[0, 0.5, 0]}
-        minDistance={5}
-        maxDistance={25}
+        minDistance={8}
+        maxDistance={35}
         maxPolarAngle={Math.PI / 2.1}
         minPolarAngle={Math.PI / 8}
       />
+
+      {/* Medical tent building (Sprint 6) */}
+      <MedicalTentBuilding />
 
       {/* Hide ambient soldiers during battle — replaced by placed battle units */}
       {!inBattle && <AmbientSoldiers />}

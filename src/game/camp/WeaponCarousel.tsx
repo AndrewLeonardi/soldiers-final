@@ -12,6 +12,7 @@ import { useCampStore } from '@stores/campStore'
 import { useSceneStore } from '@stores/sceneStore'
 import { WEAPON_UNLOCK_COST, WEAPON_DISPLAY } from '@config/roster'
 import type { WeaponType } from '@config/types'
+import { ComputeIcon } from './ComputeIcon'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
 
@@ -81,7 +82,7 @@ export function WeaponCarousel({ selected, onSelect }: WeaponCarouselProps) {
             <span className="weapon-card-name">{display.name}</span>
             {!isUnlocked && (
               <span className="weapon-card-price">
-                {cost} ⚡
+                {cost} <ComputeIcon size={12} />
               </span>
             )}
             {isUnlocked && isSelected && (

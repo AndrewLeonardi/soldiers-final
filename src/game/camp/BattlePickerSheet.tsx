@@ -18,6 +18,7 @@ const WEAPON_LABELS: Record<string, string> = {
   machineGun: '🔫 MACHINE GUN',
   tank: '🪖 TANK',
 }
+import { ComputeIcon } from './ComputeIcon'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
 
@@ -74,7 +75,7 @@ export function BattlePickerSheet() {
                 <div className="battle-card-meta">
                   <span className="battle-card-waves">{battle.waves.length} WAVE{battle.waves.length > 1 ? 'S' : ''}</span>
                   <span className="battle-card-enemies">{totalEnemies} ENEMIES</span>
-                  <span className="battle-card-reward">+{battle.reward} ⚡</span>
+                  <span className="battle-card-reward">+{battle.reward} <ComputeIcon size={12} /></span>
                 </div>
                 {battle.weaponReward && (
                   <div className={`battle-card-weapon-reward ${unlockedWeapons.includes(battle.weaponReward) ? 'earned' : ''}`}>

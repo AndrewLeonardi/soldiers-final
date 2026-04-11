@@ -73,12 +73,12 @@ interface WallBounds {
 }
 
 const WALL_BOUNDS: WallBounds[] = [
-  // North/South walls: 8 * 0.3 / 2 = 1.2 wide, ~0.25 deep
-  { cx: 0, cz: -5, halfW: 1.2, halfD: 0.35, wallId: 'wall-north' },
-  { cx: 0, cz: 5,  halfW: 1.2, halfD: 0.35, wallId: 'wall-south' },
+  // North/South walls (horizontal, wide on X)
+  { cx: 0, cz: -8, halfW: 1.2, halfD: 0.35, wallId: 'wall-north' },
+  { cx: 0, cz: 8,  halfW: 1.2, halfD: 0.35, wallId: 'wall-south' },
   // East/West walls: rotated π/2 so width → depth, depth → width
-  { cx: 6, cz: 0,  halfW: 0.35, halfD: 1.2, wallId: 'wall-east' },
-  { cx: -6, cz: 0, halfW: 0.35, halfD: 1.2, wallId: 'wall-west' },
+  { cx: 10, cz: 0,  halfW: 0.35, halfD: 1.2, wallId: 'wall-east' },
+  { cx: -10, cz: 0, halfW: 0.35, halfD: 1.2, wallId: 'wall-west' },
 ]
 
 function isInsideWall(x: number, z: number, padding: number = 0.3): WallBounds | null {
@@ -825,6 +825,14 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
         : true
       const newWeapon = config.weaponReward && !alreadyUnlocked ? config.weaponReward : null
 
+      // Injure dead player soldiers
+      const campStore = useCampStore.getState()
+      for (const p of players) {
+        if (p.status === 'dead' && p.soldierId) {
+          campStore.injureSoldier(p.soldierId)
+        }
+      }
+
       useCampBattleStore.getState().setResult('victory', stars)
       if (newWeapon) useCampBattleStore.getState().setWeaponUnlocked(newWeapon)
       useCampStore.getState().completeBattle(config.id, stars, config.reward, config.weaponReward)
@@ -832,8 +840,12 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
       setBattlePhase('result')
     }
 
-    // Defeat: all player soldiers dead
+    // Defeat: all player soldiers dead — injure all
     if (livingPlayers.length === 0 && players.length > 0) {
+      const campStore = useCampStore.getState()
+      for (const p of players) {
+        if (p.soldierId) campStore.injureSoldier(p.soldierId)
+      }
       useCampBattleStore.getState().setResult('defeat', 0)
       sfx.deathThud()
       triggerShake(SHAKE.DEFEAT)

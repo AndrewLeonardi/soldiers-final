@@ -253,6 +253,14 @@ export function AmbientSoldiers() {
   }, [gl])
 
   const setSoldierSheetId = useSceneStore((s) => s.setSoldierSheetId)
+  const campSoldiers = useCampStore((s) => s.soldiers)
+
+  // Filter out injured soldiers — they're in the medical tent, not wandering
+  const now = Date.now()
+  const injuredIds = new Set(
+    campSoldiers.filter(s => s.injuredUntil && s.injuredUntil > now).map(s => s.id),
+  )
+  const healthySoldiers = soldiers.filter(s => !injuredIds.has(s.id))
 
   const handleSelect = useCallback((id: string) => {
     setSelectedId(prev => {
@@ -275,11 +283,11 @@ export function AmbientSoldiers() {
         onPointerUp={() => { setSelectedId(null); setSoldierSheetId(null) }}
         visible={false}
       >
-        <planeGeometry args={[20, 16]} />
+        <planeGeometry args={[28, 22]} />
         <meshBasicMaterial />
       </mesh>
 
-      {soldiers.map(s => (
+      {healthySoldiers.map(s => (
         <SoldierEntry
           key={s.id}
           data={s}

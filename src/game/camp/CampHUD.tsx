@@ -8,13 +8,22 @@
  *
  * Hidden during fighting/result battle phases.
  */
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 import { ComputeCounter } from './ComputeCounter'
 import { useSceneStore } from '@stores/sceneStore'
+import { useCampStore } from '@stores/campStore'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
 
 export function CampHUD() {
+  const tickHealing = useCampStore((s) => s.tickHealing)
+
+  // Auto-heal soldiers whose timer has expired (check every 5s)
+  useEffect(() => {
+    const interval = setInterval(tickHealing, 5000)
+    return () => clearInterval(interval)
+  }, [tickHealing])
+
   const battlePhase = useSceneStore((s) => s.battlePhase)
   const setBattlePhase = useSceneStore((s) => s.setBattlePhase)
   const setTrainingSheetOpen = useSceneStore((s) => s.setTrainingSheetOpen)

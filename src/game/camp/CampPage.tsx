@@ -30,6 +30,7 @@ import { PlacementOverlay } from './PlacementOverlay'
 import { BattleHUD } from './BattleHUD'
 import { ResultOverlay } from './ResultOverlay'
 import { SoldierSheet } from './SoldierSheet'
+import { MedicalSheet } from './MedicalSheet'
 import { AudioBed } from '@audio/AudioBed'
 import { useSceneStore } from '@stores/sceneStore'
 import '@styles/camp-ui.css'
@@ -41,18 +42,20 @@ export default function CampPage() {
   const setTrainingSheetOpen = useSceneStore((s) => s.setTrainingSheetOpen)
   const setStoreSheetOpen = useSceneStore((s) => s.setStoreSheetOpen)
   const setRosterSheetOpen = useSceneStore((s) => s.setRosterSheetOpen)
+  const setMedicalSheetOpen = useSceneStore((s) => s.setMedicalSheetOpen)
 
-  // Dev shortcuts: T=train, S=store, R=roster
+  // Dev shortcuts: T=train, S=store, R=roster, M=medical
   useEffect(() => {
     if (!import.meta.env.DEV) return
     const handler = (e: KeyboardEvent) => {
       if (e.key === 't' || e.key === 'T') setTrainingSheetOpen(true)
       if (e.key === 's' || e.key === 'S') setStoreSheetOpen(true)
       if (e.key === 'r' || e.key === 'R') setRosterSheetOpen(true)
+      if (e.key === 'm' || e.key === 'M') setMedicalSheetOpen(true)
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [setTrainingSheetOpen, setStoreSheetOpen, setRosterSheetOpen])
+  }, [setTrainingSheetOpen, setStoreSheetOpen, setRosterSheetOpen, setMedicalSheetOpen])
 
   return (
     <div style={{ width: '100%', height: '100svh', position: 'relative', background: '#111' }}>
@@ -62,7 +65,7 @@ export default function CampPage() {
       {/* 3D Canvas */}
       <Canvas
         shadows
-        camera={{ position: [12, 10, 12], fov: 50 }}
+        camera={{ position: [18, 14, 18], fov: 50 }}
         gl={{ antialias: true }}
       >
         <Suspense fallback={null}>
@@ -105,6 +108,9 @@ export default function CampPage() {
       {/* Soldier stats sheet (tap ambient soldier) */}
       <SoldierSheet />
 
+      {/* Medical sheet (tap medical tent) */}
+      <MedicalSheet />
+
       {/* Compute underflow modal */}
       <ComputeModal />
 
@@ -114,7 +120,7 @@ export default function CampPage() {
       {/* Dev indicator */}
       {import.meta.env.DEV && (
         <div className="dev-indicator">
-          DEV | G=grenade T=train S=store R=roster
+          DEV | G=grenade T=train S=store R=roster M=medical
         </div>
       )}
     </div>

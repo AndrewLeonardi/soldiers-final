@@ -44,9 +44,9 @@ export interface CampBattleConfig {
 
 // Spawn positions — at the table edge so enemies drop onto the map
 export const SPAWN_POSITIONS: Record<string, { x: number; z: number }> = {
-  right:  { x: 7.5,  z: 0 },
-  left:   { x: -7.5, z: 0 },
-  back:   { x: 0,    z: -5.5 },
+  right:  { x: 11.5,  z: 0 },
+  left:   { x: -11.5, z: 0 },
+  back:   { x: 0,     z: -8.5 },
 }
 
 export const CAMP_BATTLES: CampBattleConfig[] = [

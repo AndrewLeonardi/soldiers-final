@@ -30,10 +30,15 @@ export interface SoldierRecord {
   fitnessScore?: number
   /** Total generations trained (across all weapons) */
   generationsTrained?: number
+  /** Epoch ms when healing completes — undefined = healthy */
+  injuredUntil?: number
 
   // Legacy field — kept for v2→v3 migration, not used in new code
   weights?: number[]
 }
+
+/** Healing cooldown: 10 minutes */
+const HEAL_DURATION_MS = 10 * 60 * 1000
 
 // ── State shape ──
 interface CampState {
@@ -80,6 +85,11 @@ interface CampState {
 
   // Actions — battles
   completeBattle: (battleId: string, stars: number, reward: number, weaponReward?: string) => void
+
+  // Actions — injury / healing
+  injureSoldier: (id: string) => void
+  healSoldier: (id: string) => void
+  tickHealing: () => void
 
   // Actions — settings
   setMuted: (muted: boolean) => void
@@ -227,6 +237,33 @@ export const useCampStore = create<CampState>()(
         })
       },
 
+      // ── Injury / healing ──
+      injureSoldier: (id) => set((s) => ({
+        soldiers: s.soldiers.map(sol =>
+          sol.id === id ? { ...sol, injuredUntil: Date.now() + HEAL_DURATION_MS } : sol,
+        ),
+      })),
+
+      healSoldier: (id) => set((s) => ({
+        soldiers: s.soldiers.map(sol =>
+          sol.id === id ? { ...sol, injuredUntil: undefined } : sol,
+        ),
+      })),
+
+      tickHealing: () => {
+        const now = Date.now()
+        const state = get()
+        const needsHeal = state.soldiers.some(s => s.injuredUntil && s.injuredUntil <= now)
+        if (!needsHeal) return
+        set({
+          soldiers: state.soldiers.map(sol =>
+            sol.injuredUntil && sol.injuredUntil <= now
+              ? { ...sol, injuredUntil: undefined }
+              : sol,
+          ),
+        })
+      },
+
       // ── Settings ──
       setMuted: (muted) => set({ muted }),
 
@@ -235,7 +272,7 @@ export const useCampStore = create<CampState>()(
     }),
     {
       name: 'toy-soldiers-camp',
-      version: 4,
+      version: 5,
       migrate: (persistedState: any, version: number) => {
         if (version < 2) {
           // v1 → v2: network shape changed from [6,12,4] to [7,8,4].
@@ -276,6 +313,16 @@ export const useCampStore = create<CampState>()(
           // v3 → v4: add battlesCompleted
           const state = persistedState as any
           state.battlesCompleted = state.battlesCompleted ?? {}
+        }
+        if (version < 5) {
+          // v4 → v5: add injuredUntil to all soldiers
+          const state = persistedState as any
+          if (state.soldiers) {
+            state.soldiers = state.soldiers.map((s: any) => ({
+              ...s,
+              injuredUntil: s.injuredUntil ?? undefined,
+            }))
+          }
         }
         return persistedState as CampState
       },

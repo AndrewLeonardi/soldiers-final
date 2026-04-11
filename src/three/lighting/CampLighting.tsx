@@ -18,12 +18,12 @@ export function CampLighting() {
         castShadow
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
-        shadow-camera-left={-12}
-        shadow-camera-right={12}
-        shadow-camera-top={12}
-        shadow-camera-bottom={-12}
+        shadow-camera-left={-18}
+        shadow-camera-right={18}
+        shadow-camera-top={18}
+        shadow-camera-bottom={-18}
         shadow-camera-near={1}
-        shadow-camera-far={30}
+        shadow-camera-far={40}
         shadow-bias={-0.001}
       />
 
@@ -36,7 +36,7 @@ export function CampLighting() {
 
       {/* Sky color + depth fog — matches the tabletop diorama feel */}
       <color attach="background" args={[0x88bbdd]} />
-      <fog attach="fog" args={[0xd4c8a0, 18, 40]} />
+      <fog attach="fog" args={[0xd4c8a0, 25, 55]} />
     </>
   )
 }

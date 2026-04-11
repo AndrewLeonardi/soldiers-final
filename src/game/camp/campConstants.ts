@@ -6,9 +6,9 @@
  * the training camp area (empty in sprint 1, filled in sprint 2).
  */
 
-/** Half-width and half-depth of the tabletop ground (matches /physics-test) */
-export const BASE_HALF_W = 8
-export const BASE_HALF_D = 6
+/** Half-width and half-depth of the tabletop ground */
+export const BASE_HALF_W = 12
+export const BASE_HALF_D = 9
 
 /** Table bounds object for DestructibleDefense compatibility */
 export const TABLE_BOUNDS = Object.freeze({
@@ -22,10 +22,18 @@ export const TABLE_BOUNDS = Object.freeze({
  * Sprint 2 fills it with the training spectacle.
  */
 export const CAMP_FOOTPRINT = Object.freeze({
-  centerX: -3,
+  centerX: -5,
   centerZ: -2.5,
   halfW: 2.5,
   halfD: 2,
+})
+
+/** Medical tent footprint — right side of base, symmetric to training camp */
+export const MEDICAL_FOOTPRINT = Object.freeze({
+  centerX: 5,
+  centerZ: -2.5,
+  halfW: 2,
+  halfD: 1.5,
 })
 
 /**

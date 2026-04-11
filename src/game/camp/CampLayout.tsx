@@ -27,21 +27,21 @@ export function CampLayout({ wallBlocksRef }: CampLayoutProps) {
       {/* ── Perimeter walls ── */}
       {/* North wall */}
       <WallDefense
-        position={[0, 0, -5]}
+        position={[0, 0, -8]}
         wallBlocksRef={wallBlocksRef}
         wallId="wall-north"
         tableBounds={TABLE_BOUNDS}
       />
       {/* South wall */}
       <WallDefense
-        position={[0, 0, 5]}
+        position={[0, 0, 8]}
         wallBlocksRef={wallBlocksRef}
         wallId="wall-south"
         tableBounds={TABLE_BOUNDS}
       />
       {/* East wall segment */}
       <WallDefense
-        position={[6, 0, 0]}
+        position={[10, 0, 0]}
         rotation={Math.PI / 2}
         wallBlocksRef={wallBlocksRef}
         wallId="wall-east"
@@ -49,7 +49,7 @@ export function CampLayout({ wallBlocksRef }: CampLayoutProps) {
       />
       {/* West wall segment */}
       <WallDefense
-        position={[-6, 0, 0]}
+        position={[-10, 0, 0]}
         rotation={Math.PI / 2}
         wallBlocksRef={wallBlocksRef}
         wallId="wall-west"
@@ -58,13 +58,13 @@ export function CampLayout({ wallBlocksRef }: CampLayoutProps) {
 
       {/* ── Corner towers ── */}
       <WatchTower
-        position={[6, 0, -5]}
+        position={[10, 0, -8]}
         wallBlocksRef={wallBlocksRef}
         wallId="tower-ne"
         tableBounds={TABLE_BOUNDS}
       />
       <WatchTower
-        position={[-6, 0, -5]}
+        position={[-10, 0, -8]}
         wallBlocksRef={wallBlocksRef}
         wallId="tower-nw"
         tableBounds={TABLE_BOUNDS}
@@ -72,7 +72,7 @@ export function CampLayout({ wallBlocksRef }: CampLayoutProps) {
 
       {/* ── Barbed wire stretch ── */}
       <BarbedWireDefense
-        position={[3, 0, 3]}
+        position={[5, 0, 6]}
         wallBlocksRef={wallBlocksRef}
         wallId="wire-south-1"
         tableBounds={TABLE_BOUNDS}

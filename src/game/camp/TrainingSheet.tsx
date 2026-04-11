@@ -13,6 +13,7 @@ import { useCampTrainingStore } from '@stores/campTrainingStore'
 import { WeaponCarousel } from './WeaponCarousel'
 import { COMPUTE_TIERS, TRAINING_BASE_COST, TRAINING_BASE_DURATION } from './trainingConstants'
 import type { WeaponType } from '@config/types'
+import { ComputeIcon } from './ComputeIcon'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
 
@@ -65,7 +66,7 @@ export function TrainingSheet() {
     Array.from({ length: 3 }, (_, i) => {
       const slot = slots[i]
       const isLocked = i >= unlockedSlots
-      if (isLocked) return { label: `SLOT ${i + 1}`, sub: `🔒 ${SLOT_COSTS[i]} ⚡`, locked: true, active: false }
+      if (isLocked) return { label: `SLOT ${i + 1}`, sub: <>{'🔒'} {SLOT_COSTS[i]} <ComputeIcon size={12} /></>, locked: true, active: false }
       if (!slot || slot.trainingPhase === 'empty') return { label: `SLOT ${i + 1}`, sub: 'EMPTY', locked: false, active: false }
       return { label: `SLOT ${i + 1}`, sub: slot.slotSoldierName ?? 'ACTIVE', locked: false, active: true }
     }),
@@ -141,7 +142,7 @@ export function TrainingSheet() {
                 {soldiers.length === 0 && (
                   <div className="training-empty">No soldiers in roster</div>
                 )}
-                {soldiers.map((s) => {
+                {soldiers.filter(s => !s.injuredUntil || s.injuredUntil <= Date.now()).map((s) => {
                   const inTraining = isSoldierInTraining(s.id)
                   const weaponBrains = s.trainedBrains ? Object.keys(s.trainedBrains) : []
                   return (
@@ -171,7 +172,7 @@ export function TrainingSheet() {
 
               {hasBrainForWeapon && (
                 <div className="training-retrain-notice">
-                  ⚡ This soldier already has a {selectedWeapon} brain — re-training will improve it
+                  <ComputeIcon size={14} /> This soldier already has a {selectedWeapon} brain — re-training will improve it
                 </div>
               )}
 
