@@ -1751,6 +1751,26 @@
   border-bottom-width: 2px;
 }
 
+.soldier-retrain-badge {
+  background: linear-gradient(180deg, #6a4400, #4a2e00);
+  color: #ffd080;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-family: 'Black Ops One', cursive;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-align: center;
+  margin-bottom: 8px;
+  border-bottom: 2px solid rgba(0,0,0,0.3);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.1);
+  animation: retrain-pulse 2s ease-in-out infinite;
+}
+
+@keyframes retrain-pulse {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+
 /* ── Medical sheet ── */
 .medical-sheet {
   max-height: 60vh;

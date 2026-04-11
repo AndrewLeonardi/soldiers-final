@@ -368,9 +368,14 @@ export const useCampTrainingStore = create<CampTrainingState>()((set, get) => {
                 }
               }
 
-              if ('targets' in sim) {
-                const targets = (sim as any).targets as Array<{ alive: boolean }>
-                const killed = targets.filter((t: any) => !t.alive).length
+              // Check both 'enemies' (Sprint 7 universal) and 'targets' (legacy)
+              const entityList = 'enemies' in sim
+                ? (sim as any).enemies as Array<{ alive: boolean }>
+                : 'targets' in sim
+                  ? (sim as any).targets as Array<{ alive: boolean }>
+                  : null
+              if (entityList) {
+                const killed = entityList.filter((t: any) => !t.alive).length
                 if (killed > totalKills) {
                   totalKills = killed
                   if (totalKills === 1 && !milestones.find(m => m.type === 'FIRST_KILL')) {

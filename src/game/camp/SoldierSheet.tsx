@@ -43,6 +43,8 @@ export function SoldierSheet() {
   if (!soldier) return null
 
   const trainedBrains = soldier.trainedBrains ? Object.keys(soldier.trainedBrains) : []
+  const legacyBrains = soldier.legacyBrains ? Object.keys(soldier.legacyBrains) : []
+  const hasLegacy = legacyBrains.length > 0 && trainedBrains.length === 0
   const fitnessPercent = soldier.fitnessScore != null ? Math.round(soldier.fitnessScore * 100) : null
 
   return (
@@ -90,9 +92,16 @@ export function SoldierSheet() {
           </div>
         )}
 
+        {/* Re-train badge for soldiers with legacy brains */}
+        {hasLegacy && (
+          <div className="soldier-retrain-badge">
+            RE-TRAIN RECOMMENDED — brain upgraded
+          </div>
+        )}
+
         {/* Train Now button */}
         <button className="soldier-sheet-train-btn" onClick={handleTrainNow}>
-          TRAIN NOW
+          {hasLegacy ? 'RE-TRAIN NOW' : 'TRAIN NOW'}
         </button>
       </div>
     </div>

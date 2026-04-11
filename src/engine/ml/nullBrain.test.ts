@@ -76,8 +76,8 @@ describe('null brain — rocket scenario', () => {
 
   it('leaves every target alive', () => {
     const state = runNullBrainSim(config) as RocketSimState
-    const aliveCount = state.targets.filter((t) => t.alive).length
-    expect(aliveCount).toBe(state.targets.length)
+    const aliveCount = state.enemies.filter((t) => t.alive).length
+    expect(aliveCount).toBe(state.enemies.length)
     expect(state.hits).toBe(0)
   })
 
@@ -115,8 +115,8 @@ describe('null brain — grenade scenario', () => {
 
   it('leaves every target alive', () => {
     const state = runNullBrainSim(config) as GrenadeSimState
-    const aliveCount = state.targets.filter((t) => t.alive).length
-    expect(aliveCount).toBe(state.targets.length)
+    const aliveCount = state.enemies.filter((t) => t.alive).length
+    expect(aliveCount).toBe(state.enemies.length)
     expect(state.hits).toBe(0)
     expect(state.splashHits).toBe(0)
   })
@@ -161,7 +161,7 @@ describe('null brain — machine gun scenario', () => {
     // We can't assert exact health values (randomized at init), so we
     // assert the observable no-damage markers: every target alive,
     // zero bullets spawned, zero hits registered.
-    for (const target of state.targets) {
+    for (const target of state.enemies) {
       expect(target.alive).toBe(true)
     }
     expect(state.projectiles).toHaveLength(0)
@@ -210,8 +210,8 @@ describe('null brain — tank scenario', () => {
 
   it('leaves every target alive', () => {
     const state = runNullBrainSim(config) as TankSimState
-    const aliveCount = state.targets.filter((t) => t.alive).length
-    expect(aliveCount).toBe(state.targets.length)
+    const aliveCount = state.enemies.filter((t) => t.alive).length
+    expect(aliveCount).toBe(state.enemies.length)
     expect(state.kills).toBe(0)
     expect(state.shellsHit).toBe(0)
   })

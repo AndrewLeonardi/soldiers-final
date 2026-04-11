@@ -1,6 +1,9 @@
 /**
  * Simulation runner — dispatches to weapon-specific scenarios.
  * Runs the core loop: get inputs → NN forward → apply outputs → tick physics.
+ *
+ * Sprint 7: All scenarios now use the universal sim pattern with
+ * adversarial enemies, movement, and multi-objective fitness.
  */
 
 import { NeuralNet } from './neuralNet'

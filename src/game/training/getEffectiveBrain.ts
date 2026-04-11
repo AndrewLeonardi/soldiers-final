@@ -30,27 +30,23 @@
  * consumer inherits the new behavior. No scattered `?? zeros` reads.
  */
 import type { SoldierProfile, WeaponType } from '@config/types'
-import { NULL_BRAIN_WEIGHTS, NULL_BRAIN_WEIGHT_COUNT } from './nullBrain'
+import { NULL_BRAIN_WEIGHTS } from './nullBrain'
+import { getWeightCount } from './weaponShapes'
 
 /**
  * Return the brain weights that should drive this soldier when they're
- * using this weapon. Always returns a fresh `number[]` — callers own
- * the returned array and can mutate it without affecting the roster or
- * the shared null-brain constant.
+ * using this weapon. Always returns a fresh `number[]`.
  *
- * If the soldier has a trained brain for the weapon whose length
- * doesn't match `NULL_BRAIN_WEIGHT_COUNT`, we fall back to the null
- * brain. This guards against corrupted persisted data (e.g. a
- * truncated array from a stale schema version) producing `undefined`
- * reads inside the forward pass — a classic "silent NaN" vector that
- * we'd rather catch at the read site.
+ * Validates against the per-weapon weight count (via getWeightCount)
+ * so that topology changes correctly invalidate stale brains.
  */
 export function getEffectiveBrain(
   soldier: SoldierProfile,
   weapon: WeaponType,
 ): number[] {
+  const expectedCount = getWeightCount(weapon)
   const trained = soldier.trainedBrains?.[weapon]
-  if (trained && trained.length === NULL_BRAIN_WEIGHT_COUNT) {
+  if (trained && trained.length === expectedCount) {
     return trained.slice()
   }
   return NULL_BRAIN_WEIGHTS.slice()
@@ -58,20 +54,12 @@ export function getEffectiveBrain(
 
 /**
  * Convenience: is this soldier a statue for this weapon?
- *
- * Returns true iff `getEffectiveBrain(soldier, weapon)` would return
- * the null brain (either because the soldier has no trained brain for
- * the weapon, or because the stored brain is corrupted). Useful for UI
- * affordances ("this soldier is untrained — train him first") and for
- * analytics breakdowns of "how many of my soldiers are still statues."
- *
- * Cheap: reads the roster entry directly without allocating a weight
- * array.
  */
 export function isUntrained(
   soldier: SoldierProfile,
   weapon: WeaponType,
 ): boolean {
+  const expectedCount = getWeightCount(weapon)
   const trained = soldier.trainedBrains?.[weapon]
-  return !trained || trained.length !== NULL_BRAIN_WEIGHT_COUNT
+  return !trained || trained.length !== expectedCount
 }

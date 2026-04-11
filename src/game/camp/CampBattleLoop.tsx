@@ -331,7 +331,7 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
     }
 
     // ──────────────────────────────────────────────
-    // 2. PLAYER AI — NERO hybrid
+    // 2. PLAYER AI — NERO hybrid + universal movement
     // ──────────────────────────────────────────────
     for (const player of players) {
       if (player.status === 'dead') continue
@@ -349,92 +349,195 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
         continue // No AI while staggered
       }
 
-      // Find nearest living enemy
+      // Find nearest + weakest living enemy (for target selection)
       let nearestEnemy: BattleUnit | null = null
       let nearestDist = Infinity
+      let weakestEnemy: BattleUnit | null = null
+      let lowestHealth = Infinity
+      const livingEnemies: BattleUnit[] = []
       _tA.set(player.position[0], 0, player.position[2])
 
       for (const enemy of enemies) {
         if (enemy.status === 'dead') continue
         if (enemy.position[1] > 0.5) continue  // still falling
+        livingEnemies.push(enemy)
         _tB.set(enemy.position[0], 0, enemy.position[2])
         const dist = _tA.distanceTo(_tB)
         if (dist < nearestDist) {
           nearestDist = dist
           nearestEnemy = enemy
         }
+        if (enemy.health < lowestHealth) {
+          lowestHealth = enemy.health
+          weakestEnemy = enemy
+        }
       }
-
-      if (!nearestEnemy || nearestDist > player.range) {
-        player.status = 'idle'
-        continue
-      }
-
-      // Face toward target
-      const dx = nearestEnemy.position[0] - player.position[0]
-      const dz = nearestEnemy.position[2] - player.position[2]
-      const angle = Math.atan2(dx, dz)
-      player.facingAngle = angle
-      player.rotation = angle
 
       // Cooldown check
       const cooldownMet = time - player.lastFireTime >= player.fireRate
       const cooldownRatio = Math.min(1, (time - player.lastFireTime) / player.fireRate)
 
-      // NN decision (NERO hybrid)
+      // NN decision (NERO hybrid + universal)
       let aimCorrection = 0
       let elevCorrection = 0
       let shouldFire = cooldownMet
+      let selectedTarget: BattleUnit | null = nearestEnemy
 
       if (player.isTrained && brainCacheRef.current.has(player.id)) {
-        // TRAINED: neural network forward pass
+        // TRAINED: neural network forward pass with 10-input universal vector
         const nn = brainCacheRef.current.get(player.id)!
-        const elevation = idealElevation(nearestDist)
-        const livingEnemies = enemies.filter(e => e.status !== 'dead').length
 
-        const nnInputs = [
-          dx / 10,
-          dz / 5,
-          Math.min(1, nearestDist / 10),
-          elevation / 0.8,
-          1.0 - cooldownRatio,
-          livingEnemies / 5,
-        ]
+        // Build universal observation vector
+        const threatDx = nearestEnemy ? nearestEnemy.position[0] - player.position[0] : 0
+        const threatDz = nearestEnemy ? nearestEnemy.position[2] - player.position[2] : 0
+        const threatBearing = nearestEnemy ? Math.atan2(threatDx, threatDz) : 0
+        const threatDist = nearestDist === Infinity ? 1 : Math.min(1, nearestDist / 12)
 
-        // Rifle gets extra accuracy input
-        if (player.weapon === 'rifle') {
-          nnInputs.push(0.5) // placeholder accuracy
+        // Elevation hint for ballistic weapons
+        let elevHint = 0
+        if (nearestEnemy && (player.weapon === 'rocketLauncher' || player.weapon === 'grenade' || player.weapon === 'tank')) {
+          elevHint = idealElevation(nearestDist) / 0.8
         }
+
+        // Threat density: enemies in forward 60° cone
+        let threatDensity = 0
+        for (const e of livingEnemies) {
+          const edx = e.position[0] - player.position[0]
+          const edz = e.position[2] - player.position[2]
+          const eAngle = Math.atan2(edx, edz)
+          let angleDiff = eAngle - threatBearing
+          while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI
+          while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI
+          if (Math.abs(angleDiff) < Math.PI / 3) threatDensity++
+        }
+
+        // Nearest friendly distance
+        let nearestFriendlyDist = 8
+        for (const ally of players) {
+          if (ally === player || ally.status === 'dead') continue
+          const fdx = ally.position[0] - player.position[0]
+          const fdz = ally.position[2] - player.position[2]
+          const fd = Math.sqrt(fdx * fdx + fdz * fdz)
+          if (fd < nearestFriendlyDist) nearestFriendlyDist = fd
+        }
+
+        const nnInputs: number[] = [
+          threatBearing / Math.PI,                   // [0] threat bearing
+          threatDist,                                // [1] threat distance
+          elevHint,                                  // [2] elevation hint
+          1.0 - cooldownRatio,                       // [3] cooldown ratio
+          livingEnemies.length / 6,                  // [4] enemy count
+          player.health / player.maxHealth,          // [5] own health
+          nearestFriendlyDist / 8,                   // [6] friendly dist
+          Math.min(1, threatDensity / 4),            // [7] threat density
+          player.velocity[0] / 2.0,                  // [8] velocity X
+          player.velocity[2] / 2.0,                  // [9] velocity Z
+        ]
 
         const outputs = nn.forward(nnInputs)
 
-        // Weapon-specific multipliers
+        // ── MOVEMENT from outputs[0-1] ──
+        if (nearestEnemy) {
+          const moveForward = outputs[0] ?? 0
+          const moveLateral = outputs[1] ?? 0
+          const moveAngle = threatBearing + moveLateral * (Math.PI / 3)
+          const maxSpeed = player.weapon === 'machineGun' ? 1.5 : 2.0
+          const speed = Math.abs(moveForward) * maxSpeed
+          const sign = moveForward >= 0 ? 1 : -1
+
+          const newVx = Math.sin(moveAngle) * speed * sign
+          const newVz = Math.cos(moveAngle) * speed * sign
+
+          let newX = player.position[0] + newVx * dt
+          let newZ = player.position[2] + newVz * dt
+
+          // Clamp to table bounds
+          newX = Math.max(-BASE_HALF_W + 0.5, Math.min(BASE_HALF_W - 0.5, newX))
+          newZ = Math.max(-BASE_HALF_D + 0.5, Math.min(BASE_HALF_D - 0.5, newZ))
+
+          // Wall collision check
+          if (!isInsideWall(newX, newZ)) {
+            player.position[0] = newX
+            player.position[2] = newZ
+          }
+
+          player.velocity[0] = newVx
+          player.velocity[2] = newVz
+
+          if (speed > 0.1) {
+            player.status = 'walking'
+          }
+        }
+
+        // ── TARGET SELECTION from outputs[5] (aggression) ──
+        const aggression = ((outputs[5] ?? 0) + 1) / 2  // remap [-1,1] to [0,1]
+        if (aggression > 0.7 && weakestEnemy) {
+          selectedTarget = weakestEnemy
+        } else if (aggression < 0.3) {
+          selectedTarget = nearestEnemy
+        } else {
+          selectedTarget = Math.random() < aggression ? weakestEnemy : nearestEnemy
+        }
+
+        // Aim + fire from outputs[2-4]
         switch (player.weapon) {
           case 'rocketLauncher':
-            aimCorrection = (outputs[0] ?? 0) * 0.2
-            elevCorrection = (outputs[1] ?? 0) * 0.15
+            aimCorrection = (outputs[2] ?? 0) * 0.2
+            elevCorrection = (outputs[4] ?? 0) * 0.15
             break
           case 'grenade':
-            aimCorrection = (outputs[0] ?? 0) * 0.25
-            elevCorrection = (outputs[1] ?? 0) * 0.2
+            aimCorrection = (outputs[2] ?? 0) * 0.25
+            elevCorrection = (outputs[4] ?? 0) * 0.2
             break
           case 'machineGun':
-            aimCorrection = (outputs[0] ?? 0) * 0.3
+            aimCorrection = (outputs[2] ?? 0) * 0.3
             elevCorrection = 0
             break
           default: // rifle
-            aimCorrection = (outputs[0] ?? 0) * 0.15
-            elevCorrection = (outputs[1] ?? 0) * 0.1
+            aimCorrection = (outputs[2] ?? 0) * 0.15
+            elevCorrection = (outputs[4] ?? 0) * 0.1
             break
         }
 
-        shouldFire = cooldownMet && (outputs[2] ?? 0) > 0
+        shouldFire = cooldownMet && (outputs[3] ?? 0) > 0
       } else {
-        // UNTRAINED: chaos mode — ±23° aim scatter, random fire hesitation
+        // UNTRAINED: random walk + chaos mode
+        // Random stumbling movement (visible "before training" contrast)
+        const untrainedSpeed = 0.3 + Math.random() * 0.2
+        const wanderAngle = player.facingAngle + (Math.random() - 0.5) * 0.5
+        let newX = player.position[0] + Math.sin(wanderAngle) * untrainedSpeed * dt
+        let newZ = player.position[2] + Math.cos(wanderAngle) * untrainedSpeed * dt
+
+        // Clamp to table bounds
+        newX = Math.max(-BASE_HALF_W + 0.5, Math.min(BASE_HALF_W - 0.5, newX))
+        newZ = Math.max(-BASE_HALF_D + 0.5, Math.min(BASE_HALF_D - 0.5, newZ))
+
+        if (!isInsideWall(newX, newZ)) {
+          player.position[0] = newX
+          player.position[2] = newZ
+        }
+
+        player.velocity[0] = Math.sin(wanderAngle) * untrainedSpeed
+        player.velocity[2] = Math.cos(wanderAngle) * untrainedSpeed
+
+        // Chaos aim + fire
         aimCorrection = (Math.random() - 0.5) * 0.8
         elevCorrection = (Math.random() - 0.5) * 0.4
         shouldFire = cooldownMet && Math.random() > 0.3
       }
+
+      if (!selectedTarget || nearestDist > player.range) {
+        player.status = player.status === 'walking' ? 'walking' : 'idle'
+        continue
+      }
+
+      // Face toward selected target
+      const dx = selectedTarget.position[0] - player.position[0]
+      const dz = selectedTarget.position[2] - player.position[2]
+      const angle = Math.atan2(dx, dz)
+      player.facingAngle = angle
+      player.rotation = angle
+      const targetDist = Math.sqrt(dx * dx + dz * dz)
 
       // FIRE!
       if (shouldFire) {
@@ -452,7 +555,7 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
 
         switch (player.weapon) {
           case 'rocketLauncher': {
-            const elev = Math.max(0.05, idealElevation(nearestDist) + elevCorrection)
+            const elev = Math.max(0.05, idealElevation(targetDist) + elevCorrection)
             const speed = ROCKET_SPEED
             vx = Math.sin(finalAngle) * Math.cos(elev) * speed
             vy = Math.sin(elev) * speed
@@ -481,10 +584,10 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
           }
           default: { // rifle
             const speed = BULLET_SPEED
-            const targetY = nearestEnemy.position[1] + 0.8
-            const dirX = nearestEnemy.position[0] - muzzleX
+            const targetY = selectedTarget.position[1] + 0.8
+            const dirX = selectedTarget.position[0] - muzzleX
             const dirY = targetY - muzzleY
-            const dirZ = nearestEnemy.position[2] - muzzleZ
+            const dirZ = selectedTarget.position[2] - muzzleZ
             const len = Math.sqrt(dirX * dirX + dirY * dirY + dirZ * dirZ)
             vx = (dirX / len) * speed + aimCorrection * 3
             vy = (dirY / len) * speed

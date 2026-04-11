@@ -26,6 +26,8 @@ export interface SoldierRecord {
   trained: boolean
   /** Per-weapon trained brain weights — key is weapon type */
   trainedBrains?: Record<string, number[]>
+  /** Pre-Sprint 7 brains (topology incompatible) — triggers "re-train recommended" UI */
+  legacyBrains?: Record<string, number[]>
   /** Best fitness score achieved during training (across any weapon) */
   fitnessScore?: number
   /** Total generations trained (across all weapons) */
@@ -272,7 +274,7 @@ export const useCampStore = create<CampState>()(
     }),
     {
       name: 'toy-soldiers-camp',
-      version: 5,
+      version: 6,
       migrate: (persistedState: any, version: number) => {
         if (version < 2) {
           // v1 → v2: network shape changed from [6,12,4] to [7,8,4].
@@ -321,6 +323,19 @@ export const useCampStore = create<CampState>()(
             state.soldiers = state.soldiers.map((s: any) => ({
               ...s,
               injuredUntil: s.injuredUntil ?? undefined,
+            }))
+          }
+        }
+        if (version < 6) {
+          // v5 → v6: Sprint 7 topology change [old] → [10,12,6].
+          // Wipe trainedBrains (incompatible weight count), archive as legacyBrains.
+          // Keep trained:true so player knows soldier WAS trained.
+          const state = persistedState as any
+          if (state.soldiers) {
+            state.soldiers = state.soldiers.map((s: any) => ({
+              ...s,
+              legacyBrains: s.trainedBrains ?? undefined,
+              trainedBrains: undefined,
             }))
           }
         }

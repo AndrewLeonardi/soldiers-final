@@ -44,8 +44,9 @@ export function TrainingHUD() {
   const popSize = 30
 
   // Live hit counter from sim state
-  const totalTargets = simState?.targets?.length ?? 0
-  const aliveTargets = simState?.targets?.filter((t: any) => t.alive).length ?? 0
+  const entities = simState ? ('enemies' in simState ? (simState as any).enemies : (simState as any).targets) : null
+  const totalTargets = entities?.length ?? 0
+  const aliveTargets = entities?.filter((t: any) => t.alive).length ?? 0
   const hitsThisAttempt = totalTargets - aliveTargets
 
   // Check for milestone celebrations

@@ -1,12 +1,13 @@
 /**
  * weaponShapes — per-weapon neural network topology map.
  *
- * Sprint 3, Phase 0a. Each weapon type has its own NN input shape
- * because different scenarios feed different sensor vectors:
- *   - Rifle: 7 inputs (target_x, target_z, distance, angle, cooldown, alive_count, accuracy)
- *   - All others: 6 inputs (target_x, target_z, distance, angle, cooldown, alive_count)
+ * Sprint 7. Universal topology: all weapons share [10, 12, 6].
+ *   - 10 inputs: universal observation vector (threat bearing, distance,
+ *     elevation, cooldown, enemy count, health, friendly dist, density, velocity)
+ *   - 12 hidden: expanded from 8 to handle richer input/output space
+ *   - 6 outputs: move_forward, move_lateral, aim_correction, fire_gate,
+ *     elevation_adj, aggression (target priority)
  *
- * Hidden and output layers are consistent across all weapons (8, 4).
  * This file is the single source of truth — campTrainingStore,
  * getEffectiveBrain, and the training spectacle all read from here.
  */
@@ -20,11 +21,11 @@ export interface NetworkShape {
 }
 
 export const WEAPON_NETWORK_SHAPES: Record<WeaponType, NetworkShape> = {
-  rifle:          { input: 7, hidden: 8, output: 4 },
-  rocketLauncher: { input: 6, hidden: 8, output: 4 },
-  grenade:        { input: 6, hidden: 8, output: 4 },
-  machineGun:     { input: 6, hidden: 8, output: 4 },
-  tank:           { input: 6, hidden: 8, output: 4 },
+  rifle:          { input: 10, hidden: 12, output: 6 },
+  rocketLauncher: { input: 10, hidden: 12, output: 6 },
+  grenade:        { input: 10, hidden: 12, output: 6 },
+  machineGun:     { input: 10, hidden: 12, output: 6 },
+  tank:           { input: 10, hidden: 12, output: 6 },
 }
 
 /** Total weight count for a given weapon's network topology. */

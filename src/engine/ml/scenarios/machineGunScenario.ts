@@ -1,41 +1,44 @@
 /**
- * Machine Gun Training Scenario
+ * Machine Gun Training Scenario — Sprint 7 Universal Sim
  *
- * Stationary suppression weapon. Fast fire rate, low per-hit damage.
- * NN learns: sweep direction, burst timing, target prioritization.
- * Fitness rewards sustained hits over time, not single kills.
+ * Fast fire rate, low per-hit damage. Enemies move AND shoot back.
+ * NN learns: movement, sweep direction, burst timing, target priority.
+ * Fitness rewards sustained hits over time.
  */
 
-export interface MGTarget {
-  x: number
-  z: number
-  health: number
-  maxHealth: number
-  alive: boolean
-  speed: number
-  direction: number
-}
-
-export interface Bullet {
-  x: number
-  z: number
-  vx: number
-  vz: number
-  age: number
-}
+import {
+  type SimEnemy,
+  type SimProjectile,
+  type UniversalSimConfig,
+  type FitnessAccumulators,
+  createSimEnemies,
+  getUniversalInputs,
+  applyInfantryMovement,
+  selectTarget,
+  tickEnemyAI,
+  isInEngagementRange,
+  scoreUniversalFitness,
+} from './universalSim'
 
 export interface MGSimState {
   type: 'machineGun'
   soldierX: number
   soldierZ: number
   soldierRotation: number
-  targets: MGTarget[]
-  projectiles: Bullet[]
+  velocityX: number
+  velocityZ: number
+  soldierHealth: number
+  soldierMaxHealth: number
+  enemies: SimEnemy[]
+  projectiles: SimProjectile[]
   cooldown: number
   elapsed: number
   shotsFired: number
   totalHits: number
   kills: number
+  totalDamageDealt: number
+  distanceTraveled: number
+  timeInEngagementRange: number
   justFired: boolean
 }
 
@@ -44,7 +47,16 @@ const COOLDOWN_TIME = 0.3
 const BULLET_HIT_RADIUS = 0.25
 const MG_DAMAGE = 15
 
-/** Optional bounds from world config */
+const MG_CONFIG: UniversalSimConfig = {
+  maxRange: 12.0,
+  maxSpeed: 1.5, // MG soldiers move slower (heavy weapon)
+  arenaHalfW: 5,
+  arenaHalfD: 5,
+  simDuration: 8,
+  useElevation: false,
+  gravity: 0,
+}
+
 export interface TrainingBounds {
   minX: number; maxX: number
   minZ: number; maxZ: number
@@ -55,17 +67,10 @@ const DEFAULT_BOUNDS: TrainingBounds = { minX: 4, maxX: 10, minZ: -3, maxZ: 3 }
 export function initMGSim(bounds?: TrainingBounds): MGSimState {
   const b = bounds ?? DEFAULT_BOUNDS
   const count = 3 + Math.floor(Math.random() * 3)
-  const targets: MGTarget[] = []
-  for (let i = 0; i < count; i++) {
-    targets.push({
-      x: b.minX + Math.random() * (b.maxX - b.minX),
-      z: b.minZ + Math.random() * (b.maxZ - b.minZ),
-      health: 40 + Math.floor(Math.random() * 20),
-      maxHealth: 60,
-      alive: true,
-      speed: 0.5 + Math.random() * 1.0,
-      direction: Math.random() < 0.5 ? 1 : -1,
-    })
+  const enemies = createSimEnemies(count, b.minX, b.maxX, b.minZ, b.maxZ, 50)
+  // MG enemies move faster (strafing targets)
+  for (const e of enemies) {
+    e.speed = 0.5 + Math.random() * 1.0
   }
 
   return {
@@ -73,44 +78,32 @@ export function initMGSim(bounds?: TrainingBounds): MGSimState {
     soldierX: 0,
     soldierZ: 0,
     soldierRotation: 0,
-    targets,
+    velocityX: 0,
+    velocityZ: 0,
+    soldierHealth: 100,
+    soldierMaxHealth: 100,
+    enemies,
     projectiles: [],
     cooldown: 0,
     elapsed: 0,
     shotsFired: 0,
     totalHits: 0,
     kills: 0,
+    totalDamageDealt: 0,
+    distanceTraveled: 0,
+    timeInEngagementRange: 0,
     justFired: false,
   }
 }
 
 export function getMGInputs(state: MGSimState): number[] {
-  const alive = state.targets.filter(t => t.alive)
-  const first = alive[0]
-  if (!first) return [0, 0, 0, 0, state.cooldown / COOLDOWN_TIME, 0]
-
-  // Nearest alive target
-  let nearest = first
-  let nearestDist = Infinity
-  for (const t of alive) {
-    const dx = t.x - state.soldierX
-    const dz = t.z - state.soldierZ
-    const d = Math.sqrt(dx * dx + dz * dz)
-    if (d < nearestDist) { nearestDist = d; nearest = t }
-  }
-
-  const dx = nearest.x - state.soldierX
-  const dz = nearest.z - state.soldierZ
-  const angle = Math.atan2(dx, dz)
-
-  return [
-    nearest.x / 10,
-    nearest.z / 5,
-    nearestDist / 10,
-    angle / Math.PI,                        // relative angle
-    state.cooldown / COOLDOWN_TIME,
-    alive.length / 5,
-  ]
+  const cooldownRatio = state.cooldown / COOLDOWN_TIME
+  return getUniversalInputs(
+    state.soldierX, state.soldierZ,
+    state.soldierHealth, state.soldierMaxHealth,
+    state.velocityX, state.velocityZ,
+    state.enemies, cooldownRatio, MG_CONFIG,
+  )
 }
 
 export function applyMGOutputs(state: MGSimState, outputs: number[], dt: number): void {
@@ -120,45 +113,46 @@ export function applyMGOutputs(state: MGSimState, outputs: number[], dt: number)
     state.cooldown = Math.max(0, state.cooldown - dt)
   }
 
-  // Move targets (they strafe back and forth)
-  for (const t of state.targets) {
-    if (!t.alive) continue
-    t.z += t.speed * t.direction * dt
-    if (Math.abs(t.z) > 4) t.direction *= -1
+  // Movement (slower for MG)
+  const move = applyInfantryMovement(
+    state.soldierX, state.soldierZ,
+    state.velocityX, state.velocityZ,
+    outputs, state.enemies, dt, MG_CONFIG,
+  )
+  state.soldierX = move.x
+  state.soldierZ = move.z
+  state.velocityX = move.vx
+  state.velocityZ = move.vz
+  state.distanceTraveled += move.distMoved
+
+  if (isInEngagementRange(state.soldierX, state.soldierZ, state.enemies, MG_CONFIG.maxRange)) {
+    state.timeInEngagementRange += dt
   }
 
-  const alive = state.targets.filter(t => t.alive)
-  const firstAlive = alive[0]
-  if (!firstAlive) return
+  // Target selection
+  const target = selectTarget(state.soldierX, state.soldierZ, state.enemies, outputs[5] ?? 0)
+  if (!target) return
 
-  // Find nearest
-  let nearest = firstAlive
-  let nearestDist = Infinity
-  for (const t of alive) {
-    const dx = t.x - state.soldierX
-    const dz = t.z - state.soldierZ
-    const d = Math.sqrt(dx * dx + dz * dz)
-    if (d < nearestDist) { nearestDist = d; nearest = t }
-  }
-
-  const dx = nearest.x - state.soldierX
-  const dz = nearest.z - state.soldierZ
+  const dx = target.x - state.soldierX
+  const dz = target.z - state.soldierZ
   const baseAngle = Math.atan2(dx, dz)
 
-  // NN controls: sweep offset + fire trigger
-  const sweepOffset = (outputs[0] ?? 0) * 0.3  // ±0.3 rad sweep
+  // MG sweep offset from outputs[2]
+  const sweepOffset = (outputs[2] ?? 0) * 0.3
   const finalAngle = baseAngle + sweepOffset
-
   state.soldierRotation = finalAngle
 
-  // Fire: output[2] > 0 and ready
-  if ((outputs[2] ?? 0) > 0 && state.cooldown <= 0) {
+  // Fire: outputs[3] > 0
+  if ((outputs[3] ?? 0) > 0 && state.cooldown <= 0) {
     state.projectiles.push({
       x: state.soldierX,
+      y: 0.5,
       z: state.soldierZ,
       vx: Math.sin(finalAngle) * BULLET_SPEED,
+      vy: 0,
       vz: Math.cos(finalAngle) * BULLET_SPEED,
       age: 0,
+      fromEnemy: false,
     })
     state.cooldown = COOLDOWN_TIME
     state.shotsFired++
@@ -167,8 +161,13 @@ export function applyMGOutputs(state: MGSimState, outputs: number[], dt: number)
 }
 
 export function tickMGProjectiles(state: MGSimState, dt: number): void {
-  const toRemove: number[] = []
+  // Enemy AI return fire
+  const healthRef = { value: state.soldierHealth }
+  tickEnemyAI(state.enemies, state.soldierX, state.soldierZ, healthRef, dt)
+  state.soldierHealth = Math.max(0, healthRef.value)
 
+  // Bullet physics
+  const toRemove: number[] = []
   for (let i = 0; i < state.projectiles.length; i++) {
     const p = state.projectiles[i]
     if (!p) continue
@@ -176,18 +175,18 @@ export function tickMGProjectiles(state: MGSimState, dt: number): void {
     p.z += p.vz * dt
     p.age += dt
 
-    // Check hits on targets
     let hit = false
-    for (const t of state.targets) {
-      if (!t.alive) continue
-      const tdx = t.x - p.x
-      const tdz = t.z - p.z
+    for (const e of state.enemies) {
+      if (!e.alive) continue
+      const tdx = e.x - p.x
+      const tdz = e.z - p.z
       const tdist = Math.sqrt(tdx * tdx + tdz * tdz)
       if (tdist < BULLET_HIT_RADIUS) {
-        t.health -= MG_DAMAGE
+        e.health -= MG_DAMAGE
+        state.totalDamageDealt += MG_DAMAGE
         state.totalHits++
-        if (t.health <= 0) {
-          t.alive = false
+        if (e.health <= 0) {
+          e.alive = false
           state.kills++
         }
         hit = true
@@ -208,24 +207,23 @@ export function tickMGProjectiles(state: MGSimState, dt: number): void {
 }
 
 export function scoreMGFitness(state: MGSimState): number {
-  const total = state.targets.length
-
-  let fitness = state.kills * 200
-
-  // Sustained hits bonus (MG is about volume of fire)
-  fitness += state.totalHits * 15
-
-  // Accuracy matters — not just spraying
-  if (state.shotsFired > 0) {
-    const accuracy = state.totalHits / state.shotsFired
-    fitness += accuracy * 80
+  const acc: FitnessAccumulators = {
+    kills: state.kills,
+    totalDamageDealt: state.totalDamageDealt,
+    shotsFired: state.shotsFired,
+    hits: state.totalHits,
+    soldierHealth: state.soldierHealth,
+    soldierMaxHealth: state.soldierMaxHealth,
+    elapsed: state.elapsed,
+    simDuration: MG_CONFIG.simDuration,
+    timeInEngagementRange: state.timeInEngagementRange,
+    distanceTraveled: state.distanceTraveled,
   }
 
-  // Kill speed bonus
-  if (state.kills > 0 && state.elapsed > 0) {
-    fitness += Math.max(0, (1 - state.elapsed / 5)) * 50
-  }
+  let fitness = scoreUniversalFitness(acc)
 
-  const maxExpected = total * 200 + total * 15 * 4 + 130
-  return Math.max(0, fitness / maxExpected)
+  // MG-specific: sustained fire bonus
+  fitness += state.totalHits * 0.01
+
+  return fitness
 }

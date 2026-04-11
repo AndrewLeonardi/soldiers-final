@@ -83,7 +83,10 @@ export function TargetCan({ slotId }: TargetCanProps) {
     let tz = DEFAULT_TARGET_POS[2]
     let alive = true
     if (running && live) {
-      const firstTarget = live.simState.targets[0]
+      const entities = 'enemies' in live.simState
+        ? (live.simState as any).enemies
+        : (live.simState as any).targets
+      const firstTarget = entities?.[0]
       if (firstTarget) {
         // Translate scenario-space coordinates (soldier at origin)
         // into TG-local coordinates (trainee at TRAINEE_LOCAL_POS).
