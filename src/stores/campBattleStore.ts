@@ -41,6 +41,11 @@ export interface BattleUnit {
 
   // Enemy-only
   enemyType?: 'infantry' | 'jeep' | 'tank'
+
+  // Combat movement state (enemy AI)
+  _combatTimer?: number
+  _strafeDir?: number
+  _advanceRetreat?: number
 }
 
 export interface BattleProjectile {

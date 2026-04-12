@@ -6,13 +6,15 @@
  * Tappable — opens medical sheet.
  * Shows "+HEAL" floating label when soldiers are injured.
  */
-import { useRef, useCallback, useState } from 'react'
+import { useRef, useCallback, useState, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { MEDICAL_FOOTPRINT } from './campConstants'
 import { useCampStore } from '@stores/campStore'
 import { useSceneStore } from '@stores/sceneStore'
+import { createFlexSoldier } from '@three/models/flexSoldier'
+import { TOY } from '@three/models/materials'
 
 const { centerX, centerZ, halfW, halfD } = MEDICAL_FOOTPRINT
 
@@ -26,6 +28,25 @@ const COT_COLOR = 0xe8e0d0
 const BLANKET_COLOR = 0x4a6a4a
 
 const DRAG_THRESHOLD = 6
+
+/** A toy soldier model lying on its back — used on medical cots */
+function LyingSoldier() {
+  const soldierObj = useMemo(() => {
+    const { group, parts } = createFlexSoldier(TOY.armyGreen)
+    // Hide the circular base stand — soldiers on cots don't need it
+    parts.base.visible = false
+    return group
+  }, [])
+
+  return (
+    <group position={[0, 0.06, 0]}>
+      {/* Rotate soldier to lie on its back along Z axis, scaled to fit cot */}
+      <group rotation={[-Math.PI / 2, 0, 0]} scale={0.75} position={[0, 0, 0]}>
+        <primitive object={soldierObj} />
+      </group>
+    </group>
+  )
+}
 
 export function MedicalTentBuilding() {
   const soldiers = useCampStore((s) => s.soldiers)
@@ -189,39 +210,28 @@ export function MedicalTentBuilding() {
         </mesh>
       </group>
 
-      {/* Medical cots (3 beds) */}
+      {/* Medical cots (3 beds) — running along Z so soldiers lie head-to-toe */}
       {[
-        { x: -0.8, z: 0.2 },
-        { x: 0,    z: 0.2 },
-        { x: 0.8,  z: 0.2 },
+        { x: -1.1, z: 0 },
+        { x: 0,    z: 0 },
+        { x: 1.1,  z: 0 },
       ].map((bed, i) => (
         <group key={`cot-${i}`} position={[bed.x, 0.12, bed.z]}>
-          {/* Cot frame */}
+          {/* Cot frame — long along Z */}
           <mesh castShadow>
-            <boxGeometry args={[0.55, 0.06, 0.3]} />
+            <boxGeometry args={[0.6, 0.06, 1.4]} />
             <meshStandardMaterial color={COT_COLOR} roughness={0.8} />
           </mesh>
           {/* Cot legs */}
-          {[[-0.22, -0.05, -0.1], [0.22, -0.05, -0.1], [-0.22, -0.05, 0.1], [0.22, -0.05, 0.1]].map((leg, j) => (
+          {[[-0.25, -0.05, -0.6], [0.25, -0.05, -0.6], [-0.25, -0.05, 0.6], [0.25, -0.05, 0.6]].map((leg, j) => (
             <mesh key={`leg-${j}`} position={[leg[0]!, leg[1]!, leg[2]!]}>
-              <cylinderGeometry args={[0.015, 0.015, 0.06, 4]} />
+              <cylinderGeometry args={[0.02, 0.02, 0.06, 4]} />
               <meshStandardMaterial color={WOOD_DARK} roughness={0.7} />
             </mesh>
           ))}
-          {/* Injured soldier body (capsule on bed) — only if we have an injured soldier for this slot */}
+          {/* Injured soldier lying on bed — full-size toy soldier on its back */}
           {i < injuredSoldiers.length && (
-            <group position={[0, 0.08, 0]}>
-              {/* Body */}
-              <mesh castShadow>
-                <capsuleGeometry args={[0.04, 0.28, 4, 8]} />
-                <meshStandardMaterial color={BLANKET_COLOR} roughness={0.9} />
-              </mesh>
-              {/* Head */}
-              <mesh position={[-0.2, 0.02, 0]} castShadow>
-                <sphereGeometry args={[0.05, 8, 8]} />
-                <meshStandardMaterial color={0xd4a574} roughness={0.8} />
-              </mesh>
-            </group>
+            <LyingSoldier />
           )}
         </group>
       ))}

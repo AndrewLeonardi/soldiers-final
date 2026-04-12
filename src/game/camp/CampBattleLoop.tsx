@@ -501,10 +501,25 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
 
         shouldFire = cooldownMet && (outputs[3] ?? 0) > 0
       } else {
-        // UNTRAINED: random walk + chaos mode
-        // Random stumbling movement (visible "before training" contrast)
-        const untrainedSpeed = 0.3 + Math.random() * 0.2
-        const wanderAngle = player.facingAngle + (Math.random() - 0.5) * 0.5
+        // UNTRAINED: erratic stumbling + chaos aim
+        // They bumble around visibly — fast but directionless, changing
+        // heading dramatically every few frames. Clearly "untrained."
+        const untrainedSpeed = 1.0 + Math.random() * 0.6
+
+        // Erratic heading: big random turns, sometimes toward enemy, sometimes away
+        if (Math.random() < 0.15) {
+          // 15% chance per frame of a big direction change
+          player.facingAngle += (Math.random() - 0.5) * 2.5
+        } else if (nearestEnemy && Math.random() < 0.3) {
+          // 30% chance of drifting vaguely toward nearest enemy (clumsy advance)
+          const toEnemyAngle = Math.atan2(
+            nearestEnemy.position[0] - player.position[0],
+            nearestEnemy.position[2] - player.position[2],
+          )
+          player.facingAngle += (toEnemyAngle - player.facingAngle) * 0.1
+        }
+
+        const wanderAngle = player.facingAngle + (Math.random() - 0.5) * 0.8
         let newX = player.position[0] + Math.sin(wanderAngle) * untrainedSpeed * dt
         let newZ = player.position[2] + Math.cos(wanderAngle) * untrainedSpeed * dt
 
@@ -515,15 +530,16 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
         if (!isInsideWall(newX, newZ)) {
           player.position[0] = newX
           player.position[2] = newZ
+          player.status = 'walking'
         }
 
         player.velocity[0] = Math.sin(wanderAngle) * untrainedSpeed
         player.velocity[2] = Math.cos(wanderAngle) * untrainedSpeed
 
-        // Chaos aim + fire
-        aimCorrection = (Math.random() - 0.5) * 0.8
-        elevCorrection = (Math.random() - 0.5) * 0.4
-        shouldFire = cooldownMet && Math.random() > 0.3
+        // Chaos aim + fire — wild scatter, frequent hesitation
+        aimCorrection = (Math.random() - 0.5) * 1.0
+        elevCorrection = (Math.random() - 0.5) * 0.5
+        shouldFire = cooldownMet && Math.random() > 0.4
       }
 
       if (!selectedTarget || nearestDist > player.range) {
@@ -719,8 +735,62 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
           })
         }
 
-        // Stop moving while firing
-        enemy.velocity = [0, 0, 0]
+        // Combat movement — strafe and reposition while fighting
+        // Enemies don't just stand still; they move laterally, advance, and retreat
+        if (!enemy._combatTimer) enemy._combatTimer = Math.random() * 2
+        enemy._combatTimer += dt
+
+        // Every 1-2 seconds, pick a new movement impulse
+        if (!enemy._strafeDir) enemy._strafeDir = Math.random() > 0.5 ? 1 : -1
+        if (enemy._combatTimer > 1.2 + Math.random() * 0.8) {
+          enemy._combatTimer = 0
+          // 40% strafe flip, 20% advance, 20% retreat, 20% hold
+          const roll = Math.random()
+          if (roll < 0.4) {
+            enemy._strafeDir = -enemy._strafeDir
+          } else if (roll < 0.6) {
+            enemy._strafeDir = 0  // advance
+            enemy._advanceRetreat = 1
+          } else if (roll < 0.8) {
+            enemy._strafeDir = 0  // retreat
+            enemy._advanceRetreat = -1
+          } else {
+            enemy._strafeDir = 0
+            enemy._advanceRetreat = 0
+          }
+        }
+
+        const combatSpeed = enemy.speed * 0.5 * dt
+        const perpAngle = angle + Math.PI / 2
+        let moveX = 0
+        let moveZ = 0
+
+        if (enemy._strafeDir) {
+          // Lateral strafe
+          moveX = Math.sin(perpAngle) * combatSpeed * enemy._strafeDir
+          moveZ = Math.cos(perpAngle) * combatSpeed * enemy._strafeDir
+        } else if (enemy._advanceRetreat) {
+          // Advance or retreat along facing
+          moveX = Math.sin(angle) * combatSpeed * 0.6 * enemy._advanceRetreat
+          moveZ = Math.cos(angle) * combatSpeed * 0.6 * enemy._advanceRetreat
+        }
+
+        if (moveX !== 0 || moveZ !== 0) {
+          let newX = enemy.position[0] + moveX
+          let newZ = enemy.position[2] + moveZ
+          // Clamp to table bounds
+          newX = Math.max(-BASE_HALF_W + 0.5, Math.min(BASE_HALF_W - 0.5, newX))
+          newZ = Math.max(-BASE_HALF_D + 0.5, Math.min(BASE_HALF_D - 0.5, newZ))
+
+          if (!isInsideWall(newX, newZ)) {
+            enemy.position[0] = newX
+            enemy.position[2] = newZ
+            enemy.status = 'walking'
+          }
+          enemy.velocity = [moveX / dt, 0, moveZ / dt]
+        } else {
+          enemy.velocity = [0, 0, 0]
+        }
       } else {
         // March toward camp center (or nearest player if visible)
         const targetX = nearestPlayer ? nearestPlayer.position[0] : 0

@@ -1480,6 +1480,337 @@
    RESULT OVERLAY — Sprint 4
    ═══════════════════════════════════════════════════════════════ */
 
+/* ═══════════════════════════════════════════════════════════════
+   LEVEL SELECTOR (Sprint 8)
+   ═══════════════════════════════════════════════════════════════ */
+
+.level-selector {
+  position: absolute;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: linear-gradient(180deg, #1a2a1a 0%, #0a150a 100%);
+  animation: fadeIn 0.3s ease;
+  overflow: hidden;
+}
+
+.level-selector-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 16px 20px;
+  box-sizing: border-box;
+}
+
+.level-selector-back {
+  background: none;
+  border: none;
+  color: #8a9a7a;
+  font-family: 'Black Ops One', cursive;
+  font-size: 14px;
+  letter-spacing: 2px;
+  cursor: pointer;
+  padding: 8px 12px;
+}
+.level-selector-back:active { color: #fff; }
+
+.level-selector-number {
+  font-family: 'Black Ops One', cursive;
+  font-size: 14px;
+  letter-spacing: 3px;
+  color: #c0d0b0;
+}
+
+.level-selector-diorama {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 220px;
+  margin: 8px 0;
+}
+
+.level-selector-locked-preview {
+  width: 280px;
+  height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.03);
+  border-radius: 16px;
+  border: 2px dashed rgba(255,255,255,0.1);
+}
+
+.level-selector-lock-icon {
+  font-size: 48px;
+  opacity: 0.4;
+}
+
+.level-selector-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 0 24px;
+  text-align: center;
+}
+
+.level-selector-name {
+  font-family: 'Black Ops One', cursive;
+  font-size: 24px;
+  letter-spacing: 3px;
+  color: #e0ecd0;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+
+.level-selector-desc {
+  font-size: 12px;
+  color: #8a9a7a;
+  letter-spacing: 1px;
+  max-width: 300px;
+}
+
+.level-selector-meta {
+  display: flex;
+  gap: 16px;
+  margin: 8px 0;
+}
+
+.level-selector-meta-item {
+  font-family: 'Black Ops One', cursive;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #a0b090;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.level-selector-stars {
+  font-size: 28px;
+  letter-spacing: 6px;
+  color: #ffd700;
+  text-shadow: 0 0 10px rgba(255,215,0,0.4);
+}
+
+.level-selector-weapon {
+  font-family: 'Black Ops One', cursive;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #ffd700;
+  padding: 4px 12px;
+  border-radius: 4px;
+  background: rgba(255,215,0,0.1);
+  border: 1px solid rgba(255,215,0,0.2);
+}
+.level-selector-weapon.earned {
+  color: #7cb342;
+  background: rgba(124,179,66,0.1);
+  border-color: rgba(124,179,66,0.2);
+}
+
+.level-selector-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.level-selector-arrow {
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  color: #c0d0b0;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.level-selector-arrow:active:not(:disabled) { background: rgba(255,255,255,0.15); }
+.level-selector-arrow:disabled { opacity: 0.3; cursor: default; }
+
+.level-selector-dots {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.level-selector-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,0.15);
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+  padding: 0;
+}
+.level-selector-dot.active {
+  background: #7cb342;
+  transform: scale(1.3);
+  box-shadow: 0 0 6px rgba(124,179,66,0.4);
+}
+.level-selector-dot.completed {
+  background: #ffd700;
+}
+.level-selector-dot-more {
+  color: #555;
+  font-size: 12px;
+  margin-left: 2px;
+}
+
+.level-selector-deploy {
+  width: min(300px, 80vw);
+  padding: 16px 0;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #7cb342 0%, #558b2f 100%);
+  border-bottom: 4px solid rgba(0,0,0,0.3);
+  color: #fff;
+  font-family: 'Black Ops One', cursive;
+  font-size: 18px;
+  letter-spacing: 4px;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 20px rgba(124,179,66,0.3);
+  transition: transform 0.1s;
+  margin-bottom: 24px;
+}
+.level-selector-deploy:active:not(:disabled) {
+  transform: scale(0.96) translateY(2px);
+  border-bottom-width: 2px;
+}
+.level-selector-deploy.locked {
+  background: linear-gradient(180deg, #444 0%, #333 100%);
+  color: #777;
+  box-shadow: none;
+  cursor: default;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   LOADING SCREEN (Sprint 8)
+   ═══════════════════════════════════════════════════════════════ */
+
+.loading-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.3s ease;
+  transition: opacity 0.3s ease;
+}
+.loading-screen.fading {
+  opacity: 0;
+}
+
+.loading-screen-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 40px;
+  max-width: 360px;
+  width: 90%;
+}
+
+.loading-screen-icon {
+  font-size: 48px;
+  animation: loadingIconFloat 2s ease-in-out infinite;
+}
+
+@keyframes loadingIconFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.loading-screen-title {
+  font-family: 'Black Ops One', cursive;
+  font-size: 28px;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.6);
+  margin: 0;
+  text-align: center;
+}
+
+.loading-screen-intel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding: 16px 20px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.loading-screen-intel-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.loading-screen-intel-label {
+  font-family: 'Black Ops One', cursive;
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: rgba(255,255,255,0.4);
+  text-transform: uppercase;
+}
+
+.loading-screen-intel-value {
+  font-family: 'Black Ops One', cursive;
+  font-size: 16px;
+  letter-spacing: 2px;
+  color: rgba(255,255,255,0.9);
+}
+
+.loading-screen-bar-container {
+  width: 100%;
+  height: 4px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.loading-screen-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--bar-color, #88cc66);
+  border-radius: 2px;
+  animation: loadingBarFill 2.2s ease-in-out forwards;
+}
+
+@keyframes loadingBarFill {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+.loading-screen-deploying {
+  font-family: 'Black Ops One', cursive;
+  font-size: 12px;
+  letter-spacing: 4px;
+  color: rgba(255,255,255,0.4);
+  animation: deployPulse 1s ease-in-out infinite;
+}
+
+@keyframes deployPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESULT OVERLAY (Sprint 8 Enhanced)
+   ═══════════════════════════════════════════════════════════════ */
+
 .result-overlay {
   position: absolute;
   inset: 0;
@@ -1487,22 +1818,39 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0,0,0,0.7);
+  background: rgba(0,0,0,0.75);
   backdrop-filter: blur(8px);
   animation: fadeIn 0.4s ease;
 }
+
 .result-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
-  padding: 40px 50px;
+  gap: 16px;
+  padding: 36px 40px;
   background: linear-gradient(180deg, #2a2a38 0%, #1a1a24 100%);
   border: 2px solid #555;
   border-radius: 20px;
-  max-width: 360px;
-  width: 90%;
+  max-width: 380px;
+  width: 92%;
+  animation: resultSlideUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: visible;
 }
+.result-card.victory {
+  border-color: rgba(76,175,80,0.3);
+  box-shadow: 0 0 40px rgba(76,175,80,0.1);
+}
+.result-card.defeat {
+  border-color: rgba(231,76,60,0.3);
+  box-shadow: 0 0 40px rgba(231,76,60,0.1);
+}
+
+@keyframes resultSlideUp {
+  from { transform: translateY(60px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
 .result-title {
   font-size: 36px;
   font-weight: 900;
@@ -1519,62 +1867,149 @@
   text-shadow: 0 0 20px rgba(231,76,60,0.4), 0 2px 4px rgba(0,0,0,0.5);
 }
 
+/* ── Stars with bounce ── */
 .result-stars {
   display: flex;
   gap: 12px;
 }
 .result-star {
-  font-size: 40px;
-  animation: starPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  font-size: 42px;
+  animation: starBounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 .result-star.earned {
   color: #ffd700;
-  text-shadow: 0 0 12px rgba(255,215,0,0.5);
+  text-shadow: 0 0 16px rgba(255,215,0,0.6);
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
 }
 .result-star.empty {
-  color: #555;
+  color: #444;
 }
 
-/* ── Weapon Unlock Reveal ── */
-.result-weapon-unlock {
+@keyframes starBounce {
+  0% { transform: scale(0) rotate(-30deg); opacity: 0; }
+  60% { transform: scale(1.3) rotate(5deg); }
+  80% { transform: scale(0.95) rotate(-2deg); }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+/* ── Weapon Unlock Card ── */
+.result-unlock-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin: 8px 0 4px;
+  gap: 6px;
+  padding: 16px 24px 12px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #2a2a3a 0%, #1a1a28 100%);
+  border: 2px solid rgba(255,215,0,0.3);
+  box-shadow: 0 0 30px rgba(255,200,0,0.15), inset 0 1px 0 rgba(255,255,255,0.05);
+  animation: cardReveal 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.5s both;
+  width: 100%;
+  overflow: visible;
+}
+.result-unlock-card.rarity-uncommon { border-color: rgba(100,200,100,0.4); box-shadow: 0 0 25px rgba(100,200,100,0.12); }
+.result-unlock-card.rarity-rare { border-color: rgba(80,140,255,0.4); box-shadow: 0 0 25px rgba(80,140,255,0.15); }
+.result-unlock-card.rarity-epic { border-color: rgba(160,80,255,0.4); box-shadow: 0 0 30px rgba(160,80,255,0.18); }
+
+@keyframes cardReveal {
+  from { transform: translateY(40px) scale(0.9); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
 }
 
-.result-weapon-label {
+.result-unlock-badge {
+  position: absolute;
+  top: -10px;
+  right: -6px;
+  background: linear-gradient(135deg, #ff6644, #ff4422);
+  color: #fff;
   font-family: 'Black Ops One', cursive;
-  font-size: 13px;
+  font-size: 10px;
+  letter-spacing: 2px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  transform: rotate(8deg);
+  box-shadow: 0 2px 8px rgba(255,68,34,0.4);
+  animation: badgePulse 1.5s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+  0%, 100% { transform: rotate(8deg) scale(1); }
+  50% { transform: rotate(8deg) scale(1.08); }
+}
+
+.result-unlock-header {
+  font-family: 'Black Ops One', cursive;
+  font-size: 12px;
   letter-spacing: 3px;
   color: #ffd700;
   text-shadow: 0 0 12px rgba(255,215,0,0.4);
-  animation: weaponLabelPulse 2s ease-in-out infinite;
-}
-
-@keyframes weaponLabelPulse {
-  0%, 100% { opacity: 1; text-shadow: 0 0 12px rgba(255,215,0,0.4); }
-  50% { opacity: 0.85; text-shadow: 0 0 20px rgba(255,215,0,0.7); }
 }
 
 .result-weapon-canvas {
-  width: 200px;
-  height: 200px;
+  width: 280px;
+  height: 280px;
   border-radius: 12px;
   overflow: hidden;
-  background: radial-gradient(circle, rgba(255,215,0,0.08) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(255,215,0,0.06) 0%, transparent 70%);
 }
 
-.result-weapon-name {
+.result-unlock-name {
   font-family: 'Black Ops One', cursive;
-  font-size: 18px;
-  letter-spacing: 2px;
+  font-size: 20px;
+  letter-spacing: 3px;
   color: #fff;
   text-shadow: 0 2px 8px rgba(0,0,0,0.5);
-  margin-top: 4px;
 }
 
+.result-unlock-desc {
+  font-size: 11px;
+  color: #8a8a9a;
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+.result-rarity-stripe {
+  font-family: 'Black Ops One', cursive;
+  font-size: 9px;
+  letter-spacing: 3px;
+  padding: 3px 16px;
+  border-radius: 3px;
+  margin-top: 4px;
+}
+.result-rarity-stripe.rarity-common { background: rgba(100,200,100,0.15); color: #88cc88; }
+.result-rarity-stripe.rarity-uncommon { background: rgba(100,200,100,0.2); color: #66cc66; }
+.result-rarity-stripe.rarity-rare { background: rgba(80,140,255,0.2); color: #88aaff; }
+.result-rarity-stripe.rarity-epic { background: rgba(160,80,255,0.2); color: #bb88ff; }
+
+/* ── Sparkle particles ── */
+.result-sparkle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ffd700;
+  box-shadow: 0 0 8px rgba(255,215,0,0.6);
+  animation: sparkleFloat 1.2s ease-out var(--sparkle-delay, 0s) both;
+  top: 50%;
+  left: 50%;
+}
+
+@keyframes sparkleFloat {
+  0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+  50% { transform: translate(
+    calc(-50% + cos(var(--sparkle-angle, 0deg)) * 80px),
+    calc(-50% + sin(var(--sparkle-angle, 0deg)) * 80px)
+  ) scale(1.5); opacity: 0.8; }
+  100% { transform: translate(
+    calc(-50% + cos(var(--sparkle-angle, 0deg)) * 120px),
+    calc(-50% + sin(var(--sparkle-angle, 0deg)) * 120px)
+  ) scale(0); opacity: 0; }
+}
+
+/* ── Reward counter ── */
 .result-reward {
+  font-family: 'Black Ops One', cursive;
   font-size: 22px;
   font-weight: 900;
   color: #00e5ff;
@@ -1582,23 +2017,41 @@
   text-shadow: 0 0 12px rgba(0,229,255,0.3);
 }
 
-.result-defeat-msg {
-  font-size: 14px;
-  color: #aaa;
-  text-align: center;
-  line-height: 1.4;
+/* ── Defeat section ── */
+.result-defeat-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 0;
 }
 
+.result-defeat-msg {
+  font-size: 16px;
+  color: #ccc;
+  text-align: center;
+}
+
+.result-defeat-hint {
+  font-family: 'Black Ops One', cursive;
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: #e85d4a;
+  text-shadow: 0 0 8px rgba(232,93,74,0.3);
+}
+
+/* ── Result buttons ── */
 .result-buttons {
   display: flex;
   flex-direction: column;
   gap: 10px;
   width: 100%;
-  margin-top: 10px;
+  margin-top: 8px;
 }
 .result-btn {
   padding: 14px 0;
   border-radius: 12px;
+  font-family: 'Black Ops One', cursive;
   font-size: 14px;
   font-weight: 900;
   letter-spacing: 2px;
@@ -1624,7 +2077,7 @@
   text-shadow: 0 1px 2px rgba(0,0,0,0.4);
 }
 
-/* ── Animations ── */
+/* ── Shared Animations ── */
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }

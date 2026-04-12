@@ -14,6 +14,7 @@ import { OrbitControls } from '@react-three/drei'
 import { CampLighting } from '@three/lighting/CampLighting'
 import { CampGround } from './CampGround'
 import { CampLayout } from './CampLayout'
+import { BattleArena } from './BattleArena'
 import { TestGrenade } from './TestGrenade'
 import { AmbientSoldiers } from './AmbientSoldiers'
 import { TrainingSpectacle } from './TrainingSpectacle'
@@ -24,6 +25,7 @@ import { CampBattleLoop } from './CampBattleLoop'
 import { BattleEntities } from './BattleEntities'
 import { useCampTrainingStore } from '@stores/campTrainingStore'
 import { useSceneStore } from '@stores/sceneStore'
+import { useCampBattleStore } from '@stores/campBattleStore'
 import type { WallBlock } from '@three/models/Defenses'
 
 function TrainingTickDriver() {
@@ -77,18 +79,34 @@ function TrainingTickDriver() {
 export function CampScene() {
   const wallBlocksRef = useRef<Map<string, WallBlock[]>>(new Map())
   const battlePhase = useSceneStore((s) => s.battlePhase)
-  const inBattle = battlePhase === 'placing' || battlePhase === 'fighting' || battlePhase === 'result'
+  const battleConfig = useCampBattleStore((s) => s.battleConfig)
+  const inBattle = battlePhase === 'placing' || battlePhase === 'loading' || battlePhase === 'fighting' || battlePhase === 'result'
+  // Show the themed battle arena during placing/loading/fighting/result
+  const showArena = battlePhase === 'placing' || battlePhase === 'loading' || battlePhase === 'fighting' || battlePhase === 'result'
 
   return (
     <>
       {/* Global lighting — every later sprint imports CampLighting */}
       <CampLighting />
 
-      {/* Ground plane + table edge trim */}
-      <CampGround />
+      {/* Ground: camp table during idle, themed arena during battle */}
+      {showArena && battleConfig ? (
+        <BattleArena
+          themeId={battleConfig.themeId ?? 'garden'}
+          level={battleConfig.level ?? 1}
+        />
+      ) : (
+        <>
+          {/* Ground plane + table edge trim */}
+          <CampGround />
 
-      {/* Hardcoded base layout: walls, towers, wire, camp footprint */}
-      <CampLayout wallBlocksRef={wallBlocksRef} />
+          {/* Hardcoded base layout: walls, towers, wire, camp footprint */}
+          <CampLayout wallBlocksRef={wallBlocksRef} />
+
+          {/* Medical tent building (Sprint 6) */}
+          <MedicalTentBuilding />
+        </>
+      )}
 
       {/* Orbit camera — constrained angle range, no underground */}
       <OrbitControls
@@ -99,9 +117,6 @@ export function CampScene() {
         maxPolarAngle={Math.PI / 2.1}
         minPolarAngle={Math.PI / 8}
       />
-
-      {/* Medical tent building (Sprint 6) */}
-      <MedicalTentBuilding />
 
       {/* Hide ambient soldiers during battle — replaced by placed battle units */}
       {!inBattle && <AmbientSoldiers />}

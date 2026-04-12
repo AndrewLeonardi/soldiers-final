@@ -29,6 +29,7 @@ import { BattlePickerSheet } from './BattlePickerSheet'
 import { PlacementOverlay } from './PlacementOverlay'
 import { BattleHUD } from './BattleHUD'
 import { ResultOverlay } from './ResultOverlay'
+import { LoadingScreen } from './LoadingScreen'
 import { SoldierSheet } from './SoldierSheet'
 import { MedicalSheet } from './MedicalSheet'
 import { AudioBed } from '@audio/AudioBed'
@@ -98,6 +99,9 @@ export default function CampPage() {
 
       {/* Placement overlay (drag soldiers onto field) */}
       <PlacementOverlay />
+
+      {/* Loading screen (deployment transition) */}
+      <LoadingScreen />
 
       {/* Battle HUD (wave counter, timer during fighting) */}
       <BattleHUD />

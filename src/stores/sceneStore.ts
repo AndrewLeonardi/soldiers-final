@@ -28,7 +28,7 @@ interface SceneState {
   preselectedTrainingSoldierId: string | null
 
   // Battle phase
-  battlePhase: 'idle' | 'picking' | 'placing' | 'fighting' | 'result'
+  battlePhase: 'idle' | 'picking' | 'placing' | 'loading' | 'fighting' | 'result'
 
   // Actions
   selectSoldier: (id: string | null) => void
@@ -43,7 +43,7 @@ interface SceneState {
   setMedicalSheetOpen: (open: boolean) => void
   setSoldierSheetId: (id: string | null) => void
   setPreselectedTrainingSoldierId: (id: string | null) => void
-  setBattlePhase: (phase: 'idle' | 'picking' | 'placing' | 'fighting' | 'result') => void
+  setBattlePhase: (phase: 'idle' | 'picking' | 'placing' | 'loading' | 'fighting' | 'result') => void
 }
 
 export const useSceneStore = create<SceneState>()((set) => ({

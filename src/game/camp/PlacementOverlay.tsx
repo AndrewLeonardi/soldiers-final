@@ -47,7 +47,7 @@ export function PlacementOverlay() {
   const handleStartBattle = useCallback(() => {
     if (placedSoldiers.length === 0) return
     sfx.buttonTap()
-    setBattlePhase('fighting')
+    setBattlePhase('loading')
   }, [placedSoldiers.length, setBattlePhase])
 
   if (battlePhase !== 'placing' || !battleConfig) return null

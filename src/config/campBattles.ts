@@ -40,6 +40,10 @@ export interface CampBattleConfig {
   weaponReward?: WeaponType
   /** Previous battle ID that must be completed to unlock this one (null = always unlocked) */
   requires?: string
+  /** Level number (Sprint 8 — procedural levels) */
+  level?: number
+  /** Theme ID for diorama/loading screen visuals (Sprint 8) */
+  themeId?: string
 }
 
 // Spawn positions — at the table edge so enemies drop onto the map
