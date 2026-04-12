@@ -992,11 +992,10 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
       const timeLimit = config.stars.three.threshold
       if (allSurvived && timeLimit && time <= timeLimit) stars = 3  // speed run
 
-      // Check if weapon reward is new (not already unlocked)
+      // Always show weapon reward on victory card; track if it's newly unlocked for "NEW" badge
       const alreadyUnlocked = config.weaponReward
         ? useCampStore.getState().unlockedWeapons.includes(config.weaponReward)
         : true
-      const newWeapon = config.weaponReward && !alreadyUnlocked ? config.weaponReward : null
 
       // Injure dead player soldiers
       const campStore = useCampStore.getState()
@@ -1007,7 +1006,7 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
       }
 
       useCampBattleStore.getState().setResult('victory', stars)
-      if (newWeapon) useCampBattleStore.getState().setWeaponUnlocked(newWeapon)
+      if (config.weaponReward) useCampBattleStore.getState().setWeaponUnlocked(config.weaponReward)
       useCampStore.getState().completeBattle(config.id, stars, config.reward, config.weaponReward)
       sfx.graduationFanfare()
       setBattlePhase('result')

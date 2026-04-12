@@ -33,13 +33,14 @@ const DRAG_THRESHOLD = 6
 function LyingSoldier() {
   const soldierObj = useMemo(() => {
     const { group, parts } = createFlexSoldier(TOY.armyGreen)
-    // Hide the circular base stand — soldiers on cots don't need it
+    // Hide base stand and rifle — injured soldiers resting
     parts.base.visible = false
+    parts.rifleGrp.visible = false
     return group
   }, [])
 
   return (
-    <group position={[0, 0.06, 0]}>
+    <group position={[0, 0.06, 0.35]}>
       {/* Rotate soldier to lie on its back along Z axis, scaled to fit cot */}
       <group rotation={[-Math.PI / 2, 0, 0]} scale={0.75} position={[0, 0, 0]}>
         <primitive object={soldierObj} />
