@@ -72,7 +72,8 @@ export function AudioBed() {
   const ambienceRef = useRef<{ gain: GainNode; stop: () => void } | null>(null)
   const startedRef = useRef(false)
 
-  // Start ambience on first user interaction (browser autoplay policy)
+  // Ensure AudioContext is created on first user interaction (browser autoplay policy)
+  // Ambient hum disabled — only context init kept for SFX
   useEffect(() => {
     const startAudio = () => {
       if (startedRef.current) return
@@ -80,9 +81,9 @@ export function AudioBed() {
 
       const ctx = getAudioContext()
       if (ctx.state === 'suspended') ctx.resume()
-      ambienceRef.current = createAmbience(ctx)
+      // Ambient noise disabled — was a constant hum
+      // ambienceRef.current = createAmbience(ctx)
 
-      // Remove listeners after first interaction
       window.removeEventListener('pointerdown', startAudio)
       window.removeEventListener('keydown', startAudio)
     }
