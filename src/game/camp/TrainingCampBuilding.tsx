@@ -14,6 +14,7 @@ import { CAMP_FOOTPRINT } from './campConstants'
 import { useCampTrainingStore } from '@stores/campTrainingStore'
 import { useSceneStore } from '@stores/sceneStore'
 import { ProgressRing } from './ProgressRing'
+import * as sfx from '@audio/sfx'
 
 const { centerX, centerZ, halfW, halfD } = CAMP_FOOTPRINT
 
@@ -27,8 +28,10 @@ const PLATFORM_COLOR = 0xc4a56e
 const DRAG_THRESHOLD = 6
 
 export function TrainingCampBuilding() {
+  const slots = useCampTrainingStore((s) => s.slots)
   const trainingPhase = useCampTrainingStore((s) => s.trainingPhase)
   const setTrainingSheetOpen = useSceneStore((s) => s.setTrainingSheetOpen)
+  const setObservingSlotIndex = useSceneStore((s) => s.setObservingSlotIndex)
   const battlePhase = useSceneStore((s) => s.battlePhase)
   const anySheetOpen = useSceneStore((s) =>
     s.trainingSheetOpen || s.storeSheetOpen || s.rosterSheetOpen ||
@@ -59,10 +62,19 @@ export function TrainingCampBuilding() {
     const dy = (e.clientY ?? 0) - pointerDownPos.current.y
     const dist = Math.sqrt(dx * dx + dy * dy)
     pointerDownPos.current = null
-    if (dist < DRAG_THRESHOLD && isIdle) {
-      setTrainingSheetOpen(true)
+    if (dist < DRAG_THRESHOLD) {
+      if (isIdle) {
+        setTrainingSheetOpen(true)
+      } else {
+        // If any slot is running, re-enter observation for the first running slot
+        const runningIdx = slots.findIndex(s => s.trainingPhase === 'running')
+        if (runningIdx !== -1) {
+          sfx.buttonTap()
+          setObservingSlotIndex(runningIdx)
+        }
+      }
     }
-  }, [isIdle, setTrainingSheetOpen])
+  }, [isIdle, setTrainingSheetOpen, setObservingSlotIndex, slots])
 
   return (
     <group position={[centerX, 0, centerZ]}>

@@ -14,8 +14,8 @@
  */
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { WEAPON_UNLOCK_COST } from '@config/roster'
-import { DAILY_DRIP_AMOUNT, DAILY_DRIP_INTERVAL_MS, DAILY_DRIP_MAX_DAYS } from '@config/store'
+import { WEAPON_UNLOCK_COST, SOLDIER_RECRUIT_COST } from '@config/roster'
+import { DAILY_DRIP_AMOUNT, DAILY_GOLD_DRIP_AMOUNT, DAILY_DRIP_INTERVAL_MS, DAILY_DRIP_MAX_DAYS } from '@config/store'
 import type { WeaponType } from '@config/types'
 
 // ── Soldier record (persisted) ──
@@ -54,6 +54,7 @@ interface CampState {
 
   // Daily drip
   lastDailyClaimTime: number  // Unix ms, 0 = never claimed
+  lastDailyGoldClaimTime: number  // Unix ms, 0 = never claimed
 
   // Store flags
   starterPackShown: boolean
@@ -72,6 +73,8 @@ interface CampState {
   addCompute: (delta: number) => void
   spendCompute: (amount: number) => boolean
   setGold: (value: number) => void
+  addGold: (delta: number) => void
+  spendGold: (amount: number) => boolean
 
   // Actions — unlocks
   unlockWeapon: (weapon: WeaponType) => boolean
@@ -79,6 +82,10 @@ interface CampState {
 
   // Actions — daily drip
   claimDailyCompute: () => { claimed: number; backfillDays: number } | null
+  claimDailyGold: () => { claimed: number; backfillDays: number } | null
+
+  // Actions — recruitment
+  recruitSoldier: (name: string) => boolean
 
   // Actions — roster
   addSoldier: (soldier: SoldierRecord) => void
@@ -86,7 +93,7 @@ interface CampState {
   updateSoldierBrain: (id: string, weapon: string, weights: number[], fitness: number, generations: number) => void
 
   // Actions — battles
-  completeBattle: (battleId: string, stars: number, reward: number, weaponReward?: string) => void
+  completeBattle: (battleId: string, stars: number, reward: number, weaponReward?: string, goldReward?: number) => void
 
   // Actions — injury / healing
   injureSoldier: (id: string) => void
@@ -108,7 +115,7 @@ export const useCampStore = create<CampState>()(
     (set, get) => ({
       // Economy
       compute: 500,
-      gold: 0,
+      gold: 600,
 
       // Global unlocks
       unlockedWeapons: ['rifle'],
@@ -116,6 +123,7 @@ export const useCampStore = create<CampState>()(
 
       // Daily drip
       lastDailyClaimTime: 0,
+      lastDailyGoldClaimTime: 0,
 
       // Store flags
       starterPackShown: false,
@@ -139,6 +147,13 @@ export const useCampStore = create<CampState>()(
         return true
       },
       setGold: (value) => set({ gold: value }),
+      addGold: (delta) => set((s) => ({ gold: s.gold + delta })),
+      spendGold: (amount) => {
+        const state = get()
+        if (state.gold < amount) return false
+        set({ gold: state.gold - amount })
+        return true
+      },
 
       // ── Unlock actions ──
       unlockWeapon: (weapon) => {
@@ -198,6 +213,52 @@ export const useCampStore = create<CampState>()(
         return { claimed: totalClaim, backfillDays: daysMissed - 1 }
       },
 
+      // ── Daily gold drip ──
+      claimDailyGold: () => {
+        const state = get()
+        const now = Date.now()
+        const last = state.lastDailyGoldClaimTime
+
+        if (last === 0) {
+          set({
+            gold: state.gold + DAILY_GOLD_DRIP_AMOUNT,
+            lastDailyGoldClaimTime: now,
+          })
+          return { claimed: DAILY_GOLD_DRIP_AMOUNT, backfillDays: 0 }
+        }
+
+        const elapsed = now - last
+        if (elapsed < DAILY_DRIP_INTERVAL_MS) return null
+
+        const daysMissed = Math.min(
+          Math.floor(elapsed / DAILY_DRIP_INTERVAL_MS),
+          DAILY_DRIP_MAX_DAYS,
+        )
+        const totalClaim = DAILY_GOLD_DRIP_AMOUNT * daysMissed
+        set({
+          gold: state.gold + totalClaim,
+          lastDailyGoldClaimTime: now,
+        })
+        return { claimed: totalClaim, backfillDays: daysMissed - 1 }
+      },
+
+      // ── Recruitment ──
+      recruitSoldier: (name) => {
+        const state = get()
+        if (state.gold < SOLDIER_RECRUIT_COST) return false
+        const newSoldier: SoldierRecord = {
+          id: `soldier-${Date.now()}`,
+          name,
+          weapon: 'rifle',
+          trained: false,
+        }
+        set({
+          gold: state.gold - SOLDIER_RECRUIT_COST,
+          soldiers: [...state.soldiers, newSoldier],
+        })
+        return true
+      },
+
       // ── Roster actions ──
       addSoldier: (soldier) => set((s) => ({ soldiers: [...s.soldiers, soldier] })),
 
@@ -224,7 +285,7 @@ export const useCampStore = create<CampState>()(
       })),
 
       // ── Battle progress ──
-      completeBattle: (battleId, stars, reward, weaponReward) => {
+      completeBattle: (battleId, stars, reward, weaponReward, goldReward) => {
         const state = get()
         const existing = state.battlesCompleted[battleId]
         // Only update if new star count is higher
@@ -236,6 +297,7 @@ export const useCampStore = create<CampState>()(
         set({
           battlesCompleted: { ...state.battlesCompleted, [battleId]: { stars: bestStars } },
           compute: state.compute + reward,
+          gold: state.gold + (goldReward ?? 0),
           unlockedWeapons: weapons,
         })
       },
@@ -275,7 +337,7 @@ export const useCampStore = create<CampState>()(
     }),
     {
       name: 'toy-soldiers-camp',
-      version: 7,
+      version: 8,
       migrate: (persistedState: any, version: number) => {
         if (version < 2) {
           // v1 → v2: network shape changed from [6,12,4] to [7,8,4].
@@ -358,6 +420,17 @@ export const useCampStore = create<CampState>()(
           }
           state.unlockedWeapons = ['rifle']
           state.battlesCompleted = {}
+        }
+        if (version < 8) {
+          // v7 → v8: Gold economy + recruitment.
+          // Give existing players 600 starter gold (enough for 3 recruits).
+          // Clear soldiers — they must now be recruited with gold.
+          const state = persistedState as any
+          state.gold = 600
+          state.soldiers = []
+          state.lastDailyGoldClaimTime = 0
+          state.battlesCompleted = {}
+          state.unlockedWeapons = ['rifle']
         }
         return persistedState as CampState
       },

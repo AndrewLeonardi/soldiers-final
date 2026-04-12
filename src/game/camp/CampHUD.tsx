@@ -10,6 +10,7 @@
  */
 import { useCallback, useEffect } from 'react'
 import { ComputeCounter } from './ComputeCounter'
+import { GoldCounter } from './GoldCounter'
 import { useSceneStore } from '@stores/sceneStore'
 import { useCampStore } from '@stores/campStore'
 import * as sfx from '@audio/sfx'
@@ -61,8 +62,9 @@ export function CampHUD() {
 
   return (
     <>
-      {/* Top center — compute counter */}
+      {/* Top center — dual currency counters */}
       <div className="camp-top-bar">
+        <GoldCounter />
         <ComputeCounter />
       </div>
 

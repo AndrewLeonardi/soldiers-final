@@ -32,12 +32,16 @@ import { ResultOverlay } from './ResultOverlay'
 import { LoadingScreen } from './LoadingScreen'
 import { SoldierSheet } from './SoldierSheet'
 import { MedicalSheet } from './MedicalSheet'
+import { RecruitSheet } from './RecruitSheet'
+import { ObservationHUD } from './ObservationHUD'
+import { CampNeuralNetViz } from './CampNeuralNetViz'
 import { AudioBed } from '@audio/AudioBed'
 import { useSceneStore } from '@stores/sceneStore'
 import '@styles/camp-ui.css'
 
 export default function CampPage() {
   const [booted, setBooted] = useState(false)
+  const isObserving = useSceneStore((s) => s.observingSlotIndex) !== null
 
   const handleBootDone = useCallback(() => setBooted(true), [])
   const setTrainingSheetOpen = useSceneStore((s) => s.setTrainingSheetOpen)
@@ -76,53 +80,32 @@ export default function CampPage() {
         </Suspense>
       </Canvas>
 
-      {/* HUD overlay — bottom bar + top compute counter */}
-      <CampHUD />
+      {/* Observation mode overlays */}
+      {isObserving && <ObservationHUD />}
+      {isObserving && <CampNeuralNetViz />}
 
-      {/* Settings sheet (bottom sheet pattern) */}
-      <SettingsSheet />
+      {/* HUD + sheets — hidden during observation */}
+      {!isObserving && <CampHUD />}
+      {!isObserving && <SettingsSheet />}
+      {!isObserving && <TrainingSheet />}
+      {!isObserving && <StoreSheet />}
+      {!isObserving && <RosterSheet />}
+      {!isObserving && <MilestoneCallout />}
+      {!isObserving && <BattlePickerSheet />}
+      {!isObserving && <PlacementOverlay />}
+      {!isObserving && <LoadingScreen />}
+      {!isObserving && <BattleHUD />}
+      {!isObserving && <ResultOverlay />}
+      {!isObserving && <SoldierSheet />}
+      {!isObserving && <MedicalSheet />}
+      {!isObserving && <RecruitSheet />}
+      {!isObserving && <ComputeModal />}
 
-      {/* Training sheet (commit soldier to training) */}
-      <TrainingSheet />
-
-      {/* Store sheet (compute packs, daily, offers) */}
-      <StoreSheet />
-
-      {/* Roster sheet (soldier list + neural net thumbnails) */}
-      <RosterSheet />
-
-      {/* Milestone callout banners */}
-      <MilestoneCallout />
-
-      {/* Battle picker (select which battle to fight) */}
-      <BattlePickerSheet />
-
-      {/* Placement overlay (drag soldiers onto field) */}
-      <PlacementOverlay />
-
-      {/* Loading screen (deployment transition) */}
-      <LoadingScreen />
-
-      {/* Battle HUD (wave counter, timer during fighting) */}
-      <BattleHUD />
-
-      {/* Result overlay (victory/defeat after battle) */}
-      <ResultOverlay />
-
-      {/* Soldier stats sheet (tap ambient soldier) */}
-      <SoldierSheet />
-
-      {/* Medical sheet (tap medical tent) */}
-      <MedicalSheet />
-
-      {/* Compute underflow modal */}
-      <ComputeModal />
-
-      {/* Ambient audio bed — synthesized camp ambience */}
+      {/* Ambient audio bed — always active */}
       <AudioBed />
 
       {/* Dev indicator */}
-      {import.meta.env.DEV && (
+      {import.meta.env.DEV && !isObserving && (
         <div className="dev-indicator">
           DEV | G=grenade T=train S=store R=roster M=medical
         </div>

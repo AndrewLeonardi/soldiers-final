@@ -16,5 +16,6 @@ export const COMPUTE_PACKS: ComputePack[] = [
 ]
 
 export const DAILY_DRIP_AMOUNT = 50
+export const DAILY_GOLD_DRIP_AMOUNT = 50
 export const DAILY_DRIP_MAX_DAYS = 3
 export const DAILY_DRIP_INTERVAL_MS = 24 * 60 * 60 * 1000

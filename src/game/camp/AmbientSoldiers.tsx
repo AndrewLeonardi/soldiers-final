@@ -1,14 +1,14 @@
 /**
- * AmbientSoldiers — spawns and manages the wandering toy soldiers.
+ * AmbientSoldiers — spawns and manages wandering toy soldiers on the camp diorama.
  *
- * Sprint 1, Subsystem 3. 6-10 procedural soldiers spawn at boot,
- * each running its own WanderBrain FSM independently.
+ * Sprint A refactor. Soldiers are now driven by campStore.soldiers (the source of truth).
+ * Recruiting a soldier adds them to the store, and they appear on the field immediately.
+ * No more hardcoded count — the camp shows exactly the soldiers you've recruited.
  *
  * Selection: invisible enlarged hitbox, drag-safe click (>6px move = ignore),
  * selection ring, hover scale, face-camera-on-select.
- * Selected soldier shows a name tag ("Pvt. Henson"). No sheet, no actions.
  */
-import { useRef, useMemo, useState, useCallback, useEffect } from 'react'
+import { useRef, useState, useCallback, useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import { RigidBody, CuboidCollider, type RapierRigidBody } from '@react-three/rapier'
@@ -16,26 +16,11 @@ import * as THREE from 'three'
 import { SoldierUnit } from '@three/models/SoldierUnit'
 import { GROUP_SOLDIER } from '@three/physics/collisionGroups'
 import { WanderBrain } from './WanderBrain'
-import { SOLDIER_BOUNDS, AMBIENT_SOLDIER_COUNT } from './campConstants'
+import { SOLDIER_BOUNDS } from './campConstants'
 import { useCampStore } from '@stores/campStore'
 import { useSceneStore } from '@stores/sceneStore'
 
-// ── Name pool ──
-const FIRST_NAMES = [
-  'Henson', 'Davies', 'Kowalski', 'Jackson', 'Murphy',
-  'Rodriguez', 'Chen', 'Brooks', 'Foster', 'Palmer',
-  'Reeves', 'Santos', 'Gibbs', 'Torres', 'Walsh',
-]
-
-const RANKS = ['Pvt.', 'Pfc.', 'Cpl.']
-
-function pickName(index: number): string {
-  const rank = RANKS[index % RANKS.length]!
-  const name = FIRST_NAMES[index % FIRST_NAMES.length]!
-  return `${rank} ${name}`
-}
-
-// ── Soldier data ──
+// ── Soldier data (mutable per-frame state, NOT from store) ──
 interface AmbientSoldierData {
   id: string
   name: string
@@ -52,17 +37,17 @@ interface AmbientSoldierData {
   spinSpeed: number
 }
 
-function createAmbientSoldier(index: number): AmbientSoldierData {
+function createAmbientData(id: string, name: string, weapon: string): AmbientSoldierData {
   const x = (Math.random() * 2 - 1) * (SOLDIER_BOUNDS.halfW - 1)
   const z = (Math.random() * 2 - 1) * (SOLDIER_BOUNDS.halfD - 1)
   return {
-    id: `ambient-${index}`,
-    name: pickName(index),
+    id,
+    name,
     team: 'green',
     position: [x, 0.5, z],
     rotation: Math.random() * Math.PI * 2,
     status: 'idle',
-    weapon: 'rifle',
+    weapon,
     facingAngle: Math.random() * Math.PI * 2,
     health: 100,
     maxHealth: 100,
@@ -99,14 +84,13 @@ interface SoldierEntryProps {
   onHover: (id: string | null) => void
 }
 
-const DRAG_THRESHOLD = 6 // px — V3 pattern
+const DRAG_THRESHOLD = 6
 
 function SoldierEntry({ data, isSelected, isHovered, onSelect, onHover }: SoldierEntryProps) {
   const bodyRef = useRef<RapierRigidBody>(null!)
   const pointerDownPos = useRef<{ x: number; y: number } | null>(null)
   const groupRef = useRef<THREE.Group>(null!)
 
-  // Sync position from physics body
   useFrame(() => {
     const body = bodyRef.current
     if (!body) return
@@ -116,7 +100,6 @@ function SoldierEntry({ data, isSelected, isHovered, onSelect, onHover }: Soldie
     data.position[2] = pos.z
   })
 
-  // Hover scale
   useFrame((_, delta) => {
     if (!groupRef.current) return
     const targetScale = isHovered || isSelected ? 1.1 : 1.0
@@ -158,10 +141,8 @@ function SoldierEntry({ data, isSelected, isHovered, onSelect, onHover }: Soldie
       ccd
       mass={1}
     >
-      {/* Physics collider */}
       <CuboidCollider args={[0.32, 0.5, 0.32]} position={[0, 0.5, 0]} />
 
-      {/* Invisible enlarged click hitbox — bigger than collider for easy taps */}
       <mesh
         visible={false}
         position={[0, 0.5, 0]}
@@ -175,21 +156,13 @@ function SoldierEntry({ data, isSelected, isHovered, onSelect, onHover }: Soldie
       </mesh>
 
       <group ref={groupRef}>
-        {/* The visual soldier model */}
         <SoldierUnit unit={data} physicsControlled />
-
-        {/* Selection ring */}
         {isSelected && <SelectionRing />}
-
-        {/* Name tag */}
         {isSelected && (
           <Html
             position={[0, 1.4, 0]}
             center
-            style={{
-              pointerEvents: 'none',
-              whiteSpace: 'nowrap',
-            }}
+            style={{ pointerEvents: 'none', whiteSpace: 'nowrap' }}
           >
             <div style={{
               background: 'rgba(0,0,0,0.7)',
@@ -207,7 +180,6 @@ function SoldierEntry({ data, isSelected, isHovered, onSelect, onHover }: Soldie
         )}
       </group>
 
-      {/* Wander brain — drives this soldier's FSM */}
       <WanderBrain bodyRef={bodyRef} soldier={data} />
     </RigidBody>
   )
@@ -215,52 +187,49 @@ function SoldierEntry({ data, isSelected, isHovered, onSelect, onHover }: Soldie
 
 // ── Main component ──
 export function AmbientSoldiers() {
-  const soldiers = useMemo(() => {
-    return Array.from({ length: AMBIENT_SOLDIER_COUNT }, (_, i) => createAmbientSoldier(i))
-  }, [])
+  // Source of truth: soldiers from the persistent store
+  const storeSoldiers = useCampStore((s) => s.soldiers)
 
-  // Register soldiers in campStore (persisted roster) on first mount
-  useEffect(() => {
-    const store = useCampStore.getState()
-    for (const s of soldiers) {
-      const exists = store.soldiers.find(rec => rec.id === s.id)
-      if (!exists) {
-        store.addSoldier({
-          id: s.id,
-          name: s.name,
-          weapon: s.weapon,
-          trained: false,
-        })
-      }
+  // Mutable per-frame data keyed by soldier ID — persists across renders
+  const dataMapRef = useRef<Map<string, AmbientSoldierData>>(new Map())
+
+  // Sync dataMap with store soldiers — add new, remove deleted
+  const now = Date.now()
+  const healthyIds = new Set(
+    storeSoldiers
+      .filter(s => !s.injuredUntil || s.injuredUntil <= now)
+      .map(s => s.id),
+  )
+
+  // Build current data array from store
+  const soldierData: AmbientSoldierData[] = []
+  for (const sol of storeSoldiers) {
+    if (!healthyIds.has(sol.id)) continue
+
+    let data = dataMapRef.current.get(sol.id)
+    if (!data) {
+      // New recruit — create ambient data
+      data = createAmbientData(sol.id, sol.name, sol.weapon)
+      dataMapRef.current.set(sol.id, data)
+    } else {
+      // Sync name/weapon from store (may have changed via training)
+      data.name = sol.name
+      data.weapon = sol.weapon
     }
-  }, [soldiers])
+    soldierData.push(data)
+  }
+
+  // Clean up removed/injured soldiers from the map
+  for (const [id] of dataMapRef.current) {
+    if (!healthyIds.has(id)) {
+      dataMapRef.current.delete(id)
+    }
+  }
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
 
-  // Click on ground deselects
-  const { gl } = useThree()
-  useEffect(() => {
-    const canvas = gl.domElement
-    const handler = (e: MouseEvent) => {
-      // Only deselect on direct canvas click, not on soldier click (which stopPropagation)
-      // Use a small timeout to let stopPropagation take effect
-      setTimeout(() => setSelectedId(null), 0)
-    }
-    // We use pointerup on canvas itself — soldiers stopPropagation on their own events
-    // Actually, let's use a different approach: clicking the ground mesh deselects
-    return () => {}
-  }, [gl])
-
   const setSoldierSheetId = useSceneStore((s) => s.setSoldierSheetId)
-  const campSoldiers = useCampStore((s) => s.soldiers)
-
-  // Filter out injured soldiers — they're in the medical tent, not wandering
-  const now = Date.now()
-  const injuredIds = new Set(
-    campSoldiers.filter(s => s.injuredUntil && s.injuredUntil > now).map(s => s.id),
-  )
-  const healthySoldiers = soldiers.filter(s => !injuredIds.has(s.id))
 
   const handleSelect = useCallback((id: string) => {
     setSelectedId(prev => {
@@ -287,7 +256,7 @@ export function AmbientSoldiers() {
         <meshBasicMaterial />
       </mesh>
 
-      {healthySoldiers.map(s => (
+      {soldierData.map(s => (
         <SoldierEntry
           key={s.id}
           data={s}

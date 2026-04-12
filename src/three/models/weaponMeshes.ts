@@ -171,20 +171,27 @@ export function applyWeaponToSoldier(
   weapon: WeaponType,
   previousWeaponGrp: THREE.Group | null,
 ): THREE.Group | null {
-  // Remove previous custom weapon
+  // Remove previous custom weapon from rifleGrp
   if (previousWeaponGrp) {
-    parts.rightElbow.remove(previousWeaponGrp)
+    parts.rifleGrp.remove(previousWeaponGrp)
   }
 
   if (weapon === 'rifle') {
+    // Show all built-in rifle meshes
     parts.rifleGrp.visible = true
+    for (const child of [...parts.rifleGrp.children]) {
+      child.visible = true
+    }
     return null
   }
 
-  // Hide built-in rifle, add custom weapon
-  parts.rifleGrp.visible = false
+  // Hide built-in rifle meshes, add custom weapon INSIDE rifleGrp
+  // so it inherits the same rotation corrections from pose functions.
+  for (const child of [...parts.rifleGrp.children]) {
+    child.visible = false
+  }
   const wpnMesh = createWeaponMesh(weapon)
-  wpnMesh.position.set(0, -0.16, 0)
-  parts.rightElbow.add(wpnMesh)
+  parts.rifleGrp.add(wpnMesh)
+  parts.rifleGrp.visible = true
   return wpnMesh
 }

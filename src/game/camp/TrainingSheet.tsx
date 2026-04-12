@@ -87,14 +87,18 @@ export function TrainingSheet() {
     setActiveSlotIndex(index)
   }, [unlockedSlots, unlockSlot])
 
+  const setObservingSlotIndex = useSceneStore((s) => s.setObservingSlotIndex)
+
   const handleStart = useCallback(() => {
     if (!selectedSoldierId || !selectedSoldier) return
     const success = commitToTrain(activeSlotIndex, selectedSoldierId, selectedSoldier.name, selectedWeapon, selectedTier)
     if (success) {
       sfx.buttonTap()
       setTrainingSheetOpen(false)
+      // Enter immersive training observation view
+      setObservingSlotIndex(activeSlotIndex)
     }
-  }, [activeSlotIndex, selectedSoldierId, selectedSoldier, selectedWeapon, selectedTier, commitToTrain, setTrainingSheetOpen])
+  }, [activeSlotIndex, selectedSoldierId, selectedSoldier, selectedWeapon, selectedTier, commitToTrain, setTrainingSheetOpen, setObservingSlotIndex])
 
   const handleClose = useCallback(() => {
     setTrainingSheetOpen(false)

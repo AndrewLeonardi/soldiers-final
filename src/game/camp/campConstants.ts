@@ -45,5 +45,5 @@ export const SOLDIER_BOUNDS = Object.freeze({
   halfD: BASE_HALF_D - 1.5,
 })
 
-/** Number of ambient soldiers to spawn at boot */
-export const AMBIENT_SOLDIER_COUNT = 8
+/** @deprecated No longer used — soldiers are now recruited via gold economy (Sprint A) */
+// export const AMBIENT_SOLDIER_COUNT = 8

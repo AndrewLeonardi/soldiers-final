@@ -26,6 +26,7 @@ import { BattleEntities } from './BattleEntities'
 import { useCampTrainingStore } from '@stores/campTrainingStore'
 import { useSceneStore } from '@stores/sceneStore'
 import { useCampBattleStore } from '@stores/campBattleStore'
+import { CampTrainingArena } from './CampTrainingArena'
 import type { WallBlock } from '@three/models/Defenses'
 
 function TrainingTickDriver() {
@@ -80,63 +81,66 @@ export function CampScene() {
   const wallBlocksRef = useRef<Map<string, WallBlock[]>>(new Map())
   const battlePhase = useSceneStore((s) => s.battlePhase)
   const battleConfig = useCampBattleStore((s) => s.battleConfig)
+  const observingSlotIndex = useSceneStore((s) => s.observingSlotIndex)
   const inBattle = battlePhase === 'placing' || battlePhase === 'loading' || battlePhase === 'fighting' || battlePhase === 'result'
-  // Show the themed battle arena during placing/loading/fighting/result
   const showArena = battlePhase === 'placing' || battlePhase === 'loading' || battlePhase === 'fighting' || battlePhase === 'result'
+  const isObserving = observingSlotIndex !== null
 
   return (
     <>
-      {/* Global lighting — every later sprint imports CampLighting */}
-      <CampLighting />
-
-      {/* Ground: camp table during idle, themed arena during battle */}
-      {showArena && battleConfig ? (
-        <BattleArena
-          themeId={battleConfig.themeId ?? 'garden'}
-          level={battleConfig.level ?? 1}
-        />
-      ) : (
-        <>
-          {/* Ground plane + table edge trim */}
-          <CampGround />
-
-          {/* Hardcoded base layout: walls, towers, wire, camp footprint */}
-          <CampLayout wallBlocksRef={wallBlocksRef} />
-
-          {/* Medical tent building (Sprint 6) */}
-          <MedicalTentBuilding />
-        </>
-      )}
-
-      {/* Orbit camera — constrained angle range, no underground */}
-      <OrbitControls
-        makeDefault
-        target={[0, 0.5, 0]}
-        minDistance={8}
-        maxDistance={35}
-        maxPolarAngle={Math.PI / 2.1}
-        minPolarAngle={Math.PI / 8}
-      />
-
-      {/* Hide ambient soldiers during battle — replaced by placed battle units */}
-      {!inBattle && <AmbientSoldiers />}
-
-      {/* Hide training during battle */}
-      {!inBattle && <TrainingSpectacle />}
-
-      {/* Training tick driver — runs GA each frame */}
+      {/* Training tick driver — ALWAYS mounted, ticks GA regardless of view */}
       <TrainingTickDriver />
 
-      {/* Placement phase: ground click handler + placed soldier markers */}
-      <PlacementGroundHandler />
-      <PlacementMarkers />
+      {isObserving ? (
+        /* Full-screen immersive training observation */
+        <CampTrainingArena slotIndex={observingSlotIndex} />
+      ) : (
+        <>
+          {/* Global lighting */}
+          <CampLighting />
 
-      {/* Battle loop + entities (fighting phase) */}
-      <CampBattleLoop wallBlocksRef={wallBlocksRef} />
-      <BattleEntities />
+          {/* Ground: camp table during idle, themed arena during battle */}
+          {showArena && battleConfig ? (
+            <BattleArena
+              themeId={battleConfig.themeId ?? 'garden'}
+              level={battleConfig.level ?? 1}
+            />
+          ) : (
+            <>
+              <CampGround />
+              <CampLayout wallBlocksRef={wallBlocksRef} />
+              <MedicalTentBuilding />
+            </>
+          )}
 
-      {/* Dev-only: press G to test destructibility */}
-      <TestGrenade wallBlocksRef={wallBlocksRef} />
+          {/* Orbit camera — constrained angle range, no underground */}
+          <OrbitControls
+            makeDefault
+            target={[0, 0.5, 0]}
+            minDistance={8}
+            maxDistance={35}
+            maxPolarAngle={Math.PI / 2.1}
+            minPolarAngle={Math.PI / 8}
+          />
+
+          {/* Hide ambient soldiers during battle */}
+          {!inBattle && <AmbientSoldiers />}
+
+          {/* Hide training during battle */}
+          {!inBattle && <TrainingSpectacle />}
+
+          {/* Placement phase */}
+          <PlacementGroundHandler />
+          <PlacementMarkers />
+
+          {/* Battle loop + entities */}
+          <CampBattleLoop wallBlocksRef={wallBlocksRef} />
+          <BattleEntities />
+
+          {/* Dev-only */}
+          <TestGrenade wallBlocksRef={wallBlocksRef} />
+        </>
+      )}
     </>
   )
 }

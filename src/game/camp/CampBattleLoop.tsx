@@ -1001,7 +1001,7 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
 
       useCampBattleStore.getState().setResult('victory', stars)
       if (config.weaponReward) useCampBattleStore.getState().setWeaponUnlocked(config.weaponReward)
-      useCampStore.getState().completeBattle(config.id, stars, config.reward, config.weaponReward)
+      useCampStore.getState().completeBattle(config.id, stars, config.reward, config.weaponReward, config.goldReward)
       sfx.graduationFanfare()
       setBattlePhase('result')
     }

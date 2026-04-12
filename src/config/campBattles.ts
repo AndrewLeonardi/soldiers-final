@@ -30,6 +30,7 @@ export interface CampBattleConfig {
   description: string
   waves: CampWave[]
   reward: number         // compute earned on victory
+  goldReward: number     // gold earned on victory
   maxSoldiers: number    // max soldiers player can place
   stars: {
     one: CampStarCriteria
@@ -68,6 +69,7 @@ export const CAMP_BATTLES: CampBattleConfig[] = [
       },
     ],
     reward: 100,
+    goldReward: 100,
     maxSoldiers: 3,
     weaponReward: 'machineGun',
     stars: {
@@ -99,6 +101,7 @@ export const CAMP_BATTLES: CampBattleConfig[] = [
       },
     ],
     reward: 150,
+    goldReward: 150,
     maxSoldiers: 4,
     weaponReward: 'rocketLauncher',
     stars: {
@@ -137,6 +140,7 @@ export const CAMP_BATTLES: CampBattleConfig[] = [
       },
     ],
     reward: 200,
+    goldReward: 200,
     maxSoldiers: 6,
     weaponReward: 'grenade',
     stars: {

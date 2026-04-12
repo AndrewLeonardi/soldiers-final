@@ -128,6 +128,7 @@ export function ResultOverlay() {
 
   const isVictory = result === 'victory'
   const reward = isVictory && battleConfig ? battleConfig.reward : 0
+  const goldReward = isVictory && battleConfig ? battleConfig.goldReward : 0
   const rarity = weaponUnlocked ? (WEAPON_RARITY[weaponUnlocked] ?? 'common') : 'common'
 
   return (
@@ -198,9 +199,16 @@ export function ResultOverlay() {
               </div>
             )}
 
-            {/* Compute reward with animated counter */}
-            <div className="result-reward">
-              +<ComputeCounter target={reward} /> COMPUTE
+            {/* Rewards */}
+            <div className="result-rewards">
+              <div className="result-reward">
+                +<ComputeCounter target={reward} /> COMPUTE
+              </div>
+              {goldReward > 0 && (
+                <div className="result-reward gold">
+                  +<ComputeCounter target={goldReward} /> GOLD
+                </div>
+              )}
             </div>
           </>
         )}
