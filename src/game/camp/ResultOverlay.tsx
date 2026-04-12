@@ -169,14 +169,14 @@ export function ResultOverlay() {
                 ))}
 
                 <div className="result-unlock-badge">NEW</div>
-                <div className="result-unlock-header">WEAPON UNLOCKED</div>
+                <div className="result-unlock-header">TRAINING UNLOCKED</div>
 
                 {/* Spinning 3D weapon */}
                 <div className="result-weapon-canvas">
                   <Canvas
-                    camera={{ position: [0, 0.3, 1.8], fov: 35 }}
+                    camera={{ position: [0, 0.3, 1.6], fov: 35 }}
                     gl={{ alpha: true, antialias: true }}
-                    style={{ width: 280, height: 280 }}
+                    style={{ width: 200, height: 140 }}
                   >
                     <ambientLight intensity={0.5} />
                     <directionalLight position={[2, 3, 4]} intensity={1.2} />

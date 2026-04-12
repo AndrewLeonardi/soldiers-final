@@ -54,92 +54,95 @@ export const SPAWN_POSITIONS: Record<string, { x: number; z: number }> = {
 }
 
 export const CAMP_BATTLES: CampBattleConfig[] = [
+  // ─── Battle 1: prove your rifle training works ───
   {
     id: 'camp-1',
     name: 'First Contact',
-    description: 'A small recon squad approaches. Hold the line!',
+    description: 'A small recon squad approaches. Your soldiers need rifle training to fight!',
     waves: [
       {
         delay: 2.0,
         enemies: [
-          { type: 'infantry', count: 5, weapon: 'rifle', spawnSide: 'right' },
+          { type: 'infantry', count: 3, weapon: 'rifle', spawnSide: 'right' },
         ],
       },
     ],
-    reward: 50,
+    reward: 100,
     maxSoldiers: 3,
-    weaponReward: 'rocketLauncher',
+    weaponReward: 'machineGun',
     stars: {
       one: { type: 'win', desc: 'Win the battle' },
       two: { type: 'no_losses', desc: 'No friendly casualties' },
       three: { type: 'time_limit', threshold: 30, desc: 'Win in under 30 seconds' },
     },
   },
+  // ─── Battle 2: swarm — machine gun's fire rate is essential ───
   {
     id: 'camp-2',
-    name: 'Flanking Fire',
-    description: 'They\'re coming from two sides. Watch your flanks!',
+    name: 'Swarm Tactics',
+    description: 'They\'re sending waves from both sides. You\'ll need that machine gun!',
     requires: 'camp-1',
     waves: [
       {
         delay: 2.0,
         enemies: [
-          { type: 'infantry', count: 4, weapon: 'rifle', spawnSide: 'right' },
+          { type: 'infantry', count: 5, weapon: 'rifle', spawnSide: 'right' },
+          { type: 'infantry', count: 3, weapon: 'rifle', spawnSide: 'left' },
         ],
       },
       {
-        delay: 15.0,
+        delay: 14.0,
         enemies: [
-          { type: 'infantry', count: 4, weapon: 'rifle', spawnSide: 'left' },
-          { type: 'jeep', count: 1, spawnSide: 'right' },
+          { type: 'infantry', count: 6, weapon: 'rifle', spawnSide: 'left' },
+          { type: 'infantry', count: 4, weapon: 'rifle', spawnSide: 'right' },
         ],
       },
     ],
-    reward: 100,
-    maxSoldiers: 5,
-    weaponReward: 'grenade',
+    reward: 150,
+    maxSoldiers: 4,
+    weaponReward: 'rocketLauncher',
     stars: {
       one: { type: 'win', desc: 'Win the battle' },
       two: { type: 'no_losses', desc: 'No friendly casualties' },
-      three: { type: 'time_limit', threshold: 45, desc: 'Win in under 45 seconds' },
+      three: { type: 'time_limit', threshold: 40, desc: 'Win in under 40 seconds' },
     },
   },
+  // ─── Battle 3: armor — rockets needed to crack vehicles ───
   {
     id: 'camp-3',
-    name: 'Full Assault',
-    description: 'Everything they\'ve got. Three waves. Survive.',
+    name: 'Armor Column',
+    description: 'Jeeps and heavy armor incoming. Rockets will punch through!',
     requires: 'camp-2',
     waves: [
       {
         delay: 2.0,
         enemies: [
-          { type: 'infantry', count: 4, weapon: 'rifle', spawnSide: 'right' },
-          { type: 'infantry', count: 2, weapon: 'rifle', spawnSide: 'left' },
-        ],
-      },
-      {
-        delay: 18.0,
-        enemies: [
-          { type: 'infantry', count: 3, weapon: 'rocketLauncher', spawnSide: 'back' },
-          { type: 'jeep', count: 1, spawnSide: 'left' },
-        ],
-      },
-      {
-        delay: 35.0,
-        enemies: [
           { type: 'infantry', count: 3, weapon: 'rifle', spawnSide: 'right' },
-          { type: 'jeep', count: 1, spawnSide: 'back' },
-          { type: 'infantry', count: 2, weapon: 'grenade', spawnSide: 'left' },
+          { type: 'jeep', count: 2, spawnSide: 'left' },
+        ],
+      },
+      {
+        delay: 16.0,
+        enemies: [
+          { type: 'jeep', count: 2, spawnSide: 'right' },
+          { type: 'infantry', count: 4, weapon: 'machineGun', spawnSide: 'back' },
+        ],
+      },
+      {
+        delay: 30.0,
+        enemies: [
+          { type: 'tank', count: 1, spawnSide: 'back' },
+          { type: 'infantry', count: 3, weapon: 'rifle', spawnSide: 'left' },
         ],
       },
     ],
     reward: 200,
-    maxSoldiers: 8,
-    weaponReward: 'machineGun',
+    maxSoldiers: 6,
+    weaponReward: 'grenade',
     stars: {
       one: { type: 'win', desc: 'Win the battle' },
       two: { type: 'no_losses', desc: 'No friendly casualties' },
-      three: { type: 'time_limit', threshold: 60, desc: 'Win in under 60 seconds' },
+      three: { type: 'time_limit', threshold: 55, desc: 'Win in under 55 seconds' },
     },
   },
 ]

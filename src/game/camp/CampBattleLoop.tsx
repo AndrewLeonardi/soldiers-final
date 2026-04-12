@@ -349,6 +349,13 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
         continue // No AI while staggered
       }
 
+      // Firing hold — stay in firing pose briefly after shooting (0.3s)
+      if (player.status === 'firing' && player.stateAge < 0.3) {
+        player.velocity[0] = 0
+        player.velocity[2] = 0
+        continue // Hold pose, no movement or re-firing
+      }
+
       // Find nearest + weakest living enemy (for target selection)
       let nearestEnemy: BattleUnit | null = null
       let nearestDist = Infinity
@@ -437,7 +444,9 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
         const outputs = nn.forward(nnInputs)
 
         // ── MOVEMENT from outputs[0-1] ──
-        if (nearestEnemy) {
+        // Stop moving when about to fire — plant feet, aim, shoot.
+        const wantsToFire = cooldownMet && (outputs[3] ?? 0) > 0 && nearestDist <= player.range
+        if (nearestEnemy && !wantsToFire) {
           const moveForward = outputs[0] ?? 0
           const moveLateral = outputs[1] ?? 0
           const moveAngle = threatBearing + moveLateral * (Math.PI / 3)
@@ -467,6 +476,10 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
           if (speed > 0.1) {
             player.status = 'walking'
           }
+        } else if (wantsToFire) {
+          // Halt movement — soldier plants feet to fire
+          player.velocity[0] = 0
+          player.velocity[2] = 0
         }
 
         // ── TARGET SELECTION from outputs[5] (aggression) ──
@@ -490,7 +503,7 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
             elevCorrection = (outputs[4] ?? 0) * 0.2
             break
           case 'machineGun':
-            aimCorrection = (outputs[2] ?? 0) * 0.3
+            aimCorrection = (outputs[2] ?? 0) * 0.1
             elevCorrection = 0
             break
           default: // rifle
@@ -501,45 +514,12 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
 
         shouldFire = cooldownMet && (outputs[3] ?? 0) > 0
       } else {
-        // UNTRAINED: erratic stumbling + chaos aim
-        // They bumble around visibly — fast but directionless, changing
-        // heading dramatically every few frames. Clearly "untrained."
-        const untrainedSpeed = 1.0 + Math.random() * 0.6
-
-        // Erratic heading: big random turns, sometimes toward enemy, sometimes away
-        if (Math.random() < 0.15) {
-          // 15% chance per frame of a big direction change
-          player.facingAngle += (Math.random() - 0.5) * 2.5
-        } else if (nearestEnemy && Math.random() < 0.3) {
-          // 30% chance of drifting vaguely toward nearest enemy (clumsy advance)
-          const toEnemyAngle = Math.atan2(
-            nearestEnemy.position[0] - player.position[0],
-            nearestEnemy.position[2] - player.position[2],
-          )
-          player.facingAngle += (toEnemyAngle - player.facingAngle) * 0.1
-        }
-
-        const wanderAngle = player.facingAngle + (Math.random() - 0.5) * 0.8
-        let newX = player.position[0] + Math.sin(wanderAngle) * untrainedSpeed * dt
-        let newZ = player.position[2] + Math.cos(wanderAngle) * untrainedSpeed * dt
-
-        // Clamp to table bounds
-        newX = Math.max(-BASE_HALF_W + 0.5, Math.min(BASE_HALF_W - 0.5, newX))
-        newZ = Math.max(-BASE_HALF_D + 0.5, Math.min(BASE_HALF_D - 0.5, newZ))
-
-        if (!isInsideWall(newX, newZ)) {
-          player.position[0] = newX
-          player.position[2] = newZ
-          player.status = 'walking'
-        }
-
-        player.velocity[0] = Math.sin(wanderAngle) * untrainedSpeed
-        player.velocity[2] = Math.cos(wanderAngle) * untrainedSpeed
-
-        // Chaos aim + fire — wild scatter, frequent hesitation
-        aimCorrection = (Math.random() - 0.5) * 1.0
-        elevCorrection = (Math.random() - 0.5) * 0.5
-        shouldFire = cooldownMet && Math.random() > 0.4
+        // UNTRAINED: soldier has no weapon brain — stands still, won't fire.
+        // They're warm bodies on the field but useless without training.
+        player.status = 'idle'
+        player.velocity[0] = 0
+        player.velocity[2] = 0
+        shouldFire = false
       }
 
       if (!selectedTarget || nearestDist > player.range) {
@@ -591,10 +571,18 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
             break
           }
           case 'machineGun': {
+            // MG uses direct aim at target body (like rifle) with slight spread
             const speed = MG_BULLET_SPEED
-            vx = Math.sin(finalAngle) * speed
-            vy = 0.05
-            vz = Math.cos(finalAngle) * speed
+            const tgtY = selectedTarget.position[1] + 0.8
+            const dxMG = selectedTarget.position[0] - muzzleX
+            const dyMG = tgtY - muzzleY
+            const dzMG = selectedTarget.position[2] - muzzleZ
+            const lenMG = Math.sqrt(dxMG * dxMG + dyMG * dyMG + dzMG * dzMG)
+            // Add small random spread for MG burst feel
+            const spread = 0.08
+            vx = (dxMG / lenMG) * speed + (Math.random() - 0.5) * spread * speed + aimCorrection * 2
+            vy = (dyMG / lenMG) * speed + (Math.random() - 0.5) * spread * speed
+            vz = (dzMG / lenMG) * speed + (Math.random() - 0.5) * spread * speed
             sfx.mgBurst()
             break
           }
@@ -703,9 +691,15 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
               break
             }
             case 'machineGun': {
-              vx = Math.sin(finalAngle) * MG_BULLET_SPEED
-              vy = 0.05
-              vz = Math.cos(finalAngle) * MG_BULLET_SPEED
+              const tgtYe = nearestPlayer.position[1] + 0.8
+              const dxMGe = nearestPlayer.position[0] - muzzleX
+              const dyMGe = tgtYe - muzzleY
+              const dzMGe = nearestPlayer.position[2] - muzzleZ
+              const lenMGe = Math.sqrt(dxMGe * dxMGe + dyMGe * dyMGe + dzMGe * dzMGe)
+              const espread = 0.1
+              vx = (dxMGe / lenMGe) * MG_BULLET_SPEED + (Math.random() - 0.5) * espread * MG_BULLET_SPEED
+              vy = (dyMGe / lenMGe) * MG_BULLET_SPEED + (Math.random() - 0.5) * espread * MG_BULLET_SPEED
+              vz = (dzMGe / lenMGe) * MG_BULLET_SPEED + (Math.random() - 0.5) * espread * MG_BULLET_SPEED
               sfx.mgBurst()
               break
             }

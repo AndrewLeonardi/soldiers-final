@@ -70,17 +70,25 @@ export function PlacementOverlay() {
           {soldiers.filter(s => !s.injuredUntil || s.injuredUntil <= Date.now()).map((sol) => {
             const isPlaced = placedIds.has(sol.id)
             const isSelected = selectedPlacementId === sol.id
-            const hasBrain = sol.trainedBrains && Object.keys(sol.trainedBrains).length > 0
+            const trainedWeapons = sol.trainedBrains ? Object.keys(sol.trainedBrains) : []
+            const hasBrain = trainedWeapons.length > 0
+            // Display the weapon they'll deploy with (last trained, or "NONE")
+            const deployWeapon = hasBrain ? trainedWeapons[trainedWeapons.length - 1]!.toUpperCase() : null
 
             return (
               <button
                 key={sol.id}
-                className={`placement-card ${isPlaced ? 'placed' : ''} ${isSelected ? 'selected' : ''}`}
+                className={`placement-card ${isPlaced ? 'placed' : ''} ${isSelected ? 'selected' : ''} ${!hasBrain ? 'untrained' : ''}`}
                 onClick={() => handleSelectSoldier(sol.id)}
               >
                 <span className="placement-card-name">{sol.name}</span>
-                <span className="placement-card-weapon">{sol.weapon.toUpperCase()}</span>
+                {hasBrain ? (
+                  <span className="placement-card-weapon">{deployWeapon}</span>
+                ) : (
+                  <span className="placement-card-weapon untrained">UNTRAINED</span>
+                )}
                 {hasBrain && <span className="placement-card-trained">TRAINED</span>}
+                {!hasBrain && <span className="placement-card-warning">WON'T FIRE</span>}
                 {isPlaced && <span className="placement-card-check">✓</span>}
               </button>
             )
@@ -123,10 +131,16 @@ export function PlacementGroundHandler() {
     const sol = soldiers.find(s => s.id === selectedPlacementId)
     if (!sol) return
 
+    // Deploy with their best trained weapon, or fallback to 'rifle' (untrained — won't fire)
+    const trainedWeapons = sol.trainedBrains ? Object.keys(sol.trainedBrains) : []
+    const deployWeapon = trainedWeapons.length > 0
+      ? trainedWeapons[trainedWeapons.length - 1]!
+      : 'rifle'
+
     const placed: PlacedSoldier = {
       soldierId: sol.id,
       name: sol.name,
-      weapon: sol.weapon as any,
+      weapon: deployWeapon as any,
       position: [x, 0, z],
     }
 

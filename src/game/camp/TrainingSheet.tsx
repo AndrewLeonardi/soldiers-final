@@ -160,6 +160,9 @@ export function TrainingSheet() {
                             {weaponBrains.length} BRAIN{weaponBrains.length > 1 ? 'S' : ''}
                           </span>
                         )}
+                        {weaponBrains.length === 0 && !inTraining && (
+                          <span className="training-roster-badge untrained">UNTRAINED</span>
+                        )}
                       </span>
                     </button>
                   )

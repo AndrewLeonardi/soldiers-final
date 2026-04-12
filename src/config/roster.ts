@@ -1,11 +1,12 @@
 import type { WeaponType, SoldierProfile } from './types'
 
+/** Weapon unlock costs — all 0 because weapons are now unlocked by winning battles. */
 export const WEAPON_UNLOCK_COST: Record<WeaponType, number> = {
   rifle: 0,
-  rocketLauncher: 100,
-  grenade: 100,
-  machineGun: 200,
-  tank: 300,
+  rocketLauncher: 0,
+  grenade: 0,
+  machineGun: 0,
+  tank: 0,
 }
 
 export const SOLDIER_RECRUIT_COST = 200
@@ -69,13 +70,14 @@ export function getRecruitNameOptions(): string[] {
   return shuffled.slice(0, 3)
 }
 
+/** Starter roster — soldiers begin completely untrained (no weapon brains). */
 export const STARTER_ROSTER: SoldierProfile[] = [
   {
     id: 'soldier-1',
     name: 'SGT RICO',
     rank: 'SGT',
     equippedWeapon: 'rifle',
-    unlockedWeapons: ['rifle'],
+    unlockedWeapons: [],
     starRating: 2,
     team: 'green',
     trainedBrains: {},
@@ -84,8 +86,8 @@ export const STARTER_ROSTER: SoldierProfile[] = [
     id: 'soldier-2',
     name: 'PVT ACE',
     rank: 'PVT',
-    equippedWeapon: 'rocketLauncher',
-    unlockedWeapons: ['rifle', 'rocketLauncher'],
+    equippedWeapon: 'rifle',
+    unlockedWeapons: [],
     starRating: 1,
     team: 'green',
     trainedBrains: {},

@@ -39,8 +39,8 @@ export interface SoldierRecord {
   weights?: number[]
 }
 
-/** Healing cooldown: 10 minutes */
-const HEAL_DURATION_MS = 10 * 60 * 1000
+/** Healing cooldown: 60 seconds */
+const HEAL_DURATION_MS = 60 * 1000
 
 // ── State shape ──
 interface CampState {
@@ -207,7 +207,7 @@ export const useCampStore = create<CampState>()(
         ),
       })),
 
-      /** Write trained brain weights for a specific weapon. */
+      /** Write trained brain weights for a specific weapon. Also sets equipped weapon. */
       updateSoldierBrain: (id, weapon, weights, fitness, generations) => set((s) => ({
         soldiers: s.soldiers.map(sol => {
           if (sol.id !== id) return sol
@@ -215,6 +215,7 @@ export const useCampStore = create<CampState>()(
           return {
             ...sol,
             trained: true,
+            weapon, // equip the weapon they just trained
             trainedBrains: { ...existingBrains, [weapon]: weights },
             fitnessScore: Math.max(fitness, sol.fitnessScore ?? 0),
             generationsTrained: (sol.generationsTrained ?? 0) + generations,
@@ -274,7 +275,7 @@ export const useCampStore = create<CampState>()(
     }),
     {
       name: 'toy-soldiers-camp',
-      version: 6,
+      version: 7,
       migrate: (persistedState: any, version: number) => {
         if (version < 2) {
           // v1 → v2: network shape changed from [6,12,4] to [7,8,4].
@@ -338,6 +339,25 @@ export const useCampStore = create<CampState>()(
               trainedBrains: undefined,
             }))
           }
+        }
+        if (version < 7) {
+          // v6 → v7: Weapon progression overhaul.
+          // Soldiers start untrained — wipe all brains, reset weapon to rifle,
+          // clear battle progress, reset weapon unlocks to rifle-only.
+          const state = persistedState as any
+          if (state.soldiers) {
+            state.soldiers = state.soldiers.map((s: any) => ({
+              ...s,
+              trained: false,
+              trainedBrains: undefined,
+              legacyBrains: undefined,
+              weapon: 'rifle',
+              fitnessScore: undefined,
+              generationsTrained: undefined,
+            }))
+          }
+          state.unlockedWeapons = ['rifle']
+          state.battlesCompleted = {}
         }
         return persistedState as CampState
       },

@@ -46,9 +46,8 @@ export function poseTrenchDefender(p: SoldierParts, t: number): void {
   p.leftArm.rotation.z = 0.25
   p.leftElbow.rotation.x = -0.3
   const spineX = p.spine.rotation.x
-  const armX = p.rightArm.rotation.x
   const elbowX = p.rightElbow.rotation.x
-  p.rifleGrp.rotation.x = -(spineX + armX + elbowX)
+  p.rifleGrp.rotation.x = -elbowX - spineX
   p.headGrp.rotation.x = -0.3
   p.headGrp.rotation.y = Math.sin(t * 0.25) * 0.12
 }
@@ -206,7 +205,7 @@ export function poseSniperPlatform(p: SoldierParts, t: number): void {
   p.leftArm.rotation.x = -Math.PI / 2 + 0.1
   p.leftArm.rotation.z = 0.3
   p.leftElbow.rotation.x = -0.3
-  p.rifleGrp.rotation.x = -(spineX + armX + elbowX)
+  p.rifleGrp.rotation.x = -elbowX - spineX
   p.headGrp.rotation.x = -0.12
   p.headGrp.rotation.y = 0.05 + Math.sin(t * 0.3) * 0.04
   p.headGrp.rotation.z = -0.05
