@@ -2,16 +2,11 @@ import { useGameStore } from '@stores/gameStore'
 import { useRosterStore } from '@stores/rosterStore'
 import * as sfx from '@audio/sfx'
 import { WEAPON_DISPLAY } from '@config/roster'
+import { DEFENSE_OPTIONS } from '@config/defenses'
 import { SoldierIcon, GoldCoinIcon } from './ToyIcons'
 import '@styles/game-ui.css'
 
 const SOLDIER_COST = 100
-
-const DEFENSE_OPTIONS = [
-  { type: 'wall' as const, label: 'WALL', cost: 50, icon: '\u2588\u2588' },
-  { type: 'sandbag' as const, label: 'BAGS', cost: 75, icon: '\u25AC\u25AC' },
-  { type: 'tower' as const, label: 'TOWER', cost: 200, icon: '\u2AFF' },
-]
 
 export function PlacementTray() {
   const gold = useGameStore((s) => s.gold)

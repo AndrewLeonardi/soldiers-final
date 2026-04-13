@@ -1,12 +1,13 @@
 /**
  * tutorialSteps.ts — Camp tutorial step definitions.
  *
- * Sprint D (v3). Modeled on /play's proven flow:
+ * Sprint D (v4). Modeled on /play's proven flow:
  *   - Separate gold & compute modals with icons + animated counters
  *   - Action-modal pattern: button opens real UI, wait step watches for completion
  *   - Bottom-positioned hints that don't cover sheet content
  *
- * 9 steps: welcome → gold → compute → recruit → wait → train → start → done → complete
+ * 11 steps: welcome → gold → compute → recruit → wait → train → start →
+ *           watching → done → mission → complete
  */
 
 export interface TutorialStepDef {
@@ -62,18 +63,18 @@ export const TUTORIAL_STEPS: TutorialStepDef[] = [
     id: 'recruit',
     type: 'modal',
     title: 'RECRUIT YOUR FIRST SOLDIER',
-    body: 'Pick a name and they join your squad. You have enough gold for three recruits.',
-    buttonText: 'RECRUIT',
+    body: 'Open your roster and recruit a soldier. Each recruit costs 200 gold.',
+    buttonText: 'OPEN ROSTER',
     advanceOn: 'click',
-    // Side effect: opens RecruitSheet (handled in TutorialGuide)
+    // Side effect: opens RosterSheet (handled in TutorialGuide)
   },
 
   // ── Step 4: Guide during recruitment ──
   {
     id: 'recruit-wait',
     type: 'hint',
-    title: 'CHOOSE A NAME',
-    body: 'Tap a name to recruit your first soldier.',
+    title: 'RECRUIT A SOLDIER',
+    body: 'Tap "+ RECRUIT NEW SOLDIER" then pick a name.',
     advanceOn: 'action',
     hintPosition: 'top',
     // Auto-advances when soldiers.length >= 1
@@ -90,7 +91,7 @@ export const TUTORIAL_STEPS: TutorialStepDef[] = [
     // Side effect: opens TrainingSheet (handled in TutorialGuide)
   },
 
-  // ── Step 6: Guide through training ──
+  // ── Step 6: Guide through training setup ──
   {
     id: 'start-training',
     type: 'hint',
@@ -101,18 +102,39 @@ export const TUTORIAL_STEPS: TutorialStepDef[] = [
     // Auto-advances when observingSlotIndex !== null
   },
 
-  // ── Step 7: Training in progress ──
+  // ── Step 7: Watching training (during observation) ──
+  {
+    id: 'watching-training',
+    type: 'hint',
+    title: 'WATCH & LEARN',
+    body: 'Your soldier is evolving a real neural network brain. Watch it learn to aim and fire!',
+    advanceOn: 'action',
+    hintPosition: 'bottom',
+    // Auto-advances when observingSlotIndex goes back to null (user exits observation)
+  },
+
+  // ── Step 8: Training done (back at camp) ──
   {
     id: 'training-done',
     type: 'hint',
-    title: 'NICE WORK!',
-    body: 'Your soldier is learning! When ready, exit training and tap ATTACK.',
+    title: 'TRAINING COMPLETE!',
+    body: 'Your soldier has a brain now! Tap the ATTACK button to start a battle.',
     advanceOn: 'action',
-    hintPosition: 'bottom',
+    hintPosition: 'top',
     // Auto-advances when battlePhase === 'picking'
   },
 
-  // ── Step 8: Complete ──
+  // ── Step 9: Mission briefing (intelligence) ──
+  {
+    id: 'mission-briefing',
+    type: 'modal',
+    title: 'YOUR MISSION',
+    body: "Your soldiers will raid the enemy base. Place them strategically, then build walls and defenses to protect their advance.\n\nDefenses cost gold — place them wisely. Walls, sandbags, and towers are all destructible.\n\nDestroy the enemy forces to earn stars and rewards!",
+    buttonText: 'UNDERSTOOD',
+    advanceOn: 'click',
+  },
+
+  // ── Step 10: Complete ──
   {
     id: 'complete',
     type: 'modal',

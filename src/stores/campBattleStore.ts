@@ -10,6 +10,12 @@
 import { create } from 'zustand'
 import type { CampBattleConfig } from '@config/campBattles'
 import type { WeaponType } from '@config/types'
+import { DEFENSE_COSTS } from '@config/defenses'
+import type { DefenseType } from '@config/defenses'
+
+// Re-export for consumers that were importing from this file
+export { DEFENSE_COSTS }
+export type { DefenseType }
 
 // ── Battle unit (mutable during fight) ──
 
@@ -76,15 +82,29 @@ export interface PlacedSoldier {
   position: [number, number, number]
 }
 
+// ── Placed defense (during placement phase) ──
+
+export interface PlacedDefense {
+  id: string
+  type: DefenseType
+  position: [number, number, number]
+  rotation: number
+}
+
 // ── State ──
 
 interface CampBattleState {
   // Config
   battleConfig: CampBattleConfig | null
 
-  // Placement
+  // Placement — soldiers
   placedSoldiers: PlacedSoldier[]
   selectedPlacementId: string | null  // which soldier is being placed
+
+  // Placement — defenses
+  placedDefenses: PlacedDefense[]
+  selectedDefenseType: DefenseType | null
+  defenseRotation: number  // radians, increments by π/2
 
   // Battle
   playerUnits: BattleUnit[]
@@ -107,11 +127,19 @@ interface CampBattleState {
   // XP earned per soldier (computed at battle end, consumed by ResultOverlay)
   soldierXPEarned: Record<string, { xp: number; newRankName: string | null }>
 
-  // Actions
+  // Actions — soldiers
   initBattle: (config: CampBattleConfig) => void
   placeSoldier: (soldier: PlacedSoldier) => void
   removePlacedSoldier: (soldierId: string) => void
   selectForPlacement: (soldierId: string | null) => void
+
+  // Actions — defenses
+  placeDefense: (defense: PlacedDefense) => void
+  removeDefense: (defenseId: string) => void
+  selectDefenseType: (type: DefenseType | null) => void
+  rotateDefense: () => void
+
+  // Actions — battle
   setResult: (result: 'victory' | 'defeat', stars: number) => void
   setWeaponUnlocked: (weapon: string | null) => void
   recordKill: (soldierId: string) => void
@@ -123,6 +151,9 @@ export const useCampBattleStore = create<CampBattleState>()((set, get) => ({
   battleConfig: null,
   placedSoldiers: [],
   selectedPlacementId: null,
+  placedDefenses: [],
+  selectedDefenseType: null,
+  defenseRotation: 0,
   playerUnits: [],
   enemyUnits: [],
   projectiles: [],
@@ -141,6 +172,9 @@ export const useCampBattleStore = create<CampBattleState>()((set, get) => ({
       battleConfig: config,
       placedSoldiers: [],
       selectedPlacementId: null,
+      placedDefenses: [],
+      selectedDefenseType: null,
+      defenseRotation: 0,
       playerUnits: [],
       enemyUnits: [],
       projectiles: [],
@@ -174,7 +208,28 @@ export const useCampBattleStore = create<CampBattleState>()((set, get) => ({
   },
 
   selectForPlacement: (soldierId) => {
-    set({ selectedPlacementId: soldierId })
+    set({ selectedPlacementId: soldierId, selectedDefenseType: null })
+  },
+
+  placeDefense: (defense) => {
+    set((s) => ({
+      placedDefenses: [...s.placedDefenses, defense],
+      selectedDefenseType: null, // deselect after placing
+    }))
+  },
+
+  removeDefense: (defenseId) => {
+    set((s) => ({
+      placedDefenses: s.placedDefenses.filter(d => d.id !== defenseId),
+    }))
+  },
+
+  selectDefenseType: (type) => {
+    set({ selectedDefenseType: type, selectedPlacementId: null })
+  },
+
+  rotateDefense: () => {
+    set((s) => ({ defenseRotation: s.defenseRotation + Math.PI / 2 }))
   },
 
   setResult: (result, stars) => {
@@ -200,6 +255,9 @@ export const useCampBattleStore = create<CampBattleState>()((set, get) => ({
       battleConfig: null,
       placedSoldiers: [],
       selectedPlacementId: null,
+      placedDefenses: [],
+      selectedDefenseType: null,
+      defenseRotation: 0,
       playerUnits: [],
       enemyUnits: [],
       projectiles: [],

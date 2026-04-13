@@ -43,6 +43,10 @@ function useAutoAdvance(step: TutorialStepDef | undefined) {
       case 'start-training':
         shouldAdvance = observingSlotIndex !== null
         break
+      case 'watching-training':
+        // Advance when user exits observation (back to camp view)
+        shouldAdvance = observingSlotIndex === null
+        break
       case 'training-done':
         shouldAdvance = battlePhase === 'picking'
         break
@@ -67,6 +71,18 @@ function useStepSounds(step: TutorialStepDef | undefined) {
       sfx.modalAppear()
     } else if (step.id === 'complete') {
       sfx.completionFanfare()
+    } else if (step.id === 'recruit-wait') {
+      // Roster just opened — play recruit chime
+      sfx.recruitChime()
+    } else if (step.id === 'watching-training') {
+      // Entered observation — subtle step sound
+      sfx.stepAdvance()
+    } else if (step.id === 'training-done') {
+      // Back at camp after training — play graduation sound
+      sfx.graduationFanfare()
+    } else if (step.id === 'mission-briefing') {
+      // Battle mission briefing — play deploy horn
+      sfx.deployHorn()
     } else {
       sfx.stepAdvance()
     }
@@ -76,7 +92,7 @@ function useStepSounds(step: TutorialStepDef | undefined) {
 // ── Training speed boost during tutorial ──
 function useTutorialSpeedBoost(step: TutorialStepDef | undefined) {
   useEffect(() => {
-    if (step?.id === 'start-training' || step?.id === 'training-done') {
+    if (step?.id === 'start-training' || step?.id === 'watching-training') {
       useCampTrainingStore.getState().setTutorialSpeedBoost(4)
       return () => {
         useCampTrainingStore.getState().setTutorialSpeedBoost(1)
@@ -177,6 +193,32 @@ function ComputeModal({ onNext }: { onNext: () => void }) {
   )
 }
 
+// ── Mission briefing modal (briefcase icon + battle explanation) ──
+function MissionBriefingModal({ step, onNext }: { step: TutorialStepDef; onNext: () => void }) {
+  return (
+    <div className="tutorial-backdrop" onClick={(e) => e.stopPropagation()}>
+      <div className="tutorial-card tutorial-card-mission" onClick={(e) => e.stopPropagation()}>
+        <div className="tutorial-icon tutorial-icon-mission">
+          <svg width={44} height={44} viewBox="0 0 24 24" fill="#FFD700">
+            <rect x="3" y="7" width="18" height="13" rx="2" />
+            <rect x="8" y="4" width="8" height="5" rx="1" fill="none" stroke="#FFD700" strokeWidth="2" />
+            <circle cx="12" cy="14" r="2" fill="#1a1a2e" />
+          </svg>
+        </div>
+        <div className="tutorial-card-title tutorial-title-mission">{step.title}</div>
+        <div className="tutorial-card-body">
+          {step.body.split('\n').map((line, i) => (
+            <p key={i}>{line || '\u00A0'}</p>
+          ))}
+        </div>
+        <button className="tutorial-card-btn tutorial-btn-mission" onClick={onNext}>
+          {step.buttonText ?? 'CONTINUE'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ── Completion modal (3 spinning stars + enhanced glow) ──
 function CompletionModal({ step, onNext }: { step: TutorialStepDef; onNext: () => void }) {
   return (
@@ -239,6 +281,7 @@ export function TutorialGuide() {
   const completeTutorial = useCampStore((s) => s.completeTutorial)
 
   const setRecruitSheetOpen = useSceneStore((s) => s.setRecruitSheetOpen)
+  const setRosterSheetOpen = useSceneStore((s) => s.setRosterSheetOpen)
   const setTrainingSheetOpen = useSceneStore((s) => s.setTrainingSheetOpen)
 
   const step = TUTORIAL_STEPS[tutorialStep]
@@ -253,9 +296,10 @@ export function TutorialGuide() {
 
     // Side effects based on which step we're leaving
     if (currentStep?.id === 'recruit') {
-      setRecruitSheetOpen(true)
+      setRosterSheetOpen(true)
     }
     if (currentStep?.id === 'train-intro') {
+      setRosterSheetOpen(false)
       setRecruitSheetOpen(false)
       setTrainingSheetOpen(true)
     }
@@ -269,14 +313,22 @@ export function TutorialGuide() {
     } else {
       setTutorialStep(nextIdx)
     }
-  }, [tutorialStep, setTutorialStep, completeTutorial, endTutorial, setRecruitSheetOpen, setTrainingSheetOpen])
+  }, [tutorialStep, setTutorialStep, completeTutorial, endTutorial, setRecruitSheetOpen, setRosterSheetOpen, setTrainingSheetOpen])
 
-  // Close recruit sheet when soldier is recruited
+  // Close recruit/roster sheets when moving to training step
   useEffect(() => {
     if (step?.id === 'train-intro') {
       setRecruitSheetOpen(false)
+      setRosterSheetOpen(false)
     }
-  }, [step?.id, setRecruitSheetOpen])
+  }, [step?.id, setRecruitSheetOpen, setRosterSheetOpen])
+
+  // Close training sheet when training is done (so ATTACK button is visible)
+  useEffect(() => {
+    if (step?.id === 'training-done') {
+      setTrainingSheetOpen(false)
+    }
+  }, [step?.id, setTrainingSheetOpen])
 
   if (!step) return null
   if (step.type === 'wait') return null
@@ -287,6 +339,9 @@ export function TutorialGuide() {
   }
   if (step.id === 'explain-compute') {
     return <ComputeModal onNext={handleNext} />
+  }
+  if (step.id === 'mission-briefing') {
+    return <MissionBriefingModal step={step} onNext={handleNext} />
   }
   if (step.id === 'complete') {
     return <CompletionModal step={step} onNext={handleNext} />

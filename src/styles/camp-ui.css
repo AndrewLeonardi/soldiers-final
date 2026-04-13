@@ -1060,6 +1060,32 @@
   margin-top: 4px;
 }
 
+.roster-recruit-btn {
+  width: 100%;
+  padding: 10px 0;
+  margin-bottom: 10px;
+  background: linear-gradient(180deg, #4a7c3a 0%, #356128 100%);
+  border: 2px solid #5a9a4a;
+  border-bottom: 3px solid #2d5020;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+.roster-recruit-btn:active:not(:disabled) {
+  transform: scale(0.95);
+  border-bottom-width: 2px;
+}
+.roster-recruit-btn.disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 .roster-list {
   display: flex;
   flex-direction: column;
@@ -1487,6 +1513,86 @@
 .placement-start-btn.disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* ── Placement: top-right gold + count cluster ── */
+.placement-top-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.placement-gold-display {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #FFD700;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+.placement-gold-value {
+  min-width: 32px;
+}
+
+/* ── Placement: divider between soldiers and defenses ── */
+.placement-divider {
+  width: 2px;
+  min-height: 40px;
+  background: rgba(255,255,255,0.15);
+  margin: 0 4px;
+  border-radius: 1px;
+  flex: 0 0 auto;
+}
+
+/* ── Placement: defense cards ── */
+.placement-card.defense-card {
+  background: linear-gradient(180deg, #3a4a3a 0%, #283828 100%);
+  border-color: #4a6a4a;
+}
+.placement-card.defense-card.selected {
+  border-color: #66bb6a;
+  box-shadow: 0 0 12px rgba(102,187,106,0.3);
+}
+.placement-card.defense-card.disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.placement-card-icon.defense-icon {
+  font-size: 16px;
+  letter-spacing: 2px;
+  color: #8aad8a;
+  line-height: 1;
+}
+.placement-card-cost {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #FFD700;
+}
+
+/* ── Placement: rotate button (matches /play's .rotate-btn) ── */
+.placement-rotate-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(180deg, #4a6a5a 0%, #3a5a4a 100%);
+  border: 2px solid #6a8a6a;
+  border-bottom: 4px solid #2a4a3a;
+  border-radius: 10px;
+  color: #c0e0a0;
+  cursor: pointer;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+  transition: transform 0.1s ease;
+  flex-shrink: 0;
+  align-self: center;
+}
+.placement-rotate-btn:active {
+  transform: scale(0.9) translateY(2px);
+  border-bottom-width: 2px;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -3368,6 +3474,35 @@
 }
 
 /* ── Completion celebration ── */
+/* ── Mission briefing modal ── */
+.tutorial-card-mission {
+  border-color: #c0392b;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.8),
+    0 0 60px rgba(192, 57, 43, 0.3),
+    0 0 120px rgba(192, 57, 43, 0.1),
+    inset 0 2px 0 rgba(255, 255, 255, 0.15),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.3);
+}
+.tutorial-icon-mission {
+  background: radial-gradient(circle, rgba(192,57,43,0.3) 0%, transparent 70%);
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 8px;
+}
+.tutorial-title-mission {
+  color: #e74c3c;
+}
+.tutorial-btn-mission {
+  background: linear-gradient(180deg, #e85d4a 0%, #c0392b 100%);
+  border-color: #a93226;
+  border-bottom-color: #8e2b22;
+}
+
 .tutorial-card-complete {
   border-color: #d4a820;
   box-shadow:

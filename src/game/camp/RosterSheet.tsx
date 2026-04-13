@@ -53,8 +53,10 @@ function filterSoldiers(soldiers: SoldierRecord[], filterBy: FilterBy): SoldierR
 export function RosterSheet() {
   const isOpen = useSceneStore((s) => s.rosterSheetOpen)
   const setRosterSheetOpen = useSceneStore((s) => s.setRosterSheetOpen)
+  const setRecruitSheetOpen = useSceneStore((s) => s.setRecruitSheetOpen)
   const setSoldierSheetId = useSceneStore((s) => s.setSoldierSheetId)
   const soldiers = useCampStore((s) => s.soldiers)
+  const gold = useCampStore((s) => s.gold)
 
   const [sortBy, setSortBy] = useState<SortBy>('rank')
   const [filterBy, setFilterBy] = useState<FilterBy>('all')
@@ -67,6 +69,12 @@ export function RosterSheet() {
   const handleClose = useCallback(() => {
     setRosterSheetOpen(false)
   }, [setRosterSheetOpen])
+
+  const handleRecruit = useCallback(() => {
+    sfx.buttonTap()
+    setRosterSheetOpen(false)
+    setTimeout(() => setRecruitSheetOpen(true), 150)
+  }, [setRosterSheetOpen, setRecruitSheetOpen])
 
   const handleTapSoldier = useCallback((id: string) => {
     sfx.buttonTap()
@@ -85,6 +93,15 @@ export function RosterSheet() {
         </div>
 
         <div className="game-sheet-body">
+          {/* Recruit button */}
+          <button
+            className={`roster-recruit-btn ${gold < 200 ? 'disabled' : ''}`}
+            onClick={handleRecruit}
+            disabled={gold < 200}
+          >
+            + RECRUIT NEW SOLDIER
+          </button>
+
           {/* Sort/Filter bar */}
           <div className="roster-sort-bar">
             {(['rank', 'fitness', 'name'] as SortBy[]).map(s => (

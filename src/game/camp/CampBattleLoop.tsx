@@ -30,6 +30,7 @@ import { getWeaponShape } from '@game/training/weaponShapes'
 import { WEAPON_STATS, ENEMY_STATS } from '@config/units'
 import { getRank, XP_REWARDS } from '@config/ranks'
 import { SPAWN_POSITIONS } from '@config/campBattles'
+import { DEFENSE_HALF_EXTENTS } from '@config/defenses'
 import type { CampWaveEnemy } from '@config/campBattles'
 import type { WeaponType, EnemyType } from '@config/types'
 import type { WallBlock } from '@three/models/Defenses'
@@ -63,27 +64,37 @@ function isOverTable(x: number, z: number): boolean {
   return Math.abs(x) <= BASE_HALF_W && Math.abs(z) <= BASE_HALF_D
 }
 
-// ── Wall segments for collision (from CampLayout) ──
-// Each wall is an axis-aligned box defined by center + half-extents
-// Walls at [0,0,-5], [0,0,5] are horizontal (wide on X)
-// Walls at [6,0,0], [-6,0,0] are vertical (wide on Z, rotated π/2)
+// ── Wall segments for collision ──
+// Each wall is an axis-aligned box defined by center + half-extents.
+// Built dynamically from player-placed defenses at battle start.
 interface WallBounds {
   cx: number; cz: number;
   halfW: number; halfD: number;
   wallId: string;
 }
 
-const WALL_BOUNDS: WallBounds[] = [
-  // North/South walls (horizontal, wide on X)
-  { cx: 0, cz: -8, halfW: 1.2, halfD: 0.35, wallId: 'wall-north' },
-  { cx: 0, cz: 8,  halfW: 1.2, halfD: 0.35, wallId: 'wall-south' },
-  // East/West walls: rotated π/2 so width → depth, depth → width
-  { cx: 10, cz: 0,  halfW: 0.35, halfD: 1.2, wallId: 'wall-east' },
-  { cx: -10, cz: 0, halfW: 0.35, halfD: 1.2, wallId: 'wall-west' },
-]
+/** Build WallBounds from placedDefenses for AI collision avoidance */
+function buildWallBounds(): WallBounds[] {
+  const { placedDefenses } = useCampBattleStore.getState()
+  return placedDefenses.map((def) => {
+    const ext = DEFENSE_HALF_EXTENTS[def.type] ?? DEFENSE_HALF_EXTENTS['wall']
+    // If rotated ~90° or ~270°, swap width and depth
+    const isRotated = Math.abs(Math.sin(def.rotation)) > 0.5
+    return {
+      cx: def.position[0],
+      cz: def.position[2],
+      halfW: isRotated ? ext.halfD : ext.halfW,
+      halfD: isRotated ? ext.halfW : ext.halfD,
+      wallId: def.id,
+    }
+  })
+}
+
+// Mutable reference updated at battle start
+let _activeWallBounds: WallBounds[] = []
 
 function isInsideWall(x: number, z: number, padding: number = 0.3): WallBounds | null {
-  for (const wall of WALL_BOUNDS) {
+  for (const wall of _activeWallBounds) {
     if (
       x >= wall.cx - wall.halfW - padding &&
       x <= wall.cx + wall.halfW + padding &&
@@ -208,6 +219,9 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
     _uid = 0
     _dropIdx = 0
     brainCacheRef.current.clear()
+
+    // Build wall bounds from player-placed defenses
+    _activeWallBounds = buildWallBounds()
 
     // Create player units from placed soldiers (they'll drop from high Y)
     const playerUnits: BattleUnit[] = store.placedSoldiers.map((placed) => {

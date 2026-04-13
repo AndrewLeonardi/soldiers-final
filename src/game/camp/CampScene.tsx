@@ -131,11 +131,11 @@ export function CampScene() {
 
           {/* Placement phase */}
           <PlacementGroundHandler />
-          <PlacementMarkers />
+          <PlacementMarkers wallBlocksRef={wallBlocksRef} />
 
           {/* Battle loop + entities */}
           <CampBattleLoop wallBlocksRef={wallBlocksRef} />
-          <BattleEntities />
+          <BattleEntities wallBlocksRef={wallBlocksRef} />
 
           {/* Dev-only */}
           <TestGrenade wallBlocksRef={wallBlocksRef} />

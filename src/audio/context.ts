@@ -26,16 +26,24 @@ export function resumeOnInteraction(): void {
   if (resumed) return
   resumed = true
 
+  // Try to resume immediately (works if user already interacted)
+  if (ctx && ctx.state === 'suspended') {
+    ctx.resume()
+  }
+
+  // Also listen for the next interaction as a fallback
   function handler() {
     if (ctx && ctx.state === 'suspended') {
       ctx.resume()
     }
     document.removeEventListener('touchstart', handler)
     document.removeEventListener('pointerdown', handler)
+    document.removeEventListener('click', handler)
   }
 
   document.addEventListener('touchstart', handler, { once: true })
   document.addEventListener('pointerdown', handler, { once: true })
+  document.addEventListener('click', handler, { once: true })
 }
 
 export function setMasterVolume(v: number): void {

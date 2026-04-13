@@ -1,19 +1,31 @@
 /**
- * PlacementMarkers — placed soldier previews + hover ring during placement.
+ * PlacementMarkers — placed soldier + defense previews during placement.
  *
- * Sprint 4, Phase 2. Renders actual SoldierUnit models at placed positions
- * with floating name tags. Shows a green pulse ring at pointer position
- * when a soldier is selected for placement (the "cursor").
+ * Sprint 4, Phase 2 (v2 — defense placement).
+ *
+ * Renders:
+ *   - SoldierUnit models at placed soldier positions with name tags
+ *   - DestructibleDefense components at placed defense positions
+ *   - Green pulse ring when a soldier is selected for placement
  */
 import { useSceneStore } from '@stores/sceneStore'
 import { useCampBattleStore } from '@stores/campBattleStore'
 import { SoldierUnit } from '@three/models/SoldierUnit'
+import type { WallBlock } from '@three/models/Defenses'
+import { DEFENSE_COMPONENTS } from '@config/defenseRendering'
+import { TABLE_BOUNDS } from './campConstants'
 import { Html } from '@react-three/drei'
 import type { WeaponType } from '@config/types'
+import React from 'react'
 
-export function PlacementMarkers() {
+interface PlacementMarkersProps {
+  wallBlocksRef: React.MutableRefObject<Map<string, WallBlock[]>>
+}
+
+export function PlacementMarkers({ wallBlocksRef }: PlacementMarkersProps) {
   const battlePhase = useSceneStore((s) => s.battlePhase)
   const placedSoldiers = useCampBattleStore((s) => s.placedSoldiers)
+  const placedDefenses = useCampBattleStore((s) => s.placedDefenses)
   const selectedPlacementId = useCampBattleStore((s) => s.selectedPlacementId)
 
   if (battlePhase !== 'placing') return null
@@ -53,6 +65,22 @@ export function PlacementMarkers() {
               {sol.name}
             </Html>
           </group>
+        )
+      })}
+
+      {/* Placed defenses — real DestructibleDefense components */}
+      {placedDefenses.map((def) => {
+        const DefComp = DEFENSE_COMPONENTS[def.type]
+        if (!DefComp) return null
+        return (
+          <DefComp
+            key={def.id}
+            position={def.position}
+            rotation={def.rotation}
+            wallBlocksRef={wallBlocksRef}
+            wallId={def.id}
+            tableBounds={TABLE_BOUNDS}
+          />
         )
       })}
 

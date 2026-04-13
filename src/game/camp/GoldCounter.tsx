@@ -1,7 +1,8 @@
 /**
  * GoldCounter — gold currency pill for the HUD.
  *
- * Sprint A. Gold accent, clicking opens the recruit sheet.
+ * Sprint A (v2). Gold accent, clicking + opens the store (buy more gold).
+ * Recruiting is handled through the roster, not the gold button.
  */
 import { useCallback } from 'react'
 import { useCampStore } from '@stores/campStore'
@@ -11,11 +12,11 @@ import { CurrencyPill } from './CurrencyPill'
 
 export function GoldCounter() {
   const gold = useCampStore((s) => s.gold)
-  const setRecruitSheetOpen = useSceneStore((s) => s.setRecruitSheetOpen)
+  const setStoreSheetOpen = useSceneStore((s) => s.setStoreSheetOpen)
 
   const handlePlus = useCallback(() => {
-    setRecruitSheetOpen(true)
-  }, [setRecruitSheetOpen])
+    setStoreSheetOpen(true)
+  }, [setStoreSheetOpen])
 
   return (
     <CurrencyPill

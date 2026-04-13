@@ -37,6 +37,7 @@ import { ObservationHUD } from './ObservationHUD'
 import { CampNeuralNetViz } from './CampNeuralNetViz'
 import { TutorialGuide } from './TutorialGuide'
 import { AudioBed } from '@audio/AudioBed'
+import { resumeOnInteraction, ensureContext } from '@audio/context'
 import { useSceneStore } from '@stores/sceneStore'
 import { useCampStore } from '@stores/campStore'
 import '@styles/camp-ui.css'
@@ -52,6 +53,12 @@ export default function CampPage() {
   const setStoreSheetOpen = useSceneStore((s) => s.setStoreSheetOpen)
   const setRosterSheetOpen = useSceneStore((s) => s.setRosterSheetOpen)
   const setMedicalSheetOpen = useSceneStore((s) => s.setMedicalSheetOpen)
+
+  // Initialize audio context + resume on first interaction
+  useEffect(() => {
+    ensureContext()
+    resumeOnInteraction()
+  }, [])
 
   // Auto-start tutorial for new players after boot
   useEffect(() => {

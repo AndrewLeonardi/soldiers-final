@@ -1,6 +1,8 @@
 import { useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
+import { DEFENSE_GHOST } from '@config/defenseRendering'
+import type { DefenseType } from '@config/defenses'
 
 const raycaster = new THREE.Raycaster()
 const mouse = new THREE.Vector2(9999, 9999)
@@ -15,26 +17,9 @@ if (typeof window !== 'undefined') {
   })
 }
 
-const GHOST_CONFIGS: Record<string, {
-  geo: THREE.BufferGeometry
-  yOffset: number
-}> = {
-  soldier: {
-    geo: new THREE.CylinderGeometry(0.2, 0.25, 0.7, 12),
-    yOffset: 0.35,
-  },
-  wall: {
-    geo: new THREE.BoxGeometry(2.4, 1.0, 0.2),
-    yOffset: 0.5,
-  },
-  sandbag: {
-    geo: new THREE.BoxGeometry(1.6, 0.4, 0.8),
-    yOffset: 0.2,
-  },
-  tower: {
-    geo: new THREE.BoxGeometry(1.1, 2.0, 1.1),
-    yOffset: 1.0,
-  },
+const SOLDIER_GHOST = {
+  geo: new THREE.CylinderGeometry(0.2, 0.25, 0.7, 12),
+  yOffset: 0.35,
 }
 
 const ghostMatValid = new THREE.MeshBasicMaterial({
@@ -82,8 +67,10 @@ export function GhostPreview({ selectedType, placementRotation }: GhostPreviewPr
     const valid = snappedX <= 2
 
     // Determine ghost type (soldier from roster or defense type)
-    const ghostType = selectedType.startsWith('soldier') ? 'soldier' : selectedType
-    const config = GHOST_CONFIGS[ghostType]
+    const isSoldier = selectedType.startsWith('soldier')
+    const config = isSoldier
+      ? SOLDIER_GHOST
+      : DEFENSE_GHOST[selectedType as DefenseType]
     if (!config) {
       meshRef.current.visible = false
       return

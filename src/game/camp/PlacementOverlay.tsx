@@ -1,20 +1,32 @@
 /**
- * PlacementOverlay — drag soldiers onto the battlefield before fighting.
+ * PlacementOverlay — drag soldiers AND defenses onto the battlefield.
  *
- * Sprint 4, Phase 2. Shows a tray of available soldiers at bottom.
- * Tap a soldier card → selected for placement.
- * Tap on the 3D ground → place that soldier at the clicked position.
- * Already-placed soldiers show as green dots on the field.
- * "START BATTLE" button requires at least 1 placed soldier.
+ * Sprint 4, Phase 2 (v2 — defense placement).
+ *
+ * Bottom tray shows:
+ *   - Soldier cards (tap to select, tap ground to place)
+ *   - Divider
+ *   - Defense cards: WALL (50g), BAGS (75g), TOWER (200g)
+ *   - Rotate button (when a defense is selected)
+ *   - START BATTLE button (requires ≥1 placed soldier)
+ *
+ * Defenses cost gold from campStore. Soldiers are free to place
+ * (gold was spent at recruit time).
  */
-import { useCallback, useState } from 'react'
+import { useCallback, useRef } from 'react'
+import { useFrame, useThree } from '@react-three/fiber'
+import * as THREE from 'three'
 import { useSceneStore } from '@stores/sceneStore'
 import { useCampStore } from '@stores/campStore'
 import type { SoldierRecord } from '@stores/campStore'
 import { useCampBattleStore } from '@stores/campBattleStore'
 import type { PlacedSoldier } from '@stores/campBattleStore'
+import { DEFENSE_COSTS, DEFENSE_OPTIONS } from '@config/defenses'
+import type { DefenseType } from '@config/defenses'
+import { DEFENSE_GHOST } from '@config/defenseRendering'
 import { WeaponPicker } from './WeaponPicker'
 import { RankBadge } from './RankBadge'
+import { GoldCoinIcon } from './GoldCoinIcon'
 import type { WeaponType } from '@config/types'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
@@ -25,12 +37,17 @@ export function PlacementOverlay() {
   const pendingPlacement = useSceneStore((s) => s.pendingPlacement)
   const setPendingPlacement = useSceneStore((s) => s.setPendingPlacement)
   const soldiers = useCampStore((s) => s.soldiers)
+  const gold = useCampStore((s) => s.gold)
   const battleConfig = useCampBattleStore((s) => s.battleConfig)
   const placedSoldiers = useCampBattleStore((s) => s.placedSoldiers)
   const selectedPlacementId = useCampBattleStore((s) => s.selectedPlacementId)
   const selectForPlacement = useCampBattleStore((s) => s.selectForPlacement)
   const placeSoldier = useCampBattleStore((s) => s.placeSoldier)
   const removePlacedSoldier = useCampBattleStore((s) => s.removePlacedSoldier)
+  const selectedDefenseType = useCampBattleStore((s) => s.selectedDefenseType)
+  const selectDefenseType = useCampBattleStore((s) => s.selectDefenseType)
+  const rotateDefense = useCampBattleStore((s) => s.rotateDefense)
+  const placedDefenses = useCampBattleStore((s) => s.placedDefenses)
   const reset = useCampBattleStore((s) => s.reset)
 
   const handleWeaponPick = useCallback((weapon: WeaponType) => {
@@ -61,6 +78,21 @@ export function PlacementOverlay() {
     selectForPlacement(soldierId)
   }, [placedSoldiers, selectForPlacement, removePlacedSoldier])
 
+  const handleSelectDefense = useCallback((type: DefenseType) => {
+    sfx.buttonTap()
+    // Toggle: tap same defense again to deselect
+    if (selectedDefenseType === type) {
+      selectDefenseType(null)
+    } else {
+      selectDefenseType(type)
+    }
+  }, [selectedDefenseType, selectDefenseType])
+
+  const handleRotate = useCallback(() => {
+    sfx.buttonTap()
+    rotateDefense()
+  }, [rotateDefense])
+
   const handleCancel = useCallback(() => {
     sfx.buttonTap()
     reset()
@@ -77,6 +109,7 @@ export function PlacementOverlay() {
 
   const maxSoldiers = battleConfig.maxSoldiers
   const placedIds = new Set(placedSoldiers.map(p => p.soldierId))
+  const isDefenseSelected = selectedDefenseType !== null
 
   return (
     <div className="placement-overlay">
@@ -84,18 +117,24 @@ export function PlacementOverlay() {
       <div className="placement-top-bar">
         <button className="placement-cancel-btn" onClick={handleCancel}>CANCEL</button>
         <span className="placement-title">{battleConfig.name}</span>
-        <span className="placement-count">{placedSoldiers.length}/{maxSoldiers}</span>
+        <div className="placement-top-right">
+          <span className="placement-gold-display">
+            <GoldCoinIcon size={14} />
+            <span className="placement-gold-value">{gold}</span>
+          </span>
+          <span className="placement-count">{placedSoldiers.length}/{maxSoldiers}</span>
+        </div>
       </div>
 
-      {/* Bottom soldier tray */}
+      {/* Bottom soldier + defense tray */}
       <div className="placement-tray">
         <div className="placement-tray-scroll">
+          {/* ── Soldier cards ── */}
           {soldiers.filter(s => !s.injuredUntil || s.injuredUntil <= Date.now()).map((sol) => {
             const isPlaced = placedIds.has(sol.id)
             const isSelected = selectedPlacementId === sol.id
             const trainedWeapons = sol.trainedBrains ? Object.keys(sol.trainedBrains) : []
             const hasBrain = trainedWeapons.length > 0
-            // Display the weapon they'll deploy with (last trained, or "NONE")
             const deployWeapon = hasBrain ? trainedWeapons[trainedWeapons.length - 1]!.toUpperCase() : null
 
             return (
@@ -121,6 +160,40 @@ export function PlacementOverlay() {
               </button>
             )
           })}
+
+          {/* ── Divider ── */}
+          <div className="placement-divider" />
+
+          {/* ── Defense cards ── */}
+          {DEFENSE_OPTIONS.map((def) => {
+            const canAfford = gold >= def.cost
+            const isSelected = selectedDefenseType === def.type
+            return (
+              <button
+                key={def.type}
+                className={`placement-card defense-card ${isSelected ? 'selected' : ''} ${!canAfford ? 'disabled' : ''}`}
+                onClick={() => canAfford && handleSelectDefense(def.type)}
+                disabled={!canAfford}
+              >
+                <span className="placement-card-icon defense-icon">{def.icon}</span>
+                <span className="placement-card-name">{def.label}</span>
+                <span className="placement-card-cost">
+                  <GoldCoinIcon size={10} />
+                  <span>{def.cost}</span>
+                </span>
+              </button>
+            )
+          })}
+
+          {/* ── Rotate button (visible when defense selected) ── */}
+          {isDefenseSelected && (
+            <button className="placement-rotate-btn" onClick={handleRotate}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="1 4 1 10 7 10" />
+                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+              </svg>
+            </button>
+          )}
         </div>
 
         {/* Start battle button */}
@@ -147,23 +220,116 @@ export function PlacementOverlay() {
 
 /**
  * PlacementGroundHandler — invisible 3D plane for ground clicks during placement.
+ * Handles BOTH soldier and defense placement.
+ * Shows a translucent ghost preview of the selected defense at pointer position.
  * Mounts inside CampScene (R3F context).
  */
+const ghostMat = new THREE.MeshBasicMaterial({
+  color: 0x4CAF50,
+  transparent: true,
+  opacity: 0.35,
+  depthWrite: false,
+})
+
+// Track pointer globally for raycasting (same pattern as /play)
+const _mouse = new THREE.Vector2(9999, 9999)
+const _groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
+const _intersect = new THREE.Vector3()
+const _raycaster = new THREE.Raycaster()
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('pointermove', (e) => {
+    _mouse.x = (e.clientX / window.innerWidth) * 2 - 1
+    _mouse.y = -(e.clientY / window.innerHeight) * 2 + 1
+  })
+}
+
+/** Ghost preview mesh — shows translucent defense shape at cursor position. */
+function PlacementGhost() {
+  const meshRef = useRef<THREE.Mesh>(null!)
+  const { camera } = useThree()
+  const selectedDefenseType = useCampBattleStore((s) => s.selectedDefenseType)
+  const defenseRotation = useCampBattleStore((s) => s.defenseRotation)
+
+  useFrame(() => {
+    if (!meshRef.current) return
+    if (!selectedDefenseType) {
+      meshRef.current.visible = false
+      return
+    }
+
+    const config = DEFENSE_GHOST[selectedDefenseType]
+    if (!config) {
+      meshRef.current.visible = false
+      return
+    }
+
+    // Raycast from pointer → ground plane
+    _raycaster.setFromCamera(_mouse, camera)
+    _raycaster.ray.intersectPlane(_groundPlane, _intersect)
+
+    if (!_intersect) {
+      meshRef.current.visible = false
+      return
+    }
+
+    // Clamp within arena bounds
+    const x = Math.max(-11, Math.min(11, _intersect.x))
+    const z = Math.max(-8, Math.min(8, _intersect.z))
+
+    meshRef.current.visible = true
+    meshRef.current.geometry = config.geo
+    meshRef.current.material = ghostMat
+    meshRef.current.position.set(x, config.yOffset, z)
+    meshRef.current.rotation.y = defenseRotation
+  })
+
+  return <mesh ref={meshRef} />
+}
+
 export function PlacementGroundHandler() {
   const battlePhase = useSceneStore((s) => s.battlePhase)
   const selectedPlacementId = useCampBattleStore((s) => s.selectedPlacementId)
+  const selectedDefenseType = useCampBattleStore((s) => s.selectedDefenseType)
+  const defenseRotation = useCampBattleStore((s) => s.defenseRotation)
   const placeSoldier = useCampBattleStore((s) => s.placeSoldier)
+  const placeDefense = useCampBattleStore((s) => s.placeDefense)
   const selectForPlacement = useCampBattleStore((s) => s.selectForPlacement)
+  const selectDefenseType = useCampBattleStore((s) => s.selectDefenseType)
   const soldiers = useCampStore((s) => s.soldiers)
+  const gold = useCampStore((s) => s.gold)
+  const spendGold = useCampStore((s) => s.spendGold)
 
   const handleGroundClick = useCallback((e: any) => {
-    if (battlePhase !== 'placing' || !selectedPlacementId) return
+    if (battlePhase !== 'placing') return
     e.stopPropagation()
 
     const point = e.point
-    // Clamp within camp bounds
+    // Clamp within arena bounds
     const x = Math.max(-11, Math.min(11, point.x))
     const z = Math.max(-8, Math.min(8, point.z))
+
+    // ── Defense placement ──
+    if (selectedDefenseType) {
+      const cost = DEFENSE_COSTS[selectedDefenseType]
+      if (gold < cost) return
+
+      const success = spendGold(cost)
+      if (!success) return
+
+      const defense = {
+        id: `defense-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        type: selectedDefenseType,
+        position: [x, 0, z] as [number, number, number],
+        rotation: defenseRotation,
+      }
+      placeDefense(defense)
+      sfx.buttonTap()
+      return
+    }
+
+    // ── Soldier placement ──
+    if (!selectedPlacementId) return
 
     const sol = soldiers.find(s => s.id === selectedPlacementId)
     if (!sol) return
@@ -192,18 +358,24 @@ export function PlacementGroundHandler() {
     placeSoldier(placed)
     selectForPlacement(null)
     sfx.buttonTap()
-  }, [battlePhase, selectedPlacementId, soldiers, placeSoldier, selectForPlacement])
+  }, [battlePhase, selectedPlacementId, selectedDefenseType, defenseRotation, soldiers, gold, placeSoldier, placeDefense, selectForPlacement, selectDefenseType, spendGold])
 
   if (battlePhase !== 'placing') return null
 
   return (
-    <mesh
-      position={[0, 0.01, 0]}
-      rotation={[-Math.PI / 2, 0, 0]}
-      onPointerUp={handleGroundClick}
-    >
-      <planeGeometry args={[28, 22]} />
-      <meshBasicMaterial transparent opacity={0} />
-    </mesh>
+    <>
+      {/* Invisible ground plane for click detection */}
+      <mesh
+        position={[0, 0.01, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        onPointerUp={handleGroundClick}
+      >
+        <planeGeometry args={[28, 22]} />
+        <meshBasicMaterial transparent opacity={0} />
+      </mesh>
+
+      {/* Ghost preview — translucent defense shape following cursor */}
+      <PlacementGhost />
+    </>
   )
 }
