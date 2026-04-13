@@ -3055,3 +3055,344 @@
   transform: scale(0.92) translateY(2px);
   border-bottom-width: 1px;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   Tutorial Overlay — Sprint D (v3)
+   Modeled on /play's proven TutorialOverlay.
+   Separate gold/compute modals, animated counters, icon circles.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Modal backdrop ── */
+.tutorial-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10100;
+  animation: tutorial-fade-in 0.3s ease-out;
+}
+
+/* ── Modal card (base — military green) ── */
+.tutorial-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 36px 28px 28px;
+  max-width: 380px;
+  width: calc(100% - 48px);
+  background: linear-gradient(180deg, #2d4535 0%, #1e3328 50%, #162820 100%);
+  border: 3px solid rgba(255, 215, 64, 0.3);
+  border-radius: 16px;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.8),
+    0 0 50px rgba(255, 215, 64, 0.08),
+    inset 0 2px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.3);
+  animation: tutorial-card-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  text-align: center;
+}
+
+/* ── Gold variant ── */
+.tutorial-card-gold {
+  border-color: #d4a820;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.8),
+    0 0 60px rgba(255, 215, 0, 0.25),
+    0 0 120px rgba(255, 215, 0, 0.1),
+    inset 0 2px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Compute variant (green themed) ── */
+.tutorial-card-compute {
+  border-color: #3daa5a;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.8),
+    0 0 60px rgba(74, 222, 128, 0.35),
+    0 0 120px rgba(74, 222, 128, 0.15),
+    inset 0 2px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.3);
+  animation: tutorial-card-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+             tutorial-compute-glow 2s ease-in-out 0.5s infinite;
+}
+
+/* ── Icon circles ── */
+.tutorial-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  animation: tutorial-icon-bounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;
+}
+
+.tutorial-icon-gold {
+  background: radial-gradient(circle at 40% 35%, #FFE066, #C8960C);
+  box-shadow:
+    0 6px 20px rgba(255, 215, 0, 0.5),
+    0 0 40px rgba(255, 215, 0, 0.3),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.tutorial-icon-compute {
+  background: radial-gradient(circle at 40% 35%, #6BF09C, #1B8A40);
+  box-shadow:
+    0 6px 20px rgba(74, 222, 128, 0.5),
+    0 0 40px rgba(74, 222, 128, 0.3),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* ── Title ── */
+.tutorial-card-title {
+  font-family: 'Black Ops One', cursive;
+  font-size: 24px;
+  letter-spacing: 3px;
+  color: #ffd740;
+  text-transform: uppercase;
+  text-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.6),
+    0 0 20px rgba(255, 215, 64, 0.25);
+  line-height: 1.2;
+}
+
+.tutorial-title-gold {
+  color: #ffd740;
+  text-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.6),
+    0 0 20px rgba(255, 215, 0, 0.4);
+}
+
+.tutorial-title-compute {
+  color: #4ADE80;
+  text-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.6),
+    0 0 20px rgba(74, 222, 128, 0.4);
+}
+
+/* ── Body ── */
+.tutorial-card-body {
+  font-family: 'Black Ops One', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #c5d4b0;
+  max-width: 310px;
+}
+
+.tutorial-card-body p {
+  margin: 0 0 8px;
+}
+
+.tutorial-card-body p:last-child {
+  margin-bottom: 0;
+}
+
+.tutorial-strong-gold {
+  color: #ffd740;
+  font-weight: 700;
+}
+
+.tutorial-strong-compute {
+  color: #4ADE80;
+  font-weight: 700;
+}
+
+/* ── Animated counter ── */
+.tutorial-counter {
+  font-family: 'Black Ops One', cursive;
+  font-size: 42px;
+  letter-spacing: 2px;
+  animation: tutorial-counter-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.tutorial-counter-gold {
+  color: #ffd740;
+  text-shadow: 0 2px 12px rgba(255, 215, 0, 0.6);
+}
+
+.tutorial-counter-compute {
+  color: #4ADE80;
+  text-shadow: 0 2px 12px rgba(74, 222, 128, 0.6);
+}
+
+/* ── Button (base — gold beveled) ── */
+.tutorial-card-btn {
+  padding: 16px 48px;
+  background: linear-gradient(180deg, #FFCC33 0%, #E8A820 40%, #CC8800 70%, #AA6600 100%);
+  border: 2px solid #FFE066;
+  border-bottom: 6px solid #885500;
+  border-radius: 12px;
+  color: #2a1800;
+  font-family: 'Black Ops One', cursive;
+  font-size: 16px;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow:
+    0 6px 20px rgba(200, 150, 12, 0.5),
+    inset 0 2px 0 rgba(255, 255, 255, 0.3);
+  transition: transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1);
+  touch-action: none;
+  margin-top: 4px;
+}
+
+.tutorial-card-btn:active {
+  transform: scale(0.96) translateY(4px);
+  border-bottom-width: 2px;
+}
+
+/* ── Compute button variant (green) ── */
+.tutorial-btn-compute {
+  background: linear-gradient(180deg, #5aaa5a 0%, #3d7b4f 40%, #2d6a3f 70%, #1d5a30 100%);
+  border-color: #6aba6a;
+  border-bottom-color: #1a3a1a;
+  color: white;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  box-shadow:
+    0 6px 20px rgba(46, 125, 50, 0.5),
+    inset 0 2px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* ── Hint — non-blocking, floating ── */
+.tutorial-hint {
+  position: fixed;
+  left: 50%;
+  z-index: 10100;
+  padding: 14px 24px;
+  background: linear-gradient(180deg, rgba(45, 69, 53, 0.95) 0%, rgba(30, 51, 40, 0.95) 100%);
+  border: 2px solid rgba(255, 215, 64, 0.25);
+  border-radius: 24px;
+  max-width: 340px;
+  text-align: center;
+  pointer-events: none;
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.5),
+    0 0 16px rgba(255, 215, 64, 0.06);
+  white-space: normal;
+}
+
+.tutorial-hint-bottom {
+  bottom: 100px;
+  transform: translateX(-50%);
+  animation: tutorial-hint-float 2s ease-in-out infinite,
+             tutorial-hint-bottom-enter 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.tutorial-hint-top {
+  top: 56px;
+  transform: translateX(-50%);
+  animation: tutorial-hint-float 2s ease-in-out infinite,
+             tutorial-hint-top-enter 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.tutorial-hint-title {
+  font-family: 'Black Ops One', cursive;
+  font-size: 14px;
+  letter-spacing: 2px;
+  color: #ffd740;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.tutorial-hint-body {
+  font-family: 'Black Ops One', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #c5d4b0;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+/* ── Keyframes ── */
+@keyframes tutorial-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes tutorial-card-pop {
+  0% { opacity: 0; transform: scale(0.3); }
+  60% { transform: scale(1.04); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes tutorial-icon-bounce {
+  0% { transform: scale(0); }
+  50% { transform: scale(1.2); }
+  75% { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+
+@keyframes tutorial-counter-pop {
+  0% { transform: scale(0.5); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes tutorial-compute-glow {
+  0%, 100% {
+    box-shadow:
+      0 20px 60px rgba(0, 0, 0, 0.8),
+      0 0 60px rgba(74, 222, 128, 0.35),
+      0 0 120px rgba(74, 222, 128, 0.15),
+      inset 0 2px 0 rgba(255, 255, 255, 0.12),
+      inset 0 -3px 6px rgba(0, 0, 0, 0.3);
+  }
+  50% {
+    box-shadow:
+      0 20px 60px rgba(0, 0, 0, 0.8),
+      0 0 80px rgba(74, 222, 128, 0.5),
+      0 0 160px rgba(74, 222, 128, 0.25),
+      inset 0 2px 0 rgba(255, 255, 255, 0.12),
+      inset 0 -3px 6px rgba(0, 0, 0, 0.3);
+  }
+}
+
+@keyframes tutorial-hint-float {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(-6px); }
+}
+
+@keyframes tutorial-hint-bottom-enter {
+  0% { transform: translateX(-50%) scale(0.7); opacity: 0; }
+  100% { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+
+@keyframes tutorial-hint-top-enter {
+  0% { transform: translateX(-50%) scale(0.7); opacity: 0; }
+  100% { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+
+/* ── Completion celebration ── */
+.tutorial-card-complete {
+  border-color: #d4a820;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.8),
+    0 0 60px rgba(255, 215, 0, 0.4),
+    0 0 120px rgba(255, 215, 0, 0.15),
+    inset 0 2px 0 rgba(255, 255, 255, 0.15),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.3);
+}
+
+.tutorial-stars {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.tutorial-star {
+  animation: tutorial-star-spin 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.tutorial-star:nth-child(1) { animation-delay: 0.15s; }
+.tutorial-star:nth-child(2) { animation-delay: 0.3s; }
+.tutorial-star:nth-child(3) { animation-delay: 0.45s; }
+
+@keyframes tutorial-star-spin {
+  0% { transform: scale(0) rotate(-180deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}

@@ -133,6 +133,10 @@ interface CampTrainingState {
   // Global active milestone (for the callout system — shows latest from any slot)
   activeMilestone: MilestoneEvent | null
 
+  // Tutorial speed multiplier (default 1, set to 4 during tutorial observation)
+  tutorialSpeedBoost: number
+  setTutorialSpeedBoost: (n: number) => void
+
   // Actions
   commitToTrain: (slotIndex: number, soldierId: string, soldierName: string, weapon: string, tier: number) => boolean
   tick: (dt: number) => void
@@ -210,6 +214,9 @@ export const useCampTrainingStore = create<CampTrainingState>()((set, get) => {
     slots: [createEmptySlot()],
 
     activeMilestone: null,
+
+    tutorialSpeedBoost: 1,
+    setTutorialSpeedBoost: (n) => set({ tutorialSpeedBoost: n }),
 
     // Legacy compat — initial values from slot 0
     trainingPhase: 'empty',
@@ -340,8 +347,8 @@ export const useCampTrainingStore = create<CampTrainingState>()((set, get) => {
           return { ...slot, timerElapsed: slot.timerTotal, trainingPhase: 'graduated' as const }
         }
 
-        // Run sim ticks
-        const stepsPerFrame = Math.max(1, Math.ceil(tierConfig.multiplier * 0.5))
+        // Run sim ticks (tutorialSpeedBoost accelerates GA during tutorial)
+        const stepsPerFrame = Math.max(1, Math.ceil(tierConfig.multiplier * 0.5 * state.tutorialSpeedBoost))
 
         let { population, fitnesses, generation, bestFitness, bestWeights, fitnessHistory,
           simStates, nns, totalHits, totalKills, bestStreak, milestones, activeMilestone } = slot

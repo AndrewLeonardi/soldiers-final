@@ -33,6 +33,7 @@ export function TrainingCampBuilding() {
   const setTrainingSheetOpen = useSceneStore((s) => s.setTrainingSheetOpen)
   const setObservingSlotIndex = useSceneStore((s) => s.setObservingSlotIndex)
   const battlePhase = useSceneStore((s) => s.battlePhase)
+  const tutorialActive = useSceneStore((s) => s.tutorialActive)
   const anySheetOpen = useSceneStore((s) =>
     s.trainingSheetOpen || s.storeSheetOpen || s.rosterSheetOpen ||
     s.soldierSheetId !== null || s.medicalSheetOpen
@@ -171,8 +172,8 @@ export function TrainingCampBuilding() {
         <meshBasicMaterial />
       </mesh>
 
-      {/* "+TRAIN" floating label when idle — hidden during battle */}
-      {isIdle && battlePhase === 'idle' && !anySheetOpen && (
+      {/* "+TRAIN" floating label when idle — hidden during battle & tutorial */}
+      {isIdle && battlePhase === 'idle' && !anySheetOpen && !tutorialActive && (
         <Html
           position={[0, 2.2, 0]}
           center

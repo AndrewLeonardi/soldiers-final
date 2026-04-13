@@ -70,6 +70,9 @@ interface CampState {
   // Settings
   muted: boolean
 
+  // Tutorial
+  tutorialCompleted: boolean
+
   // Actions — economy
   setCompute: (value: number) => void
   addCompute: (delta: number) => void
@@ -108,6 +111,9 @@ interface CampState {
 
   // Actions — store flags
   setStarterPackShown: () => void
+
+  // Actions — tutorial
+  completeTutorial: () => void
 }
 
 // Slot unlock costs
@@ -139,6 +145,9 @@ export const useCampStore = create<CampState>()(
 
       // Settings
       muted: false,
+
+      // Tutorial
+      tutorialCompleted: false,
 
       // ── Economy actions ──
       setCompute: (value) => set({ compute: value }),
@@ -344,10 +353,13 @@ export const useCampStore = create<CampState>()(
 
       // ── Store flags ──
       setStarterPackShown: () => set({ starterPackShown: true }),
+
+      // ── Tutorial ──
+      completeTutorial: () => set({ tutorialCompleted: true }),
     }),
     {
       name: 'toy-soldiers-camp',
-      version: 9,
+      version: 10,
       migrate: (persistedState: any, version: number) => {
         if (version < 2) {
           // v1 → v2: network shape changed from [6,12,4] to [7,8,4].
@@ -452,6 +464,12 @@ export const useCampStore = create<CampState>()(
               xp: s.xp ?? 0,
             }))
           }
+        }
+        if (version < 10) {
+          // v9 → v10: Tutorial system.
+          // Existing players have already played — skip tutorial.
+          const state = persistedState as any
+          state.tutorialCompleted = state.tutorialCompleted ?? true
         }
         return persistedState as CampState
       },

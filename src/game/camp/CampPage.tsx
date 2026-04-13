@@ -35,19 +35,30 @@ import { MedicalSheet } from './MedicalSheet'
 import { RecruitSheet } from './RecruitSheet'
 import { ObservationHUD } from './ObservationHUD'
 import { CampNeuralNetViz } from './CampNeuralNetViz'
+import { TutorialGuide } from './TutorialGuide'
 import { AudioBed } from '@audio/AudioBed'
 import { useSceneStore } from '@stores/sceneStore'
+import { useCampStore } from '@stores/campStore'
 import '@styles/camp-ui.css'
 
 export default function CampPage() {
   const [booted, setBooted] = useState(false)
   const isObserving = useSceneStore((s) => s.observingSlotIndex) !== null
+  const tutorialCompleted = useCampStore((s) => s.tutorialCompleted)
+  const tutorialActive = useSceneStore((s) => s.tutorialActive)
 
   const handleBootDone = useCallback(() => setBooted(true), [])
   const setTrainingSheetOpen = useSceneStore((s) => s.setTrainingSheetOpen)
   const setStoreSheetOpen = useSceneStore((s) => s.setStoreSheetOpen)
   const setRosterSheetOpen = useSceneStore((s) => s.setRosterSheetOpen)
   const setMedicalSheetOpen = useSceneStore((s) => s.setMedicalSheetOpen)
+
+  // Auto-start tutorial for new players after boot
+  useEffect(() => {
+    if (booted && !tutorialCompleted) {
+      useSceneStore.getState().startTutorial()
+    }
+  }, [booted, tutorialCompleted])
 
   // Dev shortcuts: T=train, S=store, R=roster, M=medical
   useEffect(() => {
@@ -100,6 +111,9 @@ export default function CampPage() {
       {!isObserving && <MedicalSheet />}
       {!isObserving && <RecruitSheet />}
       {!isObserving && <ComputeModal />}
+
+      {/* Tutorial overlay */}
+      {tutorialActive && <TutorialGuide />}
 
       {/* Ambient audio bed — always active */}
       <AudioBed />

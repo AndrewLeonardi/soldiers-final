@@ -43,6 +43,10 @@ interface SceneState {
   // Weapon picker (pending placement for multi-brain soldiers)
   pendingPlacement: PendingPlacement | null
 
+  // Tutorial (ephemeral — resets on reload)
+  tutorialActive: boolean
+  tutorialStep: number
+
   // Actions
   selectSoldier: (id: string | null) => void
   hoverSoldier: (id: string | null) => void
@@ -59,6 +63,9 @@ interface SceneState {
   setPreselectedTrainingSoldierId: (id: string | null) => void
   setObservingSlotIndex: (index: number | null) => void
   setPendingPlacement: (pending: PendingPlacement | null) => void
+  setTutorialStep: (step: number) => void
+  startTutorial: () => void
+  endTutorial: () => void
   setBattlePhase: (phase: 'idle' | 'picking' | 'placing' | 'loading' | 'fighting' | 'result') => void
 }
 
@@ -89,6 +96,10 @@ export const useSceneStore = create<SceneState>()((set) => ({
   // Weapon picker
   pendingPlacement: null,
 
+  // Tutorial
+  tutorialActive: false,
+  tutorialStep: 0,
+
   // Actions
   selectSoldier: (id) => set({ selectedSoldierId: id }),
   hoverSoldier: (id) => set({ hoveredSoldierId: id }),
@@ -105,5 +116,8 @@ export const useSceneStore = create<SceneState>()((set) => ({
   setPreselectedTrainingSoldierId: (id) => set({ preselectedTrainingSoldierId: id }),
   setObservingSlotIndex: (index) => set({ observingSlotIndex: index }),
   setPendingPlacement: (pending) => set({ pendingPlacement: pending }),
+  setTutorialStep: (step) => set({ tutorialStep: step }),
+  startTutorial: () => set({ tutorialActive: true, tutorialStep: 0 }),
+  endTutorial: () => set({ tutorialActive: false, tutorialStep: 0 }),
   setBattlePhase: (phase) => set({ battlePhase: phase }),
 }))
