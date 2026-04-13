@@ -162,8 +162,8 @@ function FiringRangeSoldier({
     partsRef.current = result.parts
     soldierRef.current.add(result.group)
 
-    // Face +X direction
-    result.parts.root.rotation.y = -Math.PI / 2
+    // Face +X direction (toward wall)
+    result.parts.root.rotation.y = Math.PI / 2
 
     if (weapon === 'rocketLauncher') {
       const rifleGrp = result.parts.rifleGrp
