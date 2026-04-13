@@ -459,7 +459,7 @@ export default function HomePage() {
           <div className="hp-hero-sub">
             BUILD. TRAIN. BATTLE. EVOLVE.
           </div>
-          <Link to="/play" className="hp-hero-cta">
+          <Link to="/camp" className="hp-hero-cta">
             PLAY FREE
           </Link>
           {import.meta.env.DEV && (
@@ -577,7 +577,7 @@ export default function HomePage() {
       {/* ── BOTTOM CTA ── */}
       <section className="hp-bottom-cta">
         <h2>Ready to Command?</h2>
-        <Link to="/play" className="hp-hero-cta">
+        <Link to="/camp" className="hp-hero-cta">
           PLAY FREE
         </Link>
       </section>
