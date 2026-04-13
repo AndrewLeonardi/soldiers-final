@@ -254,6 +254,146 @@ function FiringRangeSoldier({
   return <group ref={soldierRef} position={SOLDIER_POS} />
 }
 
+// ── Firing Range Tank ──
+function FiringRangeTank({
+  onFire,
+}: {
+  onFire: (muzzleWorldPos: THREE.Vector3) => void
+}) {
+  const bodyRef = useRef<THREE.Group>(null)
+  const turretRef = useRef<THREE.Group | null>(null)
+  const barrelRef = useRef<THREE.Mesh | null>(null)
+  const fireTimer = useRef(0)
+  const fireState = useRef<'aiming' | 'firing'>('aiming')
+  const fireProgress = useRef(0)
+
+  const stats = WEAPON_STATS.tank
+  const fireRate = stats.fireRate
+
+  // Build tank mesh
+  useEffect(() => {
+    if (!bodyRef.current) return
+    while (bodyRef.current.children.length) {
+      bodyRef.current.remove(bodyRef.current.children[0]!)
+    }
+
+    const mainMat = getPlasticMat(TOY.armyGreen)
+    const darkMat = getPlasticMat(TOY.darkGreen)
+    const metalMat = getPlasticMat(TOY.metalDark)
+
+    // Hull
+    const hull = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.25, 0.5), mainMat)
+    hull.position.y = 0.2
+    hull.castShadow = true
+    bodyRef.current.add(hull)
+
+    // Front slope
+    const slope = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.15, 0.48), mainMat)
+    slope.position.set(0.35, 0.28, 0)
+    slope.rotation.z = -0.3
+    slope.castShadow = true
+    bodyRef.current.add(slope)
+
+    // Tracks
+    const trackGeo = new THREE.BoxGeometry(0.85, 0.12, 0.12)
+    const leftTrack = new THREE.Mesh(trackGeo, darkMat)
+    leftTrack.position.set(0, 0.1, 0.3)
+    leftTrack.castShadow = true
+    bodyRef.current.add(leftTrack)
+    const rightTrack = new THREE.Mesh(trackGeo, darkMat)
+    rightTrack.position.set(0, 0.1, -0.3)
+    rightTrack.castShadow = true
+    bodyRef.current.add(rightTrack)
+
+    // Turret
+    const turretGrp = new THREE.Group()
+    turretGrp.position.set(0, 0.35, 0)
+    const turret = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.18, 0.2, 0.15, 8),
+      mainMat,
+    )
+    turret.castShadow = true
+    turretGrp.add(turret)
+
+    // Barrel
+    const barrel = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.03, 0.03, 0.5, 6),
+      metalMat,
+    )
+    barrel.rotation.x = Math.PI / 2
+    barrel.position.set(0, 0.02, 0.35)
+    barrel.castShadow = true
+    turretGrp.add(barrel)
+
+    // Muzzle flash
+    const flash = new THREE.Mesh(
+      new THREE.SphereGeometry(0.06, 6, 6),
+      new THREE.MeshBasicMaterial({ color: 0xffff00 }),
+    )
+    flash.position.set(0, 0.02, 0.62)
+    flash.visible = false
+    turretGrp.add(flash)
+
+    bodyRef.current.add(turretGrp)
+    turretRef.current = turretGrp
+    barrelRef.current = barrel
+
+    // Face +X (toward wall)
+    bodyRef.current.rotation.y = -Math.PI / 2
+
+    fireState.current = 'aiming'
+    fireTimer.current = 0
+    fireProgress.current = 0
+  }, [])
+
+  useFrame((_, rawDelta) => {
+    const delta = Math.min(rawDelta, 0.05)
+    if (!bodyRef.current || !turretRef.current) return
+
+    // Point turret at wall
+    turretRef.current.rotation.y = 0
+
+    if (fireState.current === 'aiming') {
+      fireTimer.current += delta
+      if (fireTimer.current >= fireRate) {
+        fireState.current = 'firing'
+        fireProgress.current = 0
+        fireTimer.current = 0
+
+        // Muzzle position at barrel tip
+        const muzzleWorld = new THREE.Vector3(SOLDIER_POS[0] + 0.62, 0.37, SOLDIER_POS[2])
+        onFire(muzzleWorld)
+
+        sfx.rocketLaunch()
+        triggerShake(SHAKE.FIRE_TANK)
+
+        // Show muzzle flash
+        const flash = turretRef.current.children[2]
+        if (flash) flash.visible = true
+      }
+    } else {
+      fireProgress.current += delta / 0.5
+      const p = Math.min(fireProgress.current, 1)
+
+      // Barrel recoil kick
+      if (barrelRef.current) {
+        const kick = p < 0.2 ? Math.sin((p / 0.2) * Math.PI) : Math.exp(-(p - 0.2) * 5)
+        barrelRef.current.position.z = 0.35 - kick * 0.08
+      }
+
+      // Hide flash after initial burst
+      const flash = turretRef.current.children[2]
+      if (flash) flash.visible = p < 0.15
+
+      if (p >= 1) {
+        fireState.current = 'aiming'
+      }
+    }
+  })
+
+  return <group ref={bodyRef} position={SOLDIER_POS} />
+}
+
 // ── Projectile Visuals (pool-based) ──
 function FiringRangeProjectiles({
   projectiles,
@@ -355,6 +495,12 @@ export function FiringRange({ soldierId, weapon }: FiringRangeProps) {
   const projectilesRef = useRef<FRProjectile[]>([])
   const [effects, setEffects] = useState<EffectEntry[]>([])
 
+  // Clear projectiles + effects on weapon swap
+  useEffect(() => {
+    projectilesRef.current = []
+    setEffects([])
+  }, [weapon])
+
   // Get weapon projectile type
   const projType = weapon === 'rocketLauncher' || weapon === 'tank'
     ? 'rocket' as const
@@ -370,12 +516,14 @@ export function FiringRange({ soldierId, weapon }: FiringRangeProps) {
     const wallCenter = new THREE.Vector3(WALL_POS[0], 0.5, WALL_POS[2])
     const dir = wallCenter.clone().sub(muzzleWorldPos).normalize()
 
-    // Add slight upward arc for grenades/rockets
+    // Add upward arc to compensate for gravity
     if (weapon === 'grenade') {
-      dir.y += 0.3
+      dir.y += 0.35
       dir.normalize()
     } else if (weapon === 'rocketLauncher' || weapon === 'tank') {
-      dir.y += 0.05
+      // Rockets need significant arc: at speed 12 over 8 units, gravity (-6) pulls
+      // them ~1.3 units down. y+=0.18 compensates so they hit wall center (~y=0.6)
+      dir.y += 0.18
       dir.normalize()
     }
 
@@ -556,8 +704,11 @@ export function FiringRange({ soldierId, weapon }: FiringRangeProps) {
       {/* Screen shake */}
       <ScreenShake />
 
-      {/* Soldier */}
-      <FiringRangeSoldier weapon={weapon} onFire={handleFire} />
+      {/* Soldier / Tank */}
+      {weapon === 'tank'
+        ? <FiringRangeTank onFire={handleFire} />
+        : <FiringRangeSoldier weapon={weapon} onFire={handleFire} />
+      }
 
       {/* Destructible wall target */}
       <WallDefense
