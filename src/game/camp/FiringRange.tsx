@@ -338,8 +338,9 @@ function FiringRangeTank({
     turretRef.current = turretGrp
     barrelRef.current = barrel
 
-    // Face +X (toward wall)
-    bodyRef.current.rotation.y = -Math.PI / 2
+    // Scale up to match soldier proportions and face +X (toward wall)
+    bodyRef.current.scale.setScalar(2.5)
+    bodyRef.current.rotation.y = Math.PI / 2
 
     fireState.current = 'aiming'
     fireTimer.current = 0
@@ -360,8 +361,8 @@ function FiringRangeTank({
         fireProgress.current = 0
         fireTimer.current = 0
 
-        // Muzzle position at barrel tip
-        const muzzleWorld = new THREE.Vector3(SOLDIER_POS[0] + 0.62, 0.37, SOLDIER_POS[2])
+        // Muzzle position at barrel tip (scaled 2.5x)
+        const muzzleWorld = new THREE.Vector3(SOLDIER_POS[0] + 1.6, 0.9, SOLDIER_POS[2])
         onFire(muzzleWorld)
 
         sfx.rocketLaunch()
@@ -406,6 +407,12 @@ function FiringRangeProjectiles({
   const meshPool = useRef<THREE.Group[]>([])
 
   useMemo(() => {
+    // Remove old pool meshes from the scene group
+    if (groupRef.current) {
+      while (groupRef.current.children.length) {
+        groupRef.current.remove(groupRef.current.children[0]!)
+      }
+    }
     const pool: THREE.Group[] = []
     for (let i = 0; i < 10; i++) {
       const grp = new THREE.Group()
