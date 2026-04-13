@@ -26,6 +26,28 @@
   --red: #ef4444;
   --red-dark: #7f1d1d;
 
+  /* Brass / Medal — premium accent */
+  --brass-light: #f0d060;
+  --brass: #d4aa40;
+  --brass-dark: #96781e;
+  --brass-shadow: #6a5010;
+  --brass-glow: rgba(212, 170, 64, 0.25);
+
+  /* Olive drab — military green family */
+  --olive-light: #8aaa6a;
+  --olive: #5a7a42;
+  --olive-dark: #3d5a28;
+  --olive-shadow: #2a4a1a;
+
+  /* Steel — neutral panels */
+  --steel-light: #6a7a8a;
+  --steel: #4a5a6a;
+  --steel-dark: #2a3a4a;
+
+  /* Leather / Wood — crate accents */
+  --leather: #8b5e3c;
+  --wood: #7a6240;
+
   /* Text */
   --text-white: #F5F0E0;
   --text-body: #E8D5A8;
@@ -157,6 +179,26 @@ body {
 @keyframes glowPulse {
   0%, 100% { box-shadow: 0 6px 20px rgba(185, 28, 28, 0.5), 0 0 24px rgba(239, 68, 68, 0.25), inset 0 1px 0 rgba(255,255,255,0.25); }
   50% { box-shadow: 0 6px 28px rgba(185, 28, 28, 0.7), 0 0 40px rgba(239, 68, 68, 0.4), inset 0 1px 0 rgba(255,255,255,0.25); }
+}
+
+@keyframes sheetSlideUp {
+  0% { opacity: 0; transform: translateY(100%); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes cardPop {
+  0% { opacity: 0; transform: scale(0.85) translateY(12px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes glowPulseGold {
+  0%, 100% { box-shadow: 0 4px 16px rgba(212, 170, 64, 0.3), 0 0 20px rgba(212, 170, 64, 0.1); }
+  50% { box-shadow: 0 4px 24px rgba(212, 170, 64, 0.5), 0 0 40px rgba(212, 170, 64, 0.25); }
+}
+
+@keyframes shimmerSweep {
+  0% { transform: translateX(-100%) translateY(-100%); }
+  100% { transform: translateX(100%) translateY(100%); }
 }
 
 @keyframes glowPulseGreen {

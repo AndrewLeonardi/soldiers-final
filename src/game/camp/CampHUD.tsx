@@ -31,6 +31,10 @@ export function CampHUD() {
   const setStoreSheetOpen = useSceneStore((s) => s.setStoreSheetOpen)
   const setRosterSheetOpen = useSceneStore((s) => s.setRosterSheetOpen)
   const setSettingsOpen = useSceneStore((s) => s.setSettingsOpen)
+  const trainingSheetOpen = useSceneStore((s) => s.trainingSheetOpen)
+  const storeSheetOpen = useSceneStore((s) => s.storeSheetOpen)
+  const rosterSheetOpen = useSceneStore((s) => s.rosterSheetOpen)
+  const settingsOpen = useSceneStore((s) => s.settingsOpen)
 
   const handleTrain = useCallback(() => {
     sfx.buttonTap()
@@ -70,27 +74,27 @@ export function CampHUD() {
 
       {/* Bottom bar — 5 beveled action buttons */}
       <div className="camp-bottom-bar">
-        <button className="camp-bottom-btn" onClick={handleTrain}>
+        <button className={`camp-bottom-btn${trainingSheetOpen ? ' active' : ''}`} onClick={handleTrain}>
           <span className="camp-bottom-btn-icon">⚔</span>
           <span className="camp-bottom-btn-label">TRAIN</span>
         </button>
 
-        <button className="camp-bottom-btn attack" onClick={handleAttack}>
+        <button className={`camp-bottom-btn attack${battlePhase === 'picking' ? ' active' : ''}`} onClick={handleAttack}>
           <span className="camp-bottom-btn-icon">💥</span>
           <span className="camp-bottom-btn-label">ATTACK</span>
         </button>
 
-        <button className="camp-bottom-btn" onClick={handleStore}>
+        <button className={`camp-bottom-btn${storeSheetOpen ? ' active' : ''}`} onClick={handleStore}>
           <span className="camp-bottom-btn-icon">🏪</span>
           <span className="camp-bottom-btn-label">STORE</span>
         </button>
 
-        <button className="camp-bottom-btn" onClick={handleRoster}>
+        <button className={`camp-bottom-btn${rosterSheetOpen ? ' active' : ''}`} onClick={handleRoster}>
           <span className="camp-bottom-btn-icon">📋</span>
           <span className="camp-bottom-btn-label">ROSTER</span>
         </button>
 
-        <button className="camp-bottom-btn" onClick={handleSettings}>
+        <button className={`camp-bottom-btn${settingsOpen ? ' active' : ''}`} onClick={handleSettings}>
           <span className="camp-bottom-btn-icon">⚙</span>
           <span className="camp-bottom-btn-label">SETTINGS</span>
         </button>
