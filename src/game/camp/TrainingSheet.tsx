@@ -11,7 +11,7 @@ import { useCampStore } from '@stores/campStore'
 import { useSceneStore } from '@stores/sceneStore'
 import { useCampTrainingStore } from '@stores/campTrainingStore'
 import { WeaponCarousel } from './WeaponCarousel'
-import { COMPUTE_TIERS, TRAINING_BASE_COST, TRAINING_BASE_DURATION } from './trainingConstants'
+import { TIME_PACKAGES, SIM_SPEED_OPTIONS } from './trainingConstants'
 import type { WeaponType } from '@config/types'
 import { ComputeIcon } from './ComputeIcon'
 import * as sfx from '@audio/sfx'
@@ -45,14 +45,15 @@ export function TrainingSheet() {
     }
   }, [preselectedId, trainingSheetOpen, clearPreselection])
   const [selectedWeapon, setSelectedWeapon] = useState<WeaponType>('rifle')
-  const [selectedTier, setSelectedTier] = useState(1)
+  const [selectedPackageId, setSelectedPackageId] = useState('quick')
+  const [selectedSpeed, setSelectedSpeed] = useState(1)
 
   const activeSlot = slots[activeSlotIndex]
   const slotIsEmpty = !activeSlot || activeSlot.trainingPhase === 'empty' || activeSlot.trainingPhase === 'selecting'
 
-  const tierConfig = COMPUTE_TIERS[selectedTier - 1]
-  const cost = tierConfig ? TRAINING_BASE_COST * tierConfig.costMultiplier : TRAINING_BASE_COST
-  const duration = tierConfig ? TRAINING_BASE_DURATION / tierConfig.multiplier : TRAINING_BASE_DURATION
+  const selectedPackage = TIME_PACKAGES.find(p => p.id === selectedPackageId) ?? TIME_PACKAGES[0]!
+  const cost = selectedPackage.compute
+  const duration = selectedPackage.seconds
   const canAfford = compute >= cost
   const selectedSoldier = soldiers.find(s => s.id === selectedSoldierId)
   const soldierBusy = selectedSoldierId ? isSoldierInTraining(selectedSoldierId) : false
@@ -91,14 +92,14 @@ export function TrainingSheet() {
 
   const handleStart = useCallback(() => {
     if (!selectedSoldierId || !selectedSoldier) return
-    const success = commitToTrain(activeSlotIndex, selectedSoldierId, selectedSoldier.name, selectedWeapon, selectedTier)
+    const success = commitToTrain(activeSlotIndex, selectedSoldierId, selectedSoldier.name, selectedWeapon, selectedPackageId, selectedSpeed)
     if (success) {
       sfx.buttonTap()
       setTrainingSheetOpen(false)
       // Enter immersive training observation view
       setObservingSlotIndex(activeSlotIndex)
     }
-  }, [activeSlotIndex, selectedSoldierId, selectedSoldier, selectedWeapon, selectedTier, commitToTrain, setTrainingSheetOpen, setObservingSlotIndex])
+  }, [activeSlotIndex, selectedSoldierId, selectedSoldier, selectedWeapon, selectedPackageId, selectedSpeed, commitToTrain, setTrainingSheetOpen, setObservingSlotIndex])
 
   const handleClose = useCallback(() => {
     setTrainingSheetOpen(false)
@@ -183,21 +184,39 @@ export function TrainingSheet() {
                 </div>
               )}
 
-              {/* Tier selector */}
-              <div className="training-section-label">COMPUTE TIER</div>
+              {/* Time package picker */}
+              <div className="training-section-label">TRAINING TIME</div>
               <div className="training-tier-row">
-                {COMPUTE_TIERS.map((tier) => (
+                {TIME_PACKAGES.map((pkg) => (
                   <button
-                    key={tier.tier}
-                    className={`training-tier-btn ${selectedTier === tier.tier ? 'selected' : ''}`}
+                    key={pkg.id}
+                    className={`training-tier-btn ${selectedPackageId === pkg.id ? 'selected' : ''}`}
                     style={{
-                      borderColor: selectedTier === tier.tier ? tier.color : 'transparent',
-                      color: selectedTier === tier.tier ? tier.color : '#7a8a7a',
+                      borderColor: selectedPackageId === pkg.id ? '#00e5ff' : 'transparent',
+                      color: selectedPackageId === pkg.id ? '#00e5ff' : '#7a8a7a',
                     }}
-                    onClick={() => setSelectedTier(tier.tier)}
+                    onClick={() => setSelectedPackageId(pkg.id)}
                   >
-                    <span className="training-tier-multiplier">{tier.multiplier}x</span>
-                    <span className="training-tier-label">{tier.label}</span>
+                    <span className="training-tier-multiplier">{pkg.label}</span>
+                    <span className="training-tier-label">{pkg.compute} <ComputeIcon size={10} /></span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Sim speed toggle */}
+              <div className="training-section-label">SIM SPEED</div>
+              <div className="training-speed-row">
+                {SIM_SPEED_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.multiplier}
+                    className={`training-speed-btn ${selectedSpeed === opt.multiplier ? 'selected' : ''}`}
+                    style={{
+                      borderColor: selectedSpeed === opt.multiplier ? opt.color : 'transparent',
+                      color: selectedSpeed === opt.multiplier ? opt.color : '#7a8a7a',
+                    }}
+                    onClick={() => setSelectedSpeed(opt.multiplier)}
+                  >
+                    {opt.label}
                   </button>
                 ))}
               </div>
@@ -207,13 +226,13 @@ export function TrainingSheet() {
                 <div className="training-cost-item">
                   <span className="training-cost-label">COST</span>
                   <span className={`training-cost-value ${!canAfford ? 'insufficient' : ''}`}>
-                    {cost} COMPUTE
+                    {cost} <ComputeIcon size={12} />
                   </span>
                 </div>
                 <div className="training-cost-item">
                   <span className="training-cost-label">TIME</span>
                   <span className="training-cost-value">
-                    {duration >= 1 ? `${duration.toFixed(1)}s` : `${(duration * 1000).toFixed(0)}ms`}
+                    {duration >= 60 ? `${Math.floor(duration / 60)}m ${duration % 60}s` : `${duration}s`}
                   </span>
                 </div>
               </div>

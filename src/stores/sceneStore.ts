@@ -52,6 +52,10 @@ interface SceneState {
   tutorialActive: boolean
   tutorialStep: number
 
+  // Armory
+  armorySheetOpen: boolean
+  armoryScrollToItem: string | null
+
   // Actions
   selectSoldier: (id: string | null) => void
   hoverSoldier: (id: string | null) => void
@@ -73,6 +77,8 @@ interface SceneState {
   startTutorial: () => void
   endTutorial: () => void
   setBattlePhase: (phase: 'idle' | 'picking' | 'placing' | 'loading' | 'fighting' | 'result') => void
+  setArmorySheetOpen: (open: boolean) => void
+  setArmoryScrollToItem: (id: string | null) => void
 }
 
 export const useSceneStore = create<SceneState>()((set) => ({
@@ -110,6 +116,10 @@ export const useSceneStore = create<SceneState>()((set) => ({
   tutorialActive: false,
   tutorialStep: 0,
 
+  // Armory
+  armorySheetOpen: false,
+  armoryScrollToItem: null,
+
   // Actions
   selectSoldier: (id) => set({ selectedSoldierId: id }),
   hoverSoldier: (id) => set({ hoveredSoldierId: id }),
@@ -131,4 +141,6 @@ export const useSceneStore = create<SceneState>()((set) => ({
   startTutorial: () => set({ tutorialActive: true, tutorialStep: 0 }),
   endTutorial: () => set({ tutorialActive: false, tutorialStep: 0 }),
   setBattlePhase: (phase) => set({ battlePhase: phase }),
+  setArmorySheetOpen: (open) => set({ armorySheetOpen: open }),
+  setArmoryScrollToItem: (id) => set({ armoryScrollToItem: id }),
 }))

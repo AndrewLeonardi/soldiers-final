@@ -14,10 +14,13 @@ interface CurrencyPillProps {
   value: number
   color: string       // accent color (border glow, text)
   onPlusClick?: () => void
+  onTap?: () => void
+  draining?: boolean
   className?: string
+  children?: ReactNode
 }
 
-export function CurrencyPill({ icon, value, color, onPlusClick, className }: CurrencyPillProps) {
+export function CurrencyPill({ icon, value, color, onPlusClick, onTap, draining, className, children }: CurrencyPillProps) {
   const [displayValue, setDisplayValue] = useState(value)
   const animRef = useRef<number | null>(null)
   const startRef = useRef(value)
@@ -56,16 +59,18 @@ export function CurrencyPill({ icon, value, color, onPlusClick, className }: Cur
 
   return (
     <div
-      className={`currency-pill ${className ?? ''}`}
+      className={`currency-pill ${draining ? 'currency-pill--draining' : ''} ${className ?? ''}`}
       style={{ '--pill-color': color } as React.CSSProperties}
+      onClick={onTap}
     >
       <span className="currency-pill-icon">{icon}</span>
       <span className="currency-pill-value">{displayValue}</span>
       {onPlusClick && (
-        <button className="currency-pill-plus" onClick={onPlusClick} aria-label="Add more">
+        <button className="currency-pill-plus" onClick={(e) => { e.stopPropagation(); onPlusClick() }} aria-label="Add more">
           +
         </button>
       )}
+      {children}
     </div>
   )
 }

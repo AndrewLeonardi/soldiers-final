@@ -20,13 +20,13 @@ import type { SimState, SimConfig } from '@engine/ml/simulationRunner'
 import { useCampStore } from './campStore'
 import { XP_REWARDS } from '@config/ranks'
 import {
-  COMPUTE_TIERS,
-  TRAINING_BASE_COST,
-  TRAINING_BASE_DURATION,
+  TIME_PACKAGES,
+  SIM_SPEED_OPTIONS,
   TRAINING_POP_SIZE,
   TRAINING_ELITE_COUNT,
   TRAINING_SIM_DURATION,
   BREAKTHROUGH_THRESHOLD,
+  TRAINING_BASE_DURATION,
 } from '@game/camp/trainingConstants'
 import { getWeaponShape } from '@game/training/weaponShapes'
 
@@ -68,7 +68,10 @@ export interface TrainingSlot {
   slotSoldierId: string | null
   slotSoldierName: string | null
   slotWeapon: string | null
-  computeTier: number
+  timePackageId: string
+  simSpeed: number
+  computeTotal: number
+  computeBurned: number
 
   generation: number
   bestFitness: number
@@ -102,7 +105,10 @@ function createEmptySlot(): TrainingSlot {
     slotSoldierId: null,
     slotSoldierName: null,
     slotWeapon: null,
-    computeTier: 1,
+    timePackageId: '',
+    simSpeed: 1,
+    computeTotal: 0,
+    computeBurned: 0,
     generation: 0,
     bestFitness: 0,
     bestWeights: [],
@@ -138,7 +144,7 @@ interface CampTrainingState {
   setTutorialSpeedBoost: (n: number) => void
 
   // Actions
-  commitToTrain: (slotIndex: number, soldierId: string, soldierName: string, weapon: string, tier: number) => boolean
+  commitToTrain: (slotIndex: number, soldierId: string, soldierName: string, weapon: string, timePackageId: string, simSpeed: number) => boolean
   tick: (dt: number) => void
   startCeremonyDone: (slotIndex: number) => void
   graduate: (slotIndex: number) => void
@@ -154,7 +160,10 @@ interface CampTrainingState {
   slotSoldierId: string | null
   slotSoldierName: string | null
   slotWeapon: string | null
-  computeTier: number
+  timePackageId: string
+  simSpeed: number
+  computeTotal: number
+  computeBurned: number
   generation: number
   bestFitness: number
   bestWeights: number[]
@@ -191,7 +200,10 @@ export const useCampTrainingStore = create<CampTrainingState>()((set, get) => {
       slotSoldierId: slot0.slotSoldierId,
       slotSoldierName: slot0.slotSoldierName,
       slotWeapon: slot0.slotWeapon,
-      computeTier: slot0.computeTier,
+      timePackageId: slot0.timePackageId,
+      simSpeed: slot0.simSpeed,
+      computeTotal: slot0.computeTotal,
+      computeBurned: slot0.computeBurned,
       generation: slot0.generation,
       bestFitness: slot0.bestFitness,
       bestWeights: slot0.bestWeights,
@@ -223,7 +235,10 @@ export const useCampTrainingStore = create<CampTrainingState>()((set, get) => {
     slotSoldierId: null,
     slotSoldierName: null,
     slotWeapon: null,
-    computeTier: 1,
+    timePackageId: '',
+    simSpeed: 1,
+    computeTotal: 0,
+    computeBurned: 0,
     generation: 0,
     bestFitness: 0,
     bestWeights: [],
@@ -247,7 +262,7 @@ export const useCampTrainingStore = create<CampTrainingState>()((set, get) => {
       )
     },
 
-    commitToTrain: (slotIndex, soldierId, soldierName, weapon, tier) => {
+    commitToTrain: (slotIndex, soldierId, soldierName, weapon, timePackageId, simSpeed) => {
       const state = get()
       const slot = state.slots[slotIndex]
       if (!slot) return false
@@ -258,10 +273,10 @@ export const useCampTrainingStore = create<CampTrainingState>()((set, get) => {
         return false
       }
 
-      const tierConfig = COMPUTE_TIERS[tier - 1]
-      if (!tierConfig) return false
+      const pkg = TIME_PACKAGES.find(p => p.id === timePackageId)
+      if (!pkg) return false
 
-      const cost = TRAINING_BASE_COST * tierConfig.costMultiplier
+      const cost = pkg.compute
       const spent = useCampStore.getState().spendCompute(cost)
       if (!spent) return false
 
@@ -293,19 +308,20 @@ export const useCampTrainingStore = create<CampTrainingState>()((set, get) => {
         simStates.push(initSim(simConfig))
       }
 
-      const timerTotal = TRAINING_BASE_DURATION / tierConfig.multiplier
-
       updateSlot(slotIndex, {
         trainingPhase: 'ceremony-start',
         slotSoldierId: soldierId,
         slotSoldierName: soldierName,
         slotWeapon: weapon,
-        computeTier: tier,
+        timePackageId,
+        simSpeed,
+        computeTotal: cost,
+        computeBurned: 0,
         generation: 0,
         bestFitness: 0,
         bestWeights: [],
         fitnessHistory: [],
-        timerTotal,
+        timerTotal: pkg.seconds,
         timerElapsed: 0,
         milestones: [],
         totalHits: 0,
@@ -338,17 +354,17 @@ export const useCampTrainingStore = create<CampTrainingState>()((set, get) => {
         if (slot.trainingPhase !== 'running') return slot
         if (!slot.simConfig) return slot
 
-        const tierConfig = COMPUTE_TIERS[slot.computeTier - 1]
-        if (!tierConfig) return slot
-
         // Advance wall-clock timer
         const newElapsed = slot.timerElapsed + dt
         if (newElapsed >= slot.timerTotal) {
-          return { ...slot, timerElapsed: slot.timerTotal, trainingPhase: 'graduated' as const }
+          return { ...slot, timerElapsed: slot.timerTotal, computeBurned: slot.computeTotal, trainingPhase: 'graduated' as const }
         }
 
-        // Run sim ticks (tutorialSpeedBoost accelerates GA during tutorial)
-        const stepsPerFrame = Math.max(1, Math.ceil(tierConfig.multiplier * 0.5 * state.tutorialSpeedBoost))
+        // Compute burn: proportional to elapsed time (taxi meter)
+        const newComputeBurned = Math.min(slot.computeTotal, (newElapsed / slot.timerTotal) * slot.computeTotal)
+
+        // Run sim ticks — simSpeed is visual only, tutorialSpeedBoost accelerates during tutorial
+        const stepsPerFrame = Math.max(1, Math.ceil(slot.simSpeed * 0.5 * state.tutorialSpeedBoost))
 
         let { population, fitnesses, generation, bestFitness, bestWeights, fitnessHistory,
           simStates, nns, totalHits, totalKills, bestStreak, milestones, activeMilestone } = slot
@@ -444,6 +460,7 @@ export const useCampTrainingStore = create<CampTrainingState>()((set, get) => {
                 ...slot,
                 trainingPhase: 'graduated' as const,
                 timerElapsed: newElapsed,
+                computeBurned: newComputeBurned,
                 generation, population, fitnesses, bestFitness, bestWeights,
                 fitnessHistory, simStates, totalHits, totalKills, bestStreak,
                 milestones, activeMilestone,
@@ -474,6 +491,7 @@ export const useCampTrainingStore = create<CampTrainingState>()((set, get) => {
         return {
           ...slot,
           timerElapsed: newElapsed,
+          computeBurned: newComputeBurned,
           generation, population, fitnesses, bestFitness, bestWeights,
           fitnessHistory, simStates, totalHits, totalKills, bestStreak,
           milestones, activeMilestone, ghostSnapshots, championIndex,
@@ -490,7 +508,10 @@ export const useCampTrainingStore = create<CampTrainingState>()((set, get) => {
         slotSoldierId: slot0.slotSoldierId,
         slotSoldierName: slot0.slotSoldierName,
         slotWeapon: slot0.slotWeapon,
-        computeTier: slot0.computeTier,
+        timePackageId: slot0.timePackageId,
+        simSpeed: slot0.simSpeed,
+        computeTotal: slot0.computeTotal,
+        computeBurned: slot0.computeBurned,
         generation: slot0.generation,
         bestFitness: slot0.bestFitness,
         bestWeights: slot0.bestWeights,

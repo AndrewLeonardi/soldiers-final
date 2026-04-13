@@ -463,6 +463,47 @@ function getStaticCollider(style: DefenseStyle): { half: [number, number, number
   }
 }
 
+// ── Static display factory (no physics / R3F context needed) ─────
+/**
+ * Create a standalone THREE.Group of static meshes for display in the Armory.
+ * Same geometry as the destructible version, but no physics, no useFrame.
+ * Normalized to fit within roughly ±0.5 so it looks right in small Canvases.
+ */
+export function createDisplayDefense(style: DefenseStyle): THREE.Group {
+  const specs = buildBlocks(style)
+  const grp = new THREE.Group()
+
+  // Compute bounding box to normalize scale + centering
+  let minX = Infinity, minY = Infinity, minZ = Infinity
+  let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity
+  for (const s of specs) {
+    minX = Math.min(minX, s.position[0] - s.size[0] / 2)
+    maxX = Math.max(maxX, s.position[0] + s.size[0] / 2)
+    minY = Math.min(minY, s.position[1] - s.size[1] / 2)
+    maxY = Math.max(maxY, s.position[1] + s.size[1] / 2)
+    minZ = Math.min(minZ, s.position[2] - s.size[2] / 2)
+    maxZ = Math.max(maxZ, s.position[2] + s.size[2] / 2)
+  }
+  const cx = (minX + maxX) / 2
+  const cy = (minY + maxY) / 2
+  const cz = (minZ + maxZ) / 2
+  const span = Math.max(maxX - minX, maxY - minY, maxZ - minZ)
+  const displayScale = span > 0 ? 0.9 / span : 1
+
+  for (const spec of specs) {
+    const mesh = new THREE.Mesh(getBlockGeo(spec.size), getBlockMat(spec.color))
+    mesh.position.set(
+      (spec.position[0] - cx) * displayScale,
+      (spec.position[1] - cy) * displayScale,
+      (spec.position[2] - cz) * displayScale,
+    )
+    mesh.scale.setScalar(displayScale)
+    mesh.castShadow = true
+    grp.add(mesh)
+  }
+  return grp
+}
+
 // ── Unified DestructibleDefense ──────────────────────────
 const FALL_VOID_Y = -8
 

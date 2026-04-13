@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useCampTrainingStore } from '@stores/campTrainingStore'
 import { useSceneStore } from '@stores/sceneStore'
-import { COMPUTE_TIERS } from './trainingConstants'
+import { SIM_SPEED_OPTIONS } from './trainingConstants'
 import { WEAPON_DISPLAY } from '@config/roster'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
@@ -84,9 +84,9 @@ export function ObservationHUD() {
 
   if (observingSlotIndex === null || !slot) return null
 
-  const tierConfig = COMPUTE_TIERS[slot.computeTier - 1]
-  const tierColor = tierConfig?.color ?? '#00e5ff'
-  const tierLabel = tierConfig?.label ?? 'STANDARD'
+  const speedConfig = SIM_SPEED_OPTIONS.find(o => o.multiplier === slot.simSpeed)
+  const tierColor = speedConfig?.color ?? '#00e5ff'
+  const speedLabel = speedConfig?.label ?? '1x'
   const fitnessPercent = Math.round(slot.bestFitness * 100)
   const remaining = Math.max(0, slot.timerTotal - slot.timerElapsed)
   const timeStr = remaining.toFixed(1) + 's'
@@ -116,12 +116,26 @@ export function ObservationHUD() {
         )}
       </div>
 
-      {/* Top-right: Timer + Tier */}
+      {/* Top-right: Timer + Speed + Taxi Meter */}
       <div className="obs-top-right">
         <div className="obs-timer" style={{ color: tierColor }}>{timeStr}</div>
         <div className="obs-tier-badge" style={{ borderColor: tierColor, color: tierColor }}>
-          {tierLabel}
+          {speedLabel}
         </div>
+        {slot.computeTotal > 0 && (
+          <div className="obs-taxi-meter">
+            <div className="obs-taxi-label">TOKENS</div>
+            <div className="obs-taxi-value" style={{ color: '#00e5ff' }}>
+              {Math.floor(slot.computeBurned)} / {slot.computeTotal}
+            </div>
+            <div className="obs-taxi-bar">
+              <div
+                className="obs-taxi-bar-fill"
+                style={{ width: `${(slot.computeBurned / slot.computeTotal) * 100}%` }}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Milestone popup */}

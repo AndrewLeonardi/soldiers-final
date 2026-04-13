@@ -156,6 +156,40 @@ export function createDisplayWeapon(weapon: WeaponType): THREE.Group {
     )
     stock.position.set(0, 0, -0.32 * s)
     grp.add(stock)
+  } else if (weapon === 'tank') {
+    const bodyMat = getPlasticMat(TOY.armyGreen)
+    const darkMat = getPlasticMat(TOY.metalDark)
+    // Hull — chunky box
+    const hull = new THREE.Mesh(
+      new THREE.BoxGeometry(0.32 * s, 0.12 * s, 0.5 * s),
+      bodyMat,
+    )
+    hull.position.y = 0.06 * s
+    grp.add(hull)
+    // Treads (left + right)
+    for (const side of [-1, 1]) {
+      const tread = new THREE.Mesh(
+        new THREE.BoxGeometry(0.06 * s, 0.1 * s, 0.55 * s),
+        darkMat,
+      )
+      tread.position.set(side * 0.19 * s, 0.02 * s, 0)
+      grp.add(tread)
+    }
+    // Turret — squat cylinder on top
+    const turret = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.09 * s, 0.1 * s, 0.08 * s, 8),
+      bodyMat,
+    )
+    turret.position.set(0, 0.16 * s, -0.02 * s)
+    grp.add(turret)
+    // Barrel — long cylinder pointing forward
+    const barrel = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.02 * s, 0.02 * s, 0.3 * s, 6),
+      darkMat,
+    )
+    barrel.rotation.x = Math.PI / 2
+    barrel.position.set(0, 0.16 * s, 0.2 * s)
+    grp.add(barrel)
   }
 
   return grp

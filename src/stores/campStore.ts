@@ -15,7 +15,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { WEAPON_UNLOCK_COST, SOLDIER_RECRUIT_COST } from '@config/roster'
-import { DAILY_DRIP_AMOUNT, DAILY_GOLD_DRIP_AMOUNT, DAILY_DRIP_INTERVAL_MS, DAILY_DRIP_MAX_DAYS } from '@config/store'
+import { DAILY_DRIP_AMOUNT, DAILY_GOLD_DRIP_AMOUNT, DAILY_DRIP_INTERVAL_MS, DAILY_DRIP_MAX_DAYS, DAILY_STREAK_REWARDS, DAILY_STREAK_FORGIVENESS } from '@config/store'
 import type { WeaponType } from '@config/types'
 
 // ── Soldier record (persisted) ──
@@ -54,9 +54,13 @@ interface CampState {
   unlockedWeapons: string[]
   unlockedSlots: number   // 1 = free slot only, 2 = slot 2 unlocked, 3 = all
 
-  // Daily drip
+  // Daily drip (legacy)
   lastDailyClaimTime: number  // Unix ms, 0 = never claimed
   lastDailyGoldClaimTime: number  // Unix ms, 0 = never claimed
+
+  // Daily streak (Sprint Economy)
+  dailyStreak: number            // 0-7, current streak day (0 = never claimed)
+  lastDailyClaimDate: string     // ISO date "2026-04-13", '' = never
 
   // Store flags
   starterPackShown: boolean
@@ -85,9 +89,13 @@ interface CampState {
   unlockWeapon: (weapon: WeaponType) => boolean
   unlockSlot: () => boolean
 
-  // Actions — daily drip
+  // Actions — daily drip (legacy)
   claimDailyCompute: () => { claimed: number; backfillDays: number } | null
   claimDailyGold: () => { claimed: number; backfillDays: number } | null
+
+  // Actions — daily streak (Sprint Economy)
+  claimDailyReward: () => { compute: number; gold: number; streakDay: number } | null
+  canClaimDaily: () => boolean
 
   // Actions — recruitment
   recruitSoldier: (name: string) => boolean
@@ -130,9 +138,13 @@ export const useCampStore = create<CampState>()(
       unlockedWeapons: ['rifle'],
       unlockedSlots: 1,
 
-      // Daily drip
+      // Daily drip (legacy)
       lastDailyClaimTime: 0,
       lastDailyGoldClaimTime: 0,
+
+      // Daily streak
+      dailyStreak: 0,
+      lastDailyClaimDate: '',
 
       // Store flags
       starterPackShown: false,
@@ -254,6 +266,51 @@ export const useCampStore = create<CampState>()(
         return { claimed: totalClaim, backfillDays: daysMissed - 1 }
       },
 
+      // ── Daily streak (Sprint Economy) ──
+      claimDailyReward: () => {
+        const state = get()
+        const today = new Date().toISOString().split('T')[0]!
+
+        // Already claimed today
+        if (state.lastDailyClaimDate === today) return null
+
+        // Calculate streak
+        let newStreak: number
+        if (state.lastDailyClaimDate) {
+          const lastDate = new Date(state.lastDailyClaimDate)
+          const todayDate = new Date(today)
+          const daysDiff = Math.floor((todayDate.getTime() - lastDate.getTime()) / (24 * 60 * 60 * 1000))
+
+          if (daysDiff <= DAILY_STREAK_FORGIVENESS) {
+            // Continue streak (wrap 7 -> 1)
+            newStreak = (state.dailyStreak % 7) + 1
+          } else {
+            // Streak broken
+            newStreak = 1
+          }
+        } else {
+          // First ever claim
+          newStreak = 1
+        }
+
+        const reward = DAILY_STREAK_REWARDS[newStreak - 1]
+        if (!reward) return null
+
+        set({
+          compute: state.compute + reward.compute,
+          gold: state.gold + reward.gold,
+          dailyStreak: newStreak,
+          lastDailyClaimDate: today,
+        })
+
+        return { compute: reward.compute, gold: reward.gold, streakDay: newStreak }
+      },
+
+      canClaimDaily: () => {
+        const today = new Date().toISOString().split('T')[0]!
+        return get().lastDailyClaimDate !== today
+      },
+
       // ── Recruitment ──
       recruitSoldier: (name) => {
         const state = get()
@@ -359,7 +416,7 @@ export const useCampStore = create<CampState>()(
     }),
     {
       name: 'toy-soldiers-camp',
-      version: 10,
+      version: 11,
       migrate: (persistedState: any, version: number) => {
         if (version < 2) {
           // v1 → v2: network shape changed from [6,12,4] to [7,8,4].
@@ -470,6 +527,13 @@ export const useCampStore = create<CampState>()(
           // Existing players have already played — skip tutorial.
           const state = persistedState as any
           state.tutorialCompleted = state.tutorialCompleted ?? true
+        }
+        if (version < 11) {
+          // v10 → v11: Daily streak system (Sprint Economy).
+          // Initialize streak fields. Old daily drip fields preserved but unused.
+          const state = persistedState as any
+          state.dailyStreak = 0
+          state.lastDailyClaimDate = ''
         }
         return persistedState as CampState
       },

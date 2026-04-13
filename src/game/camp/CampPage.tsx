@@ -37,6 +37,8 @@ import { ObservationHUD } from './ObservationHUD'
 import { CampNeuralNetViz } from './CampNeuralNetViz'
 import { FiringRangeHUD } from './FiringRangeHUD'
 import { TutorialGuide } from './TutorialGuide'
+import { DailyRewardPopup } from './DailyRewardPopup'
+import { ArmorySheet } from './ArmorySheet'
 import { AudioBed } from '@audio/AudioBed'
 import { resumeOnInteraction, ensureContext } from '@audio/context'
 import { useSceneStore } from '@stores/sceneStore'
@@ -45,10 +47,15 @@ import '@styles/camp-ui.css'
 
 export default function CampPage() {
   const [booted, setBooted] = useState(false)
+  const [dailyPopupDismissed, setDailyPopupDismissed] = useState(false)
   const isObserving = useSceneStore((s) => s.observingSlotIndex) !== null
   const isFiringRange = useSceneStore((s) => s.firingRangeSoldierId) !== null
   const tutorialCompleted = useCampStore((s) => s.tutorialCompleted)
   const tutorialActive = useSceneStore((s) => s.tutorialActive)
+  const lastDailyClaimDate = useCampStore((s) => s.lastDailyClaimDate)
+
+  const today = new Date().toISOString().split('T')[0]!
+  const showDailyPopup = booted && lastDailyClaimDate !== today && !dailyPopupDismissed && !isObserving && !isFiringRange && tutorialCompleted && !tutorialActive
 
   const handleBootDone = useCallback(() => setBooted(true), [])
   const setTrainingSheetOpen = useSceneStore((s) => s.setTrainingSheetOpen)
@@ -100,6 +107,9 @@ export default function CampPage() {
         </Suspense>
       </Canvas>
 
+      {/* Daily reward popup — first thing player sees after boot */}
+      {showDailyPopup && <DailyRewardPopup onClose={() => setDailyPopupDismissed(true)} />}
+
       {/* Observation mode overlays */}
       {isObserving && <ObservationHUD />}
       {isObserving && <CampNeuralNetViz />}
@@ -123,6 +133,7 @@ export default function CampPage() {
       {!isObserving && !isFiringRange && <MedicalSheet />}
       {!isObserving && !isFiringRange && <RecruitSheet />}
       {!isObserving && !isFiringRange && <ComputeModal />}
+      {!isObserving && !isFiringRange && <ArmorySheet />}
 
       {/* Tutorial overlay */}
       {tutorialActive && <TutorialGuide />}
