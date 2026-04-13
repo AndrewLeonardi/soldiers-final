@@ -1,13 +1,14 @@
 /**
  * SoldierSheet — bottom sheet showing a soldier's stats.
  *
- * Sprint 5, Phase 3. Opens when tapping an ambient soldier.
- * Shows name, weapon, training status, fitness, trained brains.
- * "TRAIN NOW" button opens TrainingSheet with this soldier pre-selected.
+ * Sprint C rewrite. Shows rank badge, XP bar, next rank preview,
+ * per-weapon fitness, and TRAIN NOW button.
  */
 import { useCallback } from 'react'
 import { useSceneStore } from '@stores/sceneStore'
 import { useCampStore } from '@stores/campStore'
+import { RankBadge } from './RankBadge'
+import { getRank, getNextRank } from '@config/ranks'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
 
@@ -47,12 +48,45 @@ export function SoldierSheet() {
   const hasLegacy = legacyBrains.length > 0 && trainedBrains.length === 0
   const fitnessPercent = soldier.fitnessScore != null ? Math.round(soldier.fitnessScore * 100) : null
 
+  const xp = soldier.xp ?? 0
+  const rank = getRank(xp)
+  const nextRank = getNextRank(xp)
+  const xpProgress = nextRank
+    ? ((xp - rank.xp) / (nextRank.xp - rank.xp)) * 100
+    : 100
+
   return (
     <div className="game-sheet-backdrop" onClick={handleClose}>
       <div className="soldier-sheet" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="soldier-sheet-name">{soldier.name}</div>
         <div className="soldier-sheet-weapon">{WEAPON_LABELS[soldier.weapon] ?? soldier.weapon}</div>
+
+        {/* Rank + XP */}
+        <div className="soldier-rank-info">
+          <RankBadge xp={xp} size="md" showName />
+        </div>
+
+        <div className="soldier-xp-bar-container">
+          <div className="soldier-xp-label">
+            <span>{xp} XP</span>
+            <span>{nextRank ? `${nextRank.xp} XP` : 'MAX'}</span>
+          </div>
+          <div className="soldier-xp-bar">
+            <div
+              className="soldier-xp-fill"
+              style={{
+                width: `${Math.min(100, xpProgress)}%`,
+                background: `linear-gradient(90deg, ${rank.color}, ${nextRank?.color ?? rank.color})`,
+              }}
+            />
+          </div>
+          {nextRank && (
+            <div className="soldier-next-rank">
+              NEXT: {nextRank.name.toUpperCase()} (+{Math.round((nextRank.healthMult - 1) * 100)}% HP)
+            </div>
+          )}
+        </div>
 
         {/* Stats */}
         <div className="soldier-sheet-stats">

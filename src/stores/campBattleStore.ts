@@ -102,6 +102,11 @@ interface CampBattleState {
   starsEarned: number
   weaponUnlocked: string | null  // weapon unlocked on this victory
 
+  // Kill tracking (ephemeral, cleared on reset)
+  soldierKills: Record<string, number>
+  // XP earned per soldier (computed at battle end, consumed by ResultOverlay)
+  soldierXPEarned: Record<string, { xp: number; newRankName: string | null }>
+
   // Actions
   initBattle: (config: CampBattleConfig) => void
   placeSoldier: (soldier: PlacedSoldier) => void
@@ -109,6 +114,8 @@ interface CampBattleState {
   selectForPlacement: (soldierId: string | null) => void
   setResult: (result: 'victory' | 'defeat', stars: number) => void
   setWeaponUnlocked: (weapon: string | null) => void
+  recordKill: (soldierId: string) => void
+  setSoldierXPEarned: (data: Record<string, { xp: number; newRankName: string | null }>) => void
   reset: () => void
 }
 
@@ -126,6 +133,8 @@ export const useCampBattleStore = create<CampBattleState>()((set, get) => ({
   result: null,
   starsEarned: 0,
   weaponUnlocked: null,
+  soldierKills: {},
+  soldierXPEarned: {},
 
   initBattle: (config) => {
     set({
@@ -142,6 +151,8 @@ export const useCampBattleStore = create<CampBattleState>()((set, get) => ({
       result: null,
       starsEarned: 0,
       weaponUnlocked: null,
+      soldierKills: {},
+      soldierXPEarned: {},
     })
   },
 
@@ -174,6 +185,16 @@ export const useCampBattleStore = create<CampBattleState>()((set, get) => ({
     set({ weaponUnlocked: weapon })
   },
 
+  recordKill: (soldierId) => {
+    const kills = { ...get().soldierKills }
+    kills[soldierId] = (kills[soldierId] ?? 0) + 1
+    set({ soldierKills: kills })
+  },
+
+  setSoldierXPEarned: (data) => {
+    set({ soldierXPEarned: data })
+  },
+
   reset: () => {
     set({
       battleConfig: null,
@@ -189,6 +210,8 @@ export const useCampBattleStore = create<CampBattleState>()((set, get) => ({
       result: null,
       starsEarned: 0,
       weaponUnlocked: null,
+      soldierKills: {},
+      soldierXPEarned: {},
     })
   },
 }))

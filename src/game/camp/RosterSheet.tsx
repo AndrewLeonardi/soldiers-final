@@ -1,150 +1,78 @@
 /**
  * RosterSheet — soldier roster bottom sheet.
  *
- * Sprint 3, Phase 5a. Shows all soldiers with their stats,
- * weapon badges, and neural net thumbnails. Tap row to expand
- * accordion with full details. "TRAIN" shortcut pre-selects
- * soldier and opens training sheet.
+ * Sprint C rewrite. Sort/filter bar, redesigned flat rows with
+ * rank badges, fitness bars, and weapon count. Tap row to open
+ * SoldierSheet detail view.
  */
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useCampStore } from '@stores/campStore'
 import { useSceneStore } from '@stores/sceneStore'
-import { NeuralNetThumbnail } from './NeuralNetThumbnail'
+import { RankBadge } from './RankBadge'
 import { WeaponIcon } from './WeaponIcon'
-import { getWeaponShape } from '@game/training/weaponShapes'
-import { WEAPON_DISPLAY } from '@config/roster'
-import type { WeaponType } from '@config/types'
+import { getRank, rankIndex } from '@config/ranks'
 import type { SoldierRecord } from '@stores/campStore'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
 
-/** Convert fitness 0-1 to star rating 1-5 */
-function fitnessToStars(fitness: number): number {
-  if (fitness >= 0.9) return 5
-  if (fitness >= 0.75) return 4
-  if (fitness >= 0.55) return 3
-  if (fitness >= 0.3) return 2
-  return 1
+type SortBy = 'rank' | 'fitness' | 'name'
+type FilterBy = 'all' | 'trained' | 'untrained' | 'injured'
+
+function sortSoldiers(soldiers: SoldierRecord[], sortBy: SortBy): SoldierRecord[] {
+  const sorted = [...soldiers]
+  switch (sortBy) {
+    case 'rank':
+      return sorted.sort((a, b) => {
+        const ri = rankIndex(b.xp ?? 0) - rankIndex(a.xp ?? 0)
+        if (ri !== 0) return ri
+        return (b.xp ?? 0) - (a.xp ?? 0)
+      })
+    case 'fitness':
+      return sorted.sort((a, b) => (b.fitnessScore ?? 0) - (a.fitnessScore ?? 0))
+    case 'name':
+      return sorted.sort((a, b) => a.name.localeCompare(b.name))
+    default:
+      return sorted
+  }
 }
 
-function SoldierRow({ soldier, expanded, onToggle, onTrain }: {
-  soldier: SoldierRecord
-  expanded: boolean
-  onToggle: () => void
-  onTrain: () => void
-}) {
-  const trainedWeapons = soldier.trainedBrains ? Object.keys(soldier.trainedBrains) as WeaponType[] : []
-  const stars = soldier.fitnessScore != null ? fitnessToStars(soldier.fitnessScore) : 0
-
-  return (
-    <div className={`roster-row ${expanded ? 'expanded' : ''}`}>
-      {/* Summary row — always visible */}
-      <button className="roster-row-summary" onClick={onToggle}>
-        <span className="roster-row-name">{soldier.name}</span>
-        <span className="roster-row-meta">
-          {stars > 0 && (
-            <span className="roster-row-stars">
-              {'★'.repeat(stars)}{'☆'.repeat(5 - stars)}
-            </span>
-          )}
-          {trainedWeapons.length > 0 && (
-            <span className="roster-row-weapons">
-              {trainedWeapons.map(w => (
-                <span key={w} className="roster-weapon-badge">
-                  <WeaponIcon weapon={w} size={12} color="#c0d0b0" />
-                </span>
-              ))}
-            </span>
-          )}
-          {!soldier.trained && (
-            <span className="roster-untrained-badge">UNTRAINED</span>
-          )}
-        </span>
-        <span className="roster-row-chevron">{expanded ? '▼' : '▶'}</span>
-      </button>
-
-      {/* Expanded detail — accordion */}
-      {expanded && (
-        <div className="roster-row-detail">
-          <div className="roster-detail-stats">
-            <div className="roster-stat">
-              <span className="roster-stat-label">WEAPON</span>
-              <span className="roster-stat-value">{soldier.weapon.toUpperCase()}</span>
-            </div>
-            {soldier.fitnessScore != null && (
-              <div className="roster-stat">
-                <span className="roster-stat-label">FITNESS</span>
-                <span className="roster-stat-value">{(soldier.fitnessScore * 100).toFixed(0)}%</span>
-              </div>
-            )}
-            {soldier.generationsTrained != null && (
-              <div className="roster-stat">
-                <span className="roster-stat-label">GENS</span>
-                <span className="roster-stat-value">{soldier.generationsTrained}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Trained weapon brains */}
-          {trainedWeapons.length > 0 && (
-            <div className="roster-brains">
-              <div className="roster-brains-label">TRAINED BRAINS</div>
-              {trainedWeapons.map(w => {
-                const weights = soldier.trainedBrains![w]!
-                const shape = getWeaponShape(w)
-                const display = WEAPON_DISPLAY[w]
-                return (
-                  <div key={w} className="roster-brain-row">
-                    <div className="roster-brain-info">
-                      <WeaponIcon weapon={w} size={14} />
-                      <span className="roster-brain-name">{display?.name ?? w}</span>
-                      <span className="roster-brain-shape">[{shape.input},{shape.hidden},{shape.output}]</span>
-                    </div>
-                    <NeuralNetThumbnail
-                      weights={weights}
-                      shape={shape}
-                      width={100}
-                      height={60}
-                    />
-                  </div>
-                )
-              })}
-            </div>
-          )}
-
-          {/* Train shortcut */}
-          <button className="game-btn game-btn-sm roster-train-btn" onClick={onTrain}>
-            TRAIN
-          </button>
-        </div>
-      )}
-    </div>
-  )
+function filterSoldiers(soldiers: SoldierRecord[], filterBy: FilterBy): SoldierRecord[] {
+  const now = Date.now()
+  switch (filterBy) {
+    case 'trained':
+      return soldiers.filter(s => s.trained)
+    case 'untrained':
+      return soldiers.filter(s => !s.trained)
+    case 'injured':
+      return soldiers.filter(s => s.injuredUntil && s.injuredUntil > now)
+    default:
+      return soldiers
+  }
 }
 
 export function RosterSheet() {
   const isOpen = useSceneStore((s) => s.rosterSheetOpen)
   const setRosterSheetOpen = useSceneStore((s) => s.setRosterSheetOpen)
-  const setTrainingSheetOpen = useSceneStore((s) => s.setTrainingSheetOpen)
+  const setSoldierSheetId = useSceneStore((s) => s.setSoldierSheetId)
   const soldiers = useCampStore((s) => s.soldiers)
 
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [sortBy, setSortBy] = useState<SortBy>('rank')
+  const [filterBy, setFilterBy] = useState<FilterBy>('all')
+
+  const displaySoldiers = useMemo(() => {
+    const filtered = filterSoldiers(soldiers, filterBy)
+    return sortSoldiers(filtered, sortBy)
+  }, [soldiers, sortBy, filterBy])
 
   const handleClose = useCallback(() => {
     setRosterSheetOpen(false)
   }, [setRosterSheetOpen])
 
-  const handleToggle = useCallback((id: string) => {
-    sfx.buttonTap()
-    setExpandedId(prev => prev === id ? null : id)
-  }, [])
-
-  const handleTrain = useCallback((soldierId: string) => {
+  const handleTapSoldier = useCallback((id: string) => {
     sfx.buttonTap()
     setRosterSheetOpen(false)
-    // Brief delay so the close animation plays before the training sheet opens
-    setTimeout(() => setTrainingSheetOpen(true), 200)
-  }, [setRosterSheetOpen, setTrainingSheetOpen])
+    setTimeout(() => setSoldierSheetId(id), 150)
+  }, [setRosterSheetOpen, setSoldierSheetId])
 
   if (!isOpen) return null
 
@@ -157,19 +85,74 @@ export function RosterSheet() {
         </div>
 
         <div className="game-sheet-body">
+          {/* Sort/Filter bar */}
+          <div className="roster-sort-bar">
+            {(['rank', 'fitness', 'name'] as SortBy[]).map(s => (
+              <button
+                key={s}
+                className={`roster-sort-pill ${sortBy === s ? 'active' : ''}`}
+                onClick={() => { sfx.buttonTap(); setSortBy(s) }}
+              >
+                {s.toUpperCase()}
+              </button>
+            ))}
+            <span style={{ flex: 1 }} />
+            {(['all', 'trained', 'untrained', 'injured'] as FilterBy[]).map(f => (
+              <button
+                key={f}
+                className={`roster-filter-pill ${filterBy === f ? 'active' : ''}`}
+                onClick={() => { sfx.buttonTap(); setFilterBy(f) }}
+              >
+                {f.toUpperCase()}
+              </button>
+            ))}
+          </div>
+
           {soldiers.length === 0 ? (
             <div className="store-empty">No soldiers recruited yet</div>
+          ) : displaySoldiers.length === 0 ? (
+            <div className="store-empty">No soldiers match filter</div>
           ) : (
             <div className="roster-list">
-              {soldiers.map(s => (
-                <SoldierRow
-                  key={s.id}
-                  soldier={s}
-                  expanded={expandedId === s.id}
-                  onToggle={() => handleToggle(s.id)}
-                  onTrain={() => handleTrain(s.id)}
-                />
-              ))}
+              {displaySoldiers.map(sol => {
+                const trainedWeapons = sol.trainedBrains ? Object.keys(sol.trainedBrains) : []
+                const rank = getRank(sol.xp ?? 0)
+                const fitnessPercent = sol.fitnessScore != null ? Math.round(sol.fitnessScore * 100) : 0
+                const isInjured = sol.injuredUntil && sol.injuredUntil > Date.now()
+
+                return (
+                  <button
+                    key={sol.id}
+                    className="roster-row"
+                    onClick={() => handleTapSoldier(sol.id)}
+                  >
+                    <div className="roster-row-rank">
+                      <RankBadge xp={sol.xp ?? 0} size="md" />
+                    </div>
+                    <div className="roster-row-info">
+                      <div className="roster-row-name" style={{ color: rank.color }}>
+                        {sol.name}
+                        {isInjured && <span style={{ color: '#FF5252', marginLeft: 6, fontSize: 9 }}>INJURED</span>}
+                      </div>
+                      <div className="roster-fitness-bar">
+                        <div
+                          className="roster-fitness-fill"
+                          style={{ width: `${fitnessPercent}%` }}
+                        />
+                      </div>
+                    </div>
+                    <div className="roster-row-badges">
+                      {trainedWeapons.length > 0 ? (
+                        <span className="roster-weapon-count">
+                          {trainedWeapons.length} {trainedWeapons.length === 1 ? 'BRAIN' : 'BRAINS'}
+                        </span>
+                      ) : (
+                        <span className="roster-untrained-badge">UNTRAINED</span>
+                      )}
+                    </div>
+                  </button>
+                )
+              })}
             </div>
           )}
         </div>

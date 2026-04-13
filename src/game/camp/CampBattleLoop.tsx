@@ -28,6 +28,7 @@ import { useCampStore } from '@stores/campStore'
 import { NeuralNet } from '@engine/ml/neuralNet'
 import { getWeaponShape } from '@game/training/weaponShapes'
 import { WEAPON_STATS, ENEMY_STATS } from '@config/units'
+import { getRank, XP_REWARDS } from '@config/ranks'
 import { SPAWN_POSITIONS } from '@config/campBattles'
 import type { CampWaveEnemy } from '@config/campBattles'
 import type { WeaponType, EnemyType } from '@config/types'
@@ -103,8 +104,11 @@ function createPlayerUnit(
   weapon: WeaponType,
   position: [number, number, number],
   brainWeights?: number[],
+  soldierXP?: number,
 ): BattleUnit {
   const stats = WEAPON_STATS[weapon] ?? WEAPON_STATS.rifle
+  const rankMult = getRank(soldierXP ?? 0).healthMult
+  const hp = Math.round(stats.health * rankMult)
   return {
     id: `player-${++_uid}`,
     name,
@@ -112,8 +116,8 @@ function createPlayerUnit(
     weapon,
     position: [position[0], DROP_HEIGHT_PLAYER, position[2]], // start high for drop
     rotation: 0,
-    health: stats.health,
-    maxHealth: stats.health,
+    health: hp,
+    maxHealth: hp,
     status: 'idle',
     lastFireTime: -10,
     fireRate: stats.fireRate,
@@ -210,7 +214,7 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
       const solRecord = campStore.soldiers.find(s => s.id === placed.soldierId)
       const weapon = (placed.weapon || 'rifle') as WeaponType
       const brainWeights = solRecord?.trainedBrains?.[weapon]
-      return createPlayerUnit(placed.soldierId, placed.name, weapon, placed.position, brainWeights)
+      return createPlayerUnit(placed.soldierId, placed.name, weapon, placed.position, brainWeights, solRecord?.xp)
     })
 
     // Pre-cache neural nets for trained soldiers
@@ -873,7 +877,7 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
 
         // Fuse detonation
         if (p.age >= BLAST.GRENADE.fuseTime) {
-          applyExplosion(p.position, BLAST.GRENADE, p.team, players, enemies, explosions, wallBlocksRef)
+          applyExplosion(p.position, BLAST.GRENADE, p.team, players, enemies, explosions, wallBlocksRef, p.ownerId)
           sfx.explosionSmall()
           triggerShake(SHAKE.GRENADE)
           triggerHitpause(3)
@@ -884,7 +888,7 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
 
       // Rocket ground impact
       if (p.type === 'rocket' && p.position[1] < 0.1) {
-        applyExplosion(p.position, BLAST.ROCKET, p.team, players, enemies, explosions, wallBlocksRef)
+        applyExplosion(p.position, BLAST.ROCKET, p.team, players, enemies, explosions, wallBlocksRef, p.ownerId)
         sfx.explosionLarge()
         triggerShake(SHAKE.ROCKET)
         triggerHitpause(4)
@@ -918,12 +922,12 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
 
         if (dist < HIT_RADIUS) {
           if (p.type === 'rocket') {
-            applyExplosion(p.position, BLAST.ROCKET, p.team, players, enemies, explosions, wallBlocksRef)
+            applyExplosion(p.position, BLAST.ROCKET, p.team, players, enemies, explosions, wallBlocksRef, p.ownerId)
             sfx.explosionLarge()
             triggerShake(SHAKE.ROCKET)
             triggerHitpause(4)
           } else if (p.type === 'grenade') {
-            applyExplosion(p.position, BLAST.GRENADE, p.team, players, enemies, explosions, wallBlocksRef)
+            applyExplosion(p.position, BLAST.GRENADE, p.team, players, enemies, explosions, wallBlocksRef, p.ownerId)
             sfx.explosionSmall()
             triggerShake(SHAKE.GRENADE)
             triggerHitpause(3)
@@ -939,6 +943,11 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
               unit.spinSpeed = randRange(RAGDOLL.TUMBLE_SPIN_MIN, RAGDOLL.TUMBLE_SPIN_MAX)
               sfx.deathThud()
               triggerHitpause(3)
+              // Kill attribution — credit the shooter
+              if (p.team === 'green') {
+                const shooter = players.find(u => u.id === p.ownerId)
+                if (shooter?.soldierId) useCampBattleStore.getState().recordKill(shooter.soldierId)
+              }
             } else {
               unit.status = 'hit'
               unit.stateAge = 0
@@ -999,9 +1008,31 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
         }
       }
 
-      useCampBattleStore.getState().setResult('victory', stars)
-      if (config.weaponReward) useCampBattleStore.getState().setWeaponUnlocked(config.weaponReward)
+      const battleStore = useCampBattleStore.getState()
+      battleStore.setResult('victory', stars)
+      if (config.weaponReward) battleStore.setWeaponUnlocked(config.weaponReward)
       useCampStore.getState().completeBattle(config.id, stars, config.reward, config.weaponReward, config.goldReward)
+
+      // Award XP to each placed soldier
+      const kills = battleStore.soldierKills
+      const xpData: Record<string, { xp: number; newRankName: string | null }> = {}
+      const freshCampStore = useCampStore.getState()
+      for (const pu of players) {
+        if (!pu.soldierId) continue
+        const solRecord = freshCampStore.soldiers.find(s => s.id === pu.soldierId)
+        if (!solRecord) continue
+        const oldRank = getRank(solRecord.xp ?? 0)
+        let earned = XP_REWARDS.BATTLE_WIN + stars * XP_REWARDS.STAR_BONUS
+        if ((kills[pu.soldierId] ?? 0) > 0) earned += XP_REWARDS.FIRST_KILL_BONUS
+        freshCampStore.awardSoldierXP(pu.soldierId, earned)
+        const newRank = getRank((solRecord.xp ?? 0) + earned)
+        xpData[pu.soldierId] = {
+          xp: earned,
+          newRankName: newRank.name !== oldRank.name ? newRank.name : null,
+        }
+      }
+      useCampBattleStore.getState().setSoldierXPEarned(xpData)
+
       sfx.graduationFanfare()
       setBattlePhase('result')
     }
@@ -1098,12 +1129,12 @@ function checkWallHit(
 
       if (dist < WALL_HIT_RADIUS) {
         if (p.type === 'rocket') {
-          applyExplosion(p.position, BLAST.ROCKET, p.team, players, enemies, explosions, wallBlocksRef)
+          applyExplosion(p.position, BLAST.ROCKET, p.team, players, enemies, explosions, wallBlocksRef, p.ownerId)
           sfx.explosionLarge()
           triggerShake(SHAKE.ROCKET)
           triggerHitpause(4)
         } else if (p.type === 'grenade') {
-          applyExplosion(p.position, BLAST.GRENADE, p.team, players, enemies, explosions, wallBlocksRef)
+          applyExplosion(p.position, BLAST.GRENADE, p.team, players, enemies, explosions, wallBlocksRef, p.ownerId)
           sfx.explosionSmall()
           triggerShake(SHAKE.GRENADE)
           triggerHitpause(3)
@@ -1138,6 +1169,7 @@ function applyExplosion(
   enemies: BattleUnit[],
   explosions: BattleExplosion[],
   wallBlocksRef: React.MutableRefObject<Map<string, WallBlock[]>>,
+  ownerId?: string,
 ) {
   const blastRadius = blastConfig.radius
   const blastDamage = blastConfig.damage
@@ -1171,6 +1203,11 @@ function applyExplosion(
       unit.stateAge = 0
       unit.spinSpeed = randRange(RAGDOLL.TUMBLE_SPIN_MIN, RAGDOLL.TUMBLE_SPIN_MAX)
       sfx.deathThud()
+      // Kill attribution — credit the explosion owner if they're a player
+      if (team === 'green' && unit.team === 'tan' && ownerId) {
+        const shooter = players.find(u => u.id === ownerId)
+        if (shooter?.soldierId) useCampBattleStore.getState().recordKill(shooter.soldierId)
+      }
     } else {
       unit.status = 'hit'
       unit.stateAge = 0

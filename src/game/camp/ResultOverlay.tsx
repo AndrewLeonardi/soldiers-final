@@ -15,6 +15,7 @@ import { useSceneStore } from '@stores/sceneStore'
 import { useCampBattleStore } from '@stores/campBattleStore'
 import { useCampStore } from '@stores/campStore'
 import { createDisplayWeapon } from '@three/models/weaponMeshes'
+import { RankBadge } from './RankBadge'
 import type { WeaponType } from '@config/types'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
@@ -91,6 +92,9 @@ export function ResultOverlay() {
   const starsEarned = useCampBattleStore((s) => s.starsEarned)
   const battleConfig = useCampBattleStore((s) => s.battleConfig)
   const weaponUnlocked = useCampBattleStore((s) => s.weaponUnlocked)
+  const soldierXPEarned = useCampBattleStore((s) => s.soldierXPEarned)
+  const placedSoldiers = useCampBattleStore((s) => s.placedSoldiers)
+  const soldiers = useCampStore((s) => s.soldiers)
   const reset = useCampBattleStore((s) => s.reset)
   const initBattle = useCampBattleStore((s) => s.initBattle)
 
@@ -210,6 +214,32 @@ export function ResultOverlay() {
                 </div>
               )}
             </div>
+
+            {/* Squad XP */}
+            {Object.keys(soldierXPEarned).length > 0 && (
+              <div className="result-xp-section">
+                <div className="result-xp-header">SQUAD XP</div>
+                {placedSoldiers.map((ps, idx) => {
+                  const xpInfo = soldierXPEarned[ps.soldierId]
+                  if (!xpInfo) return null
+                  const sol = soldiers.find(s => s.id === ps.soldierId)
+                  return (
+                    <div
+                      key={ps.soldierId}
+                      className={`result-xp-row ${xpInfo.newRankName ? 'rank-up' : ''}`}
+                      style={{ animationDelay: `${1.2 + idx * 0.3}s` }}
+                    >
+                      <RankBadge xp={sol?.xp ?? 0} size="sm" />
+                      <span className="result-xp-name">{ps.name}</span>
+                      <span className="result-xp-amount">+{xpInfo.xp} XP</span>
+                      {xpInfo.newRankName && (
+                        <span className="result-xp-rankup">PROMOTED: {xpInfo.newRankName.toUpperCase()}!</span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </>
         )}
 

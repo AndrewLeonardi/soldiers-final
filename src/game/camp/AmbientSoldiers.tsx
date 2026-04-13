@@ -19,6 +19,7 @@ import { WanderBrain } from './WanderBrain'
 import { SOLDIER_BOUNDS } from './campConstants'
 import { useCampStore } from '@stores/campStore'
 import { useSceneStore } from '@stores/sceneStore'
+import { getRank } from '@config/ranks'
 
 // ── Soldier data (mutable per-frame state, NOT from store) ──
 interface AmbientSoldierData {
@@ -78,6 +79,7 @@ function SelectionRing() {
 // ── Individual soldier component ──
 interface SoldierEntryProps {
   data: AmbientSoldierData
+  xp: number
   isSelected: boolean
   isHovered: boolean
   onSelect: (id: string) => void
@@ -86,7 +88,7 @@ interface SoldierEntryProps {
 
 const DRAG_THRESHOLD = 6
 
-function SoldierEntry({ data, isSelected, isHovered, onSelect, onHover }: SoldierEntryProps) {
+function SoldierEntry({ data, xp, isSelected, isHovered, onSelect, onHover }: SoldierEntryProps) {
   const bodyRef = useRef<RapierRigidBody>(null!)
   const pointerDownPos = useRef<{ x: number; y: number } | null>(null)
   const groupRef = useRef<THREE.Group>(null!)
@@ -166,15 +168,19 @@ function SoldierEntry({ data, isSelected, isHovered, onSelect, onHover }: Soldie
           >
             <div style={{
               background: 'rgba(0,0,0,0.7)',
-              color: '#44ff44',
+              color: getRank(xp).color,
               padding: '3px 8px',
               borderRadius: 4,
               fontSize: 11,
               fontFamily: "'Black Ops One', monospace",
               letterSpacing: 1,
               textTransform: 'uppercase',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
             }}>
-              {data.name}
+              <span>{getRank(xp).badge || '—'}</span>
+              <span>{data.name}</span>
             </div>
           </Html>
         )}
@@ -260,6 +266,7 @@ export function AmbientSoldiers() {
         <SoldierEntry
           key={s.id}
           data={s}
+          xp={storeSoldiers.find(ss => ss.id === s.id)?.xp ?? 0}
           isSelected={selectedId === s.id}
           isHovered={hoveredId === s.id}
           onSelect={handleSelect}

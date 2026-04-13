@@ -7,17 +7,23 @@
  * Already-placed soldiers show as green dots on the field.
  * "START BATTLE" button requires at least 1 placed soldier.
  */
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useSceneStore } from '@stores/sceneStore'
 import { useCampStore } from '@stores/campStore'
+import type { SoldierRecord } from '@stores/campStore'
 import { useCampBattleStore } from '@stores/campBattleStore'
 import type { PlacedSoldier } from '@stores/campBattleStore'
+import { WeaponPicker } from './WeaponPicker'
+import { RankBadge } from './RankBadge'
+import type { WeaponType } from '@config/types'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
 
 export function PlacementOverlay() {
   const battlePhase = useSceneStore((s) => s.battlePhase)
   const setBattlePhase = useSceneStore((s) => s.setBattlePhase)
+  const pendingPlacement = useSceneStore((s) => s.pendingPlacement)
+  const setPendingPlacement = useSceneStore((s) => s.setPendingPlacement)
   const soldiers = useCampStore((s) => s.soldiers)
   const battleConfig = useCampBattleStore((s) => s.battleConfig)
   const placedSoldiers = useCampBattleStore((s) => s.placedSoldiers)
@@ -26,6 +32,23 @@ export function PlacementOverlay() {
   const placeSoldier = useCampBattleStore((s) => s.placeSoldier)
   const removePlacedSoldier = useCampBattleStore((s) => s.removePlacedSoldier)
   const reset = useCampBattleStore((s) => s.reset)
+
+  const handleWeaponPick = useCallback((weapon: WeaponType) => {
+    if (!pendingPlacement) return
+    const { soldier: sol, position } = pendingPlacement
+    const placed: PlacedSoldier = {
+      soldierId: sol.id,
+      name: sol.name,
+      weapon,
+      position,
+    }
+    placeSoldier(placed)
+    setPendingPlacement(null)
+  }, [pendingPlacement, placeSoldier, setPendingPlacement])
+
+  const handleWeaponCancel = useCallback(() => {
+    setPendingPlacement(null)
+  }, [setPendingPlacement])
 
   const handleSelectSoldier = useCallback((soldierId: string) => {
     sfx.buttonTap()
@@ -81,9 +104,14 @@ export function PlacementOverlay() {
                 className={`placement-card ${isPlaced ? 'placed' : ''} ${isSelected ? 'selected' : ''} ${!hasBrain ? 'untrained' : ''}`}
                 onClick={() => handleSelectSoldier(sol.id)}
               >
+                <span className="placement-card-rank"><RankBadge xp={sol.xp ?? 0} size="sm" /></span>
                 <span className="placement-card-name">{sol.name}</span>
                 {hasBrain ? (
-                  <span className="placement-card-weapon">{deployWeapon}</span>
+                  <span className="placement-card-weapon">
+                    {trainedWeapons.length > 1
+                      ? `${trainedWeapons.length} WEAPONS`
+                      : deployWeapon}
+                  </span>
                 ) : (
                   <span className="placement-card-weapon untrained">UNTRAINED</span>
                 )}
@@ -104,6 +132,15 @@ export function PlacementOverlay() {
           START BATTLE
         </button>
       </div>
+
+      {/* Weapon picker for multi-brain soldiers */}
+      {pendingPlacement && (
+        <WeaponPicker
+          soldier={pendingPlacement.soldier}
+          onPick={handleWeaponPick}
+          onCancel={handleWeaponCancel}
+        />
+      )}
     </div>
   )
 }
@@ -131,8 +168,16 @@ export function PlacementGroundHandler() {
     const sol = soldiers.find(s => s.id === selectedPlacementId)
     if (!sol) return
 
-    // Deploy with their best trained weapon, or fallback to 'rifle' (untrained — won't fire)
     const trainedWeapons = sol.trainedBrains ? Object.keys(sol.trainedBrains) : []
+
+    // Multi-brain soldier → store pending placement for weapon picker
+    if (trainedWeapons.length >= 2) {
+      useSceneStore.getState().setPendingPlacement({ soldier: sol, position: [x, 0, z] })
+      selectForPlacement(null)
+      return
+    }
+
+    // Single brain or untrained — deploy immediately
     const deployWeapon = trainedWeapons.length > 0
       ? trainedWeapons[trainedWeapons.length - 1]!
       : 'rifle'

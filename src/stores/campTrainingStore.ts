@@ -18,6 +18,7 @@ import { GeneticAlgorithm } from '@engine/ml/geneticAlgorithm'
 import { initSim, simTick, scoreFitness } from '@engine/ml/simulationRunner'
 import type { SimState, SimConfig } from '@engine/ml/simulationRunner'
 import { useCampStore } from './campStore'
+import { XP_REWARDS } from '@config/ranks'
 import {
   COMPUTE_TIERS,
   TRAINING_BASE_COST,
@@ -505,13 +506,15 @@ export const useCampTrainingStore = create<CampTrainingState>()((set, get) => {
       const { slotSoldierId, slotWeapon, bestWeights, bestFitness, generation } = slot
       if (!slotSoldierId || !slotWeapon || bestWeights.length === 0) return
 
-      useCampStore.getState().updateSoldierBrain(
+      const campStore = useCampStore.getState()
+      campStore.updateSoldierBrain(
         slotSoldierId,
         slotWeapon,
         bestWeights,
         bestFitness,
         generation,
       )
+      campStore.awardSoldierXP(slotSoldierId, XP_REWARDS.TRAINING_COMPLETE)
 
       updateSlot(slotIndex, { trainingPhase: 'ceremony-end' })
     },

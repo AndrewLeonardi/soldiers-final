@@ -34,6 +34,8 @@ export interface SoldierRecord {
   generationsTrained?: number
   /** Epoch ms when healing completes — undefined = healthy */
   injuredUntil?: number
+  /** Cumulative experience points — rank derived from this at render time */
+  xp?: number
 
   // Legacy field — kept for v2→v3 migration, not used in new code
   weights?: number[]
@@ -91,6 +93,7 @@ interface CampState {
   addSoldier: (soldier: SoldierRecord) => void
   updateSoldier: (id: string, updates: Partial<SoldierRecord>) => void
   updateSoldierBrain: (id: string, weapon: string, weights: number[], fitness: number, generations: number) => void
+  awardSoldierXP: (id: string, amount: number) => void
 
   // Actions — battles
   completeBattle: (battleId: string, stars: number, reward: number, weaponReward?: string, goldReward?: number) => void
@@ -251,6 +254,7 @@ export const useCampStore = create<CampState>()(
           name,
           weapon: 'rifle',
           trained: false,
+          xp: 0,
         }
         set({
           gold: state.gold - SOLDIER_RECRUIT_COST,
@@ -282,6 +286,12 @@ export const useCampStore = create<CampState>()(
             generationsTrained: (sol.generationsTrained ?? 0) + generations,
           }
         }),
+      })),
+
+      awardSoldierXP: (id, amount) => set((s) => ({
+        soldiers: s.soldiers.map(sol =>
+          sol.id === id ? { ...sol, xp: Math.min(99999, (sol.xp ?? 0) + amount) } : sol,
+        ),
       })),
 
       // ── Battle progress ──
@@ -337,7 +347,7 @@ export const useCampStore = create<CampState>()(
     }),
     {
       name: 'toy-soldiers-camp',
-      version: 8,
+      version: 9,
       migrate: (persistedState: any, version: number) => {
         if (version < 2) {
           // v1 → v2: network shape changed from [6,12,4] to [7,8,4].
@@ -431,6 +441,17 @@ export const useCampStore = create<CampState>()(
           state.lastDailyGoldClaimTime = 0
           state.battlesCompleted = {}
           state.unlockedWeapons = ['rifle']
+        }
+        if (version < 9) {
+          // v8 → v9: Soldier XP + rank system.
+          // Add xp:0 to all existing soldiers.
+          const state = persistedState as any
+          if (state.soldiers) {
+            state.soldiers = state.soldiers.map((s: any) => ({
+              ...s,
+              xp: s.xp ?? 0,
+            }))
+          }
         }
         return persistedState as CampState
       },
