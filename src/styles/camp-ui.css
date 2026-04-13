@@ -18,29 +18,34 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 10px 20px;
-  border: none;
-  border-bottom: 4px solid rgba(0, 0, 0, 0.3);
-  border-radius: 8px;
-  background: linear-gradient(180deg, #5a7a4a 0%, #4a6a3a 100%);
-  color: #e0ecd0;
+  padding: 14px 24px;
+  border: 2px solid #6a9a5a;
+  border-bottom: 5px solid #2a4a1a;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #5a8a48 0%, #4a7a3a 50%, #3a6a2a 100%);
+  color: #e8f0d8;
   font-family: 'Black Ops One', cursive;
-  font-size: 13px;
-  letter-spacing: 1px;
+  font-size: 14px;
+  letter-spacing: 1.5px;
   text-transform: uppercase;
   cursor: pointer;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
-  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform 0.03s ease, transform 0.6s cubic-bezier(.3, .7, .4, 1);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.15),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.15),
-    0 2px 8px rgba(0, 0, 0, 0.3);
+    0 4px 12px rgba(0, 0, 0, 0.4),
+    inset 0 2px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .game-btn:active {
-  transform: scale(0.92) translateY(2px);
+  transform: scale(0.92) translateY(3px);
   border-bottom-width: 2px;
+  transition: transform 0.03s ease;
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.4),
+    inset 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
 .game-btn-sm {
@@ -143,7 +148,7 @@
   position: fixed;
   inset: 0;
   z-index: 100;
-  background: rgba(0, 0, 0, 0.5);
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.85) 100%);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -153,19 +158,27 @@
 .game-sheet {
   width: 100%;
   max-width: 420px;
-  max-height: 70vh;
-  background: linear-gradient(180deg, #2d4030 0%, #1e3222 50%, #162818 100%);
-  border-radius: 16px 16px 0 0;
-  border: 2px solid #4a6a40;
-  border-bottom: none;
-  box-shadow:
-    0 -8px 30px rgba(0, 0, 0, 0.7),
-    0 0 20px rgba(60, 100, 50, 0.08),
-    inset 0 2px 0 rgba(255, 255, 255, 0.12),
-    inset 0 -3px 6px rgba(0, 0, 0, 0.3);
-  animation: sheetSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  max-height: 80vh;
+  background: linear-gradient(180deg, #2a4535 0%, #1c3425 50%, #12261a 100%);
+  border-radius: 20px 20px 0 0;
   overflow-y: auto;
   position: relative;
+  animation: sheetBounceUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Multi-ring ornate border — the game-feel frame */
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -3px 8px rgba(0, 0, 0, 0.4),
+    0 0 0 2px #5a8a4a,
+    0 0 0 4px #d4aa40,
+    0 0 0 6px #3a2a1a,
+    0 -6px 30px rgba(0, 0, 0, 0.8),
+    0 0 60px rgba(212, 170, 64, 0.08);
+}
+
+@keyframes sheetBounceUp {
+  0% { transform: translateY(100%) scale(0.95); opacity: 0; }
+  60% { transform: translateY(-2%) scale(1.01); opacity: 1; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
 }
 
 /* Scroll fade indicator at bottom of sheets */
@@ -176,26 +189,37 @@
   display: block;
   height: 40px;
   margin-top: -40px;
-  background: linear-gradient(to bottom, transparent, #1a2a1a);
+  background: linear-gradient(to bottom, transparent, #12261a);
   pointer-events: none;
-  border-radius: 0 0 0 0;
 }
 
 .game-sheet-header {
-  padding: 16px 20px 10px;
-  border-bottom: 2px solid rgba(0, 0, 0, 0.3);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.01) 100%);
+  padding: 18px 24px 14px;
+  border-bottom: 2px solid var(--brass-dark, #96781e);
+  background: linear-gradient(180deg, rgba(212, 170, 64, 0.12) 0%, rgba(212, 170, 64, 0.02) 100%);
+  position: relative;
+}
+
+/* Decorative line under header */
+.game-sheet-header::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 20px;
+  right: 20px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(212, 170, 64, 0.4), transparent);
 }
 
 .game-sheet-title {
   font-family: 'Black Ops One', cursive;
-  font-size: 18px;
+  font-size: 24px;
   color: var(--gold-text, #E8C65A);
   letter-spacing: 3px;
   text-transform: uppercase;
   text-shadow:
-    0 0 20px rgba(232, 198, 90, 0.2),
-    0 2px 4px rgba(0, 0, 0, 0.5);
+    0 0 20px rgba(232, 198, 90, 0.3),
+    0 2px 4px rgba(0, 0, 0, 0.7);
 }
 
 .game-sheet-body {
@@ -243,7 +267,7 @@
   pointer-events: auto;
 }
 
-/* ── Bottom bar — 5 beveled action buttons ── */
+/* ── Bottom bar — 5 chunky game buttons ── */
 .camp-bottom-bar {
   position: absolute;
   bottom: 0;
@@ -252,54 +276,69 @@
   display: flex;
   justify-content: space-around;
   align-items: flex-end;
-  padding: 6px 6px;
-  padding-bottom: max(8px, env(safe-area-inset-bottom));
+  padding: 8px 8px;
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
   background: linear-gradient(180deg, #2a3d28 0%, #1e3020 50%, #142418 100%);
-  border-top: 3px solid #4a6a40;
-  box-shadow:
-    0 -4px 20px rgba(0, 0, 0, 0.6),
-    inset 0 2px 0 rgba(255, 255, 255, 0.08);
+  border-top: 3px solid #5a8a4a;
   z-index: 10;
   pointer-events: auto;
+  /* Decorative top highlight */
+  box-shadow:
+    0 -6px 30px rgba(0, 0, 0, 0.7),
+    inset 0 2px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Brass rivet strip decoration */
+.camp-bottom-bar::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent 5%, rgba(212, 170, 64, 0.5) 20%, rgba(212, 170, 64, 0.3) 50%, rgba(212, 170, 64, 0.5) 80%, transparent 95%);
 }
 
 .camp-bottom-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  padding: 10px 10px 8px;
+  gap: 4px;
+  padding: 12px 8px 10px;
   border: 2px solid #5a7a4a;
-  border-bottom: 4px solid #1a3a12;
-  border-radius: 10px;
-  background: linear-gradient(180deg, #3a5a30 0%, #2a4a22 100%);
+  border-bottom: 5px solid #1a3a12;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #4a6a38 0%, #3a5a2a 50%, #2a4a22 100%);
   cursor: pointer;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
-  transition: transform 0.12s var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+  transition: transform 0.03s ease, transform 0.6s cubic-bezier(.3, .7, .4, 1);
   box-shadow:
-    0 3px 8px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
-  min-width: 62px;
+    0 4px 12px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(0, 0, 0, 0.3),
+    inset 0 2px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+  min-width: 64px;
   position: relative;
 }
 
 .camp-bottom-btn:active {
-  transform: scale(0.92) translateY(2px);
+  transform: scale(0.92) translateY(3px);
   border-bottom-width: 2px;
+  transition: transform 0.03s ease;
   box-shadow:
-    0 1px 4px rgba(0, 0, 0, 0.3),
-    inset 0 2px 4px rgba(0, 0, 0, 0.2);
+    0 1px 4px rgba(0, 0, 0, 0.4),
+    inset 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
 .camp-bottom-btn.active {
-  transform: translateY(-3px);
-  background: linear-gradient(180deg, #4a7a38 0%, #3a6a2a 100%);
+  transform: translateY(-4px);
+  background: linear-gradient(180deg, #5a9a45 0%, #4a8a38 50%, #3a7a2a 100%);
   border-color: #8aba70;
   box-shadow:
-    0 4px 14px rgba(74, 138, 40, 0.4),
-    0 0 14px rgba(100, 200, 80, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    0 6px 20px rgba(74, 138, 40, 0.5),
+    0 0 20px rgba(100, 200, 80, 0.15),
+    inset 0 2px 0 rgba(255, 255, 255, 0.25);
 }
 
 .camp-bottom-btn.dimmed {
@@ -307,56 +346,68 @@
   cursor: not-allowed;
 }
 
-/* ATTACK button — special red treatment */
+/* ATTACK button — big red CTA, pops above bar */
 .camp-bottom-btn.attack {
-  background: linear-gradient(180deg, #ff5555 0%, #cc2222 100%);
-  border-color: #ff8888;
-  border-bottom-color: #8a1111;
-  border-bottom-width: 5px;
-  transform: translateY(-6px);
-  min-width: 68px;
+  background: linear-gradient(180deg, #ff6655 0%, #ee3333 40%, #cc2222 100%);
+  border-color: #ff9988;
+  border-bottom: 6px solid #8a1111;
+  transform: translateY(-10px);
+  min-width: 76px;
+  padding: 14px 10px 10px;
   box-shadow:
-    0 6px 20px rgba(204, 34, 34, 0.5),
-    0 0 16px rgba(255, 80, 80, 0.12),
-    inset 0 2px 0 rgba(255, 255, 255, 0.25);
+    0 8px 25px rgba(204, 34, 34, 0.6),
+    0 0 30px rgba(255, 80, 80, 0.15),
+    0 0 0 1px rgba(0, 0, 0, 0.3),
+    inset 0 2px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+  animation: attackPulse 2.5s ease-in-out infinite;
+}
+
+@keyframes attackPulse {
+  0%, 100% { box-shadow: 0 8px 25px rgba(204, 34, 34, 0.6), 0 0 30px rgba(255, 80, 80, 0.15), 0 0 0 1px rgba(0,0,0,0.3), inset 0 2px 0 rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.2); }
+  50% { box-shadow: 0 8px 35px rgba(204, 34, 34, 0.8), 0 0 50px rgba(255, 80, 80, 0.25), 0 0 0 1px rgba(0,0,0,0.3), inset 0 2px 0 rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.2); }
 }
 
 .camp-bottom-btn.attack:active {
-  transform: scale(0.93) translateY(-2px);
+  transform: scale(0.93) translateY(-4px);
   border-bottom-width: 2px;
+  animation: none;
 }
 
 .camp-bottom-btn.attack .camp-bottom-btn-icon {
   color: #fff;
-  font-size: 26px;
+  font-size: 28px;
+  filter: drop-shadow(0 0 6px rgba(255, 200, 100, 0.5));
 }
 
 .camp-bottom-btn.attack .camp-bottom-btn-label {
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 11px;
 }
 
 .camp-bottom-btn-icon {
-  font-size: 22px;
+  font-size: 24px;
   line-height: 1;
-  color: #8aaa70;
+  color: #a0cc80;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
 }
 
 .camp-bottom-btn.active .camp-bottom-btn-icon {
   color: #c0ff90;
-  filter: drop-shadow(0 0 4px rgba(100, 200, 80, 0.4));
+  filter: drop-shadow(0 0 6px rgba(100, 200, 80, 0.5));
 }
 
 .camp-bottom-btn-label {
   font-family: 'Black Ops One', cursive;
-  font-size: 9px;
-  color: #6a8a5a;
-  letter-spacing: 1px;
+  font-size: 10px;
+  color: #8aaa70;
+  letter-spacing: 1.5px;
   text-transform: uppercase;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
 }
 
 .camp-bottom-btn.active .camp-bottom-btn-label {
-  color: #c0e0a0;
+  color: #c0ff90;
 }
 
 /* ── Dev indicator ── */
@@ -374,19 +425,21 @@
 /* ── Training sheet ── */
 .training-section-label {
   font-family: 'Black Ops One', cursive;
-  font-size: 10px;
-  color: var(--brass, #d4aa40);
-  letter-spacing: 2px;
+  font-size: 13px;
+  color: var(--brass-light, #f0d060);
+  letter-spacing: 3px;
   text-transform: uppercase;
-  margin: 14px 0 8px;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  margin: 18px 0 10px;
+  text-shadow:
+    0 0 10px rgba(212, 170, 64, 0.25),
+    0 2px 4px rgba(0, 0, 0, 0.6);
 }
 
 .training-roster {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  max-height: 120px;
+  gap: 6px;
+  max-height: 180px;
   overflow-y: auto;
 }
 
@@ -394,43 +447,44 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
+  padding: 14px 16px;
   border: 2px solid #3a5a3a;
-  border-bottom: 3px solid #1a3a1a;
-  border-radius: 8px;
+  border-bottom: 4px solid #1a3a1a;
+  border-radius: 12px;
   background: linear-gradient(180deg, #2a402a 0%, #1e321e 100%);
-  color: #c0d0b0;
+  color: #d0e0c0;
   font-family: 'Black Ops One', cursive;
-  font-size: 12px;
-  letter-spacing: 1px;
+  font-size: 14px;
+  letter-spacing: 1.5px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.12s ease;
   box-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+    0 3px 10px rgba(0, 0, 0, 0.4),
+    inset 0 2px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+  text-shadow: 0 2px 3px rgba(0, 0, 0, 0.5);
 }
 
 .training-roster-item:hover {
-  border-color: #4a7a4a;
+  border-color: #5a9a5a;
   box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.4),
-    0 0 8px rgba(68, 255, 68, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    0 4px 14px rgba(0, 0, 0, 0.5),
+    0 0 12px rgba(68, 255, 68, 0.1),
+    inset 0 2px 0 rgba(255, 255, 255, 0.15);
 }
 
 .training-roster-item:active {
-  transform: scale(0.97) translateY(1px);
+  transform: scale(0.96) translateY(2px);
   border-bottom-width: 2px;
 }
 
 .training-roster-item.selected {
   border-color: #44ff44;
-  background: linear-gradient(180deg, #2a4a2a 0%, #1e3a1e 100%);
+  background: linear-gradient(180deg, #2a4f2a 0%, #1e3e1e 100%);
   box-shadow:
-    0 0 12px rgba(68, 255, 68, 0.15),
-    0 2px 8px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(68, 255, 68, 0.1);
+    0 0 20px rgba(68, 255, 68, 0.2),
+    0 4px 14px rgba(0, 0, 0, 0.4),
+    inset 0 2px 0 rgba(68, 255, 68, 0.15);
 }
 
 .training-roster-item.trained {
@@ -442,12 +496,14 @@
 }
 
 .training-roster-badge {
-  font-size: 8px;
+  font-size: 9px;
   color: #D4AA40;
   letter-spacing: 1px;
-  padding: 2px 6px;
-  border: 1px solid rgba(212, 170, 64, 0.3);
-  border-radius: 3px;
+  padding: 4px 10px;
+  border: 2px solid rgba(212, 170, 64, 0.3);
+  border-radius: 6px;
+  background: rgba(212, 170, 64, 0.08);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 .training-empty {
@@ -470,18 +526,19 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 10px 6px;
+  gap: 4px;
+  padding: 14px 8px;
   border: 2px solid #3a5a3a;
-  border-bottom: 3px solid #1a3a1a;
-  border-radius: 8px;
+  border-bottom: 4px solid #1a3a1a;
+  border-radius: 12px;
   background: linear-gradient(180deg, #2a402a 0%, #1e321e 100%);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.12s ease;
   font-family: 'Black Ops One', cursive;
   box-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    0 3px 10px rgba(0, 0, 0, 0.4),
+    inset 0 2px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .training-slot-btn:hover {
@@ -512,14 +569,15 @@
 }
 
 .training-slot-label {
-  font-size: 10px;
-  color: #c0d0b0;
-  letter-spacing: 1px;
+  font-size: 12px;
+  color: #d0e0c0;
+  letter-spacing: 1.5px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 
 .training-slot-sub {
-  font-size: 7px;
-  color: rgba(255, 255, 255, 0.3);
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.4);
   letter-spacing: 0.5px;
 }
 
@@ -578,17 +636,18 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 10px 6px;
+  padding: 14px 6px;
   border: 2px solid #3a5a3a;
-  border-bottom: 3px solid #1a3a1a;
-  border-radius: 8px;
+  border-bottom: 4px solid #1a3a1a;
+  border-radius: 12px;
   background: linear-gradient(180deg, #2a402a 0%, #1e321e 100%);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.12s ease;
   font-family: 'Black Ops One', cursive;
   box-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    0 3px 10px rgba(0, 0, 0, 0.4),
+    inset 0 2px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .training-tier-btn:hover {
@@ -610,28 +669,32 @@
 }
 
 .training-tier-multiplier {
-  font-size: 14px;
+  font-size: 18px;
   letter-spacing: 1px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .training-tier-label {
-  font-size: 7px;
-  letter-spacing: 1px;
+  font-size: 8px;
+  letter-spacing: 1.5px;
   opacity: 0.6;
   margin-top: 2px;
+  text-transform: uppercase;
 }
 
 .training-cost-row {
   display: flex;
   justify-content: space-between;
   margin: 16px 0 12px;
-  padding: 12px 14px;
-  border-radius: 8px;
+  padding: 16px 18px;
+  border-radius: 12px;
   background: linear-gradient(180deg, #1e2e28 0%, #162420 100%);
-  border: 2px solid #3a5a3a;
+  border: 2px solid #4a6a4a;
+  border-bottom: 3px solid #1a3a1a;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+    0 3px 10px rgba(0, 0, 0, 0.4),
+    inset 0 2px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .training-cost-item {
@@ -642,16 +705,17 @@
 
 .training-cost-label {
   font-family: 'Black Ops One', cursive;
-  font-size: 8px;
-  color: rgba(255, 255, 255, 0.3);
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
   letter-spacing: 2px;
 }
 
 .training-cost-value {
   font-family: 'Black Ops One', cursive;
-  font-size: 13px;
+  font-size: 18px;
   color: #00e5ff;
   letter-spacing: 1px;
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.3);
 }
 
 .training-cost-value.insufficient {
@@ -660,9 +724,13 @@
 
 .training-start-btn {
   width: 100%;
-  margin-top: 8px;
-  padding: 14px 20px;
-  font-size: 14px;
+  margin-top: 12px;
+  padding: 18px 20px;
+  font-size: 16px;
+  letter-spacing: 2px;
+  border-radius: 12px;
+  border-bottom-width: 5px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .training-start-btn.disabled {
@@ -720,25 +788,39 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 10px 14px 8px;
-  border: 2px solid transparent;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
+  gap: 6px;
+  padding: 14px 16px 10px;
+  border: 2px solid #3a5a3a;
+  border-bottom: 4px solid #1a3a1a;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #2a402a 0%, #1e321e 100%);
   cursor: pointer;
-  transition: all 0.15s ease;
-  min-width: 68px;
+  transition: all 0.12s ease;
+  min-width: 78px;
   position: relative;
   font-family: 'Black Ops One', cursive;
+  box-shadow:
+    0 3px 10px rgba(0, 0, 0, 0.4),
+    inset 0 2px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.weapon-card:active {
+  transform: scale(0.95) translateY(2px);
+  border-bottom-width: 2px;
 }
 
 .weapon-card:hover {
-  background: rgba(255, 255, 255, 0.08);
+  border-color: #4a7a4a;
 }
 
 .weapon-card.selected {
   border-color: #44ff44;
-  background: rgba(68, 255, 68, 0.08);
+  background: linear-gradient(180deg, #2a4f2a 0%, #1e3e1e 100%);
+  box-shadow:
+    0 0 16px rgba(68, 255, 68, 0.2),
+    0 3px 10px rgba(0, 0, 0, 0.4),
+    inset 0 2px 0 rgba(68, 255, 68, 0.15);
 }
 
 .weapon-card.locked {
@@ -750,15 +832,17 @@
 }
 
 .weapon-card-icon {
-  font-size: 20px;
+  font-size: 26px;
   line-height: 1;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));
 }
 
 .weapon-card-name {
-  font-size: 9px;
-  color: #c0d0b0;
-  letter-spacing: 1px;
+  font-size: 10px;
+  color: #d0e0c0;
+  letter-spacing: 1.5px;
   text-transform: uppercase;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 
 .weapon-card-price {
@@ -889,10 +973,11 @@
 
 .store-balance {
   font-family: 'Black Ops One', cursive;
-  font-size: 14px;
+  font-size: 16px;
   color: #00e5ff;
   letter-spacing: 1px;
   float: right;
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.3);
 }
 
 .store-tabs {
@@ -1020,33 +1105,41 @@
 
 .store-pack-badge {
   position: absolute;
-  top: -8px;
+  top: -10px;
   right: 12px;
-  font-size: 7px;
-  color: #111;
-  background: #D4AA40;
-  padding: 2px 8px;
-  border-radius: 4px;
-  letter-spacing: 1px;
+  font-size: 9px;
+  color: #1a1a0a;
+  background: linear-gradient(180deg, #FFD700 0%, #D4AA40 100%);
+  padding: 3px 12px;
+  border-radius: 6px;
+  letter-spacing: 1.5px;
+  font-weight: 900;
+  box-shadow:
+    0 2px 6px rgba(212, 170, 64, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 .store-pack-name {
-  font-size: 14px;
+  font-size: 18px;
   color: #e0ecd0;
-  letter-spacing: 1px;
+  letter-spacing: 2px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .store-pack-compute {
-  font-size: 18px;
+  font-size: 24px;
   color: #00e5ff;
   letter-spacing: 1px;
+  text-shadow: 0 0 12px rgba(0, 229, 255, 0.4), 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .store-pack-desc {
-  font-size: 9px;
-  color: rgba(255, 255, 255, 0.3);
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
   letter-spacing: 0.5px;
   text-align: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 .store-pack-price {
@@ -1098,9 +1191,10 @@
 
 .store-offer-title {
   font-family: 'Black Ops One', cursive;
-  font-size: 16px;
-  color: #D4AA40;
-  letter-spacing: 2px;
+  font-size: 20px;
+  color: var(--brass-light, #f0d060);
+  letter-spacing: 3px;
+  text-shadow: 0 0 12px rgba(212, 170, 64, 0.3), 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .store-offer-desc {
@@ -1136,16 +1230,18 @@
 
 .store-daily-title {
   font-family: 'Black Ops One', cursive;
-  font-size: 14px;
-  color: #D4AA40;
-  letter-spacing: 2px;
+  font-size: 18px;
+  color: var(--brass-light, #f0d060);
+  letter-spacing: 3px;
+  text-shadow: 0 0 12px rgba(212, 170, 64, 0.3), 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .store-daily-amount {
   font-family: 'Black Ops One', cursive;
-  font-size: 28px;
+  font-size: 36px;
   color: #00e5ff;
-  letter-spacing: 1px;
+  letter-spacing: 2px;
+  text-shadow: 0 0 20px rgba(0, 229, 255, 0.5), 0 2px 6px rgba(0, 0, 0, 0.5);
 }
 
 .store-daily-btn {
@@ -1246,24 +1342,31 @@
 
 .roster-recruit-btn {
   width: 100%;
-  padding: 10px 0;
-  margin-bottom: 10px;
-  background: linear-gradient(180deg, #4a7c3a 0%, #356128 100%);
-  border: 2px solid #5a9a4a;
-  border-bottom: 3px solid #2d5020;
-  border-radius: 10px;
+  padding: 16px 0;
+  margin-bottom: 12px;
+  background: linear-gradient(180deg, #5a9a45 0%, #4a8a38 40%, #356128 100%);
+  border: 2px solid #6aaa55;
+  border-bottom: 5px solid #2d5020;
+  border-radius: 12px;
   color: #fff;
-  font-size: 13px;
+  font-family: 'Black Ops One', cursive;
+  font-size: 15px;
   font-weight: 900;
   letter-spacing: 2px;
   text-transform: uppercase;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
   cursor: pointer;
-  transition: transform 0.1s ease;
+  transition: transform 0.03s ease, transform 0.6s cubic-bezier(.3, .7, .4, 1);
+  box-shadow:
+    0 4px 14px rgba(74, 138, 40, 0.4),
+    0 0 16px rgba(100, 200, 80, 0.1),
+    inset 0 2px 0 rgba(255, 255, 255, 0.25),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.2);
 }
 .roster-recruit-btn:active:not(:disabled) {
-  transform: scale(0.95);
+  transform: scale(0.93) translateY(3px);
   border-bottom-width: 2px;
+  transition: transform 0.03s ease;
 }
 .roster-recruit-btn.disabled {
   opacity: 0.35;
@@ -1273,63 +1376,7 @@
 .roster-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-}
-
-.roster-row {
-  border: 2px solid #3a5a3a;
-  border-bottom: 4px solid #2a4a2a;
-  border-radius: var(--radius-md);
-  background: linear-gradient(180deg, #2a402a 0%, #1e321e 100%);
-  overflow: hidden;
-  transition: all 0.15s ease;
-  box-shadow:
-    0 3px 10px rgba(0, 0, 0, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.2);
-  animation: cardPop 0.3s var(--ease-out) both;
-}
-
-.roster-row:active {
-  transform: scale(0.97) translateY(2px);
-  border-bottom-width: 2px;
-}
-
-/* Stagger entrance for roster rows */
-.roster-row:nth-child(1) { animation-delay: 0s; }
-.roster-row:nth-child(2) { animation-delay: 0.04s; }
-.roster-row:nth-child(3) { animation-delay: 0.08s; }
-.roster-row:nth-child(4) { animation-delay: 0.12s; }
-.roster-row:nth-child(5) { animation-delay: 0.16s; }
-.roster-row:nth-child(6) { animation-delay: 0.2s; }
-.roster-row:nth-child(n+7) { animation-delay: 0.24s; }
-
-.roster-row.expanded {
-  border-color: var(--brass);
-  box-shadow:
-    0 4px 14px rgba(212, 170, 64, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
-}
-
-.roster-row-summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding: 10px 12px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  font-family: 'Black Ops One', cursive;
-}
-
-.roster-row-name {
-  font-size: 12px;
-  color: #e0ecd0;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  min-width: 80px;
-  text-align: left;
+  gap: 6px;
 }
 
 .roster-row-meta {
@@ -1367,12 +1414,17 @@
 }
 
 .roster-untrained-badge {
-  font-size: 7px;
-  color: rgba(255, 255, 255, 0.3);
+  font-size: 9px;
+  color: #ff8866;
   letter-spacing: 1px;
-  padding: 2px 6px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
+  padding: 5px 10px;
+  border: 2px solid #5a3030;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #3a2020 0%, #2a1818 100%);
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .roster-row-chevron {
@@ -1466,20 +1518,6 @@
 /* ═══════════════════════════════════════════════════════════════
    BATTLE PICKER — Sprint 4
    ═══════════════════════════════════════════════════════════════ */
-
-/* ATTACK button highlight */
-.camp-bottom-btn.attack {
-  background: linear-gradient(180deg, #e85d4a 0%, #c0392b 100%);
-  border-color: #a93226;
-  border-bottom: 4px solid #8e2b22;
-  color: #fff;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-}
-.camp-bottom-btn.attack:active {
-  background: linear-gradient(180deg, #c0392b 0%, #a93226 100%);
-  transform: scale(0.92);
-  border-bottom-width: 2px;
-}
 
 /* ── Battle card ── */
 .battle-card {
@@ -2516,10 +2554,12 @@
 
 .soldier-sheet-name {
   font-family: 'Black Ops One', cursive;
-  font-size: 22px;
-  letter-spacing: 2px;
-  color: #e0ecd0;
-  text-shadow: 0 2px 6px rgba(0,0,0,0.5);
+  font-size: 28px;
+  letter-spacing: 3px;
+  color: #e8f0d8;
+  text-shadow:
+    0 0 16px rgba(200, 230, 180, 0.2),
+    0 2px 6px rgba(0, 0, 0, 0.6);
 }
 
 .soldier-sheet-weapon {
@@ -2551,9 +2591,10 @@
 
 .soldier-stat-value {
   font-family: 'Black Ops One', cursive;
-  font-size: 16px;
+  font-size: 20px;
   letter-spacing: 1px;
-  color: #c0d0b0;
+  color: #d0e0c0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 .soldier-stat-value.trained { color: #7cb342; }
 .soldier-stat-value.untrained { color: #cc5555; }
@@ -2787,9 +2828,10 @@
 
 .recruit-balance-value {
   font-family: 'Black Ops One', cursive;
-  font-size: 24px;
+  font-size: 28px;
   color: #FFD700;
   letter-spacing: 2px;
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .recruit-balance-label {
@@ -2883,9 +2925,10 @@
 }
 
 .recruit-name-call {
-  font-size: 16px;
+  font-size: 20px;
   color: #FFD700;
   letter-spacing: 2px;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .recruit-reroll {
@@ -3220,16 +3263,31 @@
 }
 
 .soldier-xp-bar {
-  height: 6px;
-  background: rgba(255,255,255,0.08);
-  border-radius: 3px;
+  height: 10px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 5px;
   overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
 .soldier-xp-fill {
   height: 100%;
-  border-radius: 3px;
+  border-radius: 4px;
   transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+}
+
+/* Shine on XP bar */
+.soldier-xp-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.3), transparent);
+  border-radius: 4px 4px 0 0;
 }
 
 .soldier-next-rank {
@@ -3244,48 +3302,63 @@
 .roster-sort-bar {
   display: flex;
   gap: 6px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   flex-wrap: wrap;
 }
 
+/* Bigger sort/filter pills */
+
 .roster-sort-pill,
 .roster-filter-pill {
-  padding: 4px 10px;
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 12px;
-  background: rgba(255,255,255,0.04);
-  color: rgba(200,220,200,0.4);
+  padding: 6px 12px;
+  border: 2px solid #3a5a3a;
+  border-bottom: 3px solid #1a3a1a;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #2a402a 0%, #1e321e 100%);
+  color: rgba(200,220,200,0.5);
   font-family: 'Black Ops One', cursive;
-  font-size: 9px;
-  letter-spacing: 2px;
+  font-size: 10px;
+  letter-spacing: 1.5px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.12s ease;
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.roster-sort-pill:active,
+.roster-filter-pill:active {
+  transform: scale(0.94) translateY(1px);
+  border-bottom-width: 2px;
 }
 
 .roster-sort-pill.active,
 .roster-filter-pill.active {
-  background: rgba(100,220,100,0.12);
-  border-color: rgba(100,220,100,0.3);
-  color: #a0d8a0;
+  background: linear-gradient(180deg, #3a6a3a 0%, #2a5a2a 100%);
+  border-color: #5a9a5a;
+  color: #b0e8b0;
+  box-shadow:
+    0 2px 8px rgba(100, 220, 100, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 .roster-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 8px;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  gap: 12px;
+  padding: 14px 12px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: all 0.12s ease;
 }
 
 .roster-row:active {
-  background: rgba(255,255,255,0.04);
+  transform: scale(0.97) translateY(2px);
 }
 
 .roster-row-rank {
   flex-shrink: 0;
-  width: 32px;
+  width: 36px;
   text-align: center;
 }
 
@@ -3296,24 +3369,42 @@
 
 .roster-row-name {
   font-family: 'Black Ops One', cursive;
-  font-size: 13px;
+  font-size: 15px;
   color: #e0ecd0;
-  letter-spacing: 1px;
+  letter-spacing: 1.5px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  margin-bottom: 4px;
 }
 
 .roster-fitness-bar {
-  height: 3px;
-  background: rgba(255,255,255,0.06);
-  border-radius: 2px;
+  height: 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
   margin-top: 4px;
   overflow: hidden;
 }
 
 .roster-fitness-fill {
   height: 100%;
-  background: linear-gradient(90deg, #4CAF50, #8BC34A);
-  border-radius: 2px;
-  transition: width 0.3s ease;
+  background: linear-gradient(180deg, #7aee7a 0%, #4CAF50 40%, #388E3C 100%);
+  border-radius: 3px;
+  transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 0 6px rgba(76, 175, 80, 0.4);
+  position: relative;
+}
+
+/* Shine stripe on fitness bar */
+.roster-fitness-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.3), transparent);
+  border-radius: 3px 3px 0 0;
 }
 
 .roster-row-badges {
@@ -3325,12 +3416,18 @@
 
 .roster-weapon-count {
   font-family: 'Black Ops One', cursive;
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 1px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(100,180,255,0.12);
-  color: rgba(100,180,255,0.8);
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #2a4a5a 0%, #1e3a4a 100%);
+  border: 2px solid #4a7a9a;
+  color: #80c8ff;
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.3),
+    0 0 8px rgba(100, 180, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  text-shadow: 0 0 6px rgba(100, 180, 255, 0.3);
 }
 
 /* ── Sprint C: Weapon Picker (Placement) ── */

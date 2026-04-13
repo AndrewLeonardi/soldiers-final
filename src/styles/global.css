@@ -154,6 +154,33 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 2px; }
 
+/* ── Game Text Treatment ─────────────────────────────────── */
+/* The #1 visual difference between game UI and dashboard UI */
+
+.game-sheet-title,
+.training-section-label,
+.training-slot-label,
+.training-tier-multiplier,
+.training-cost-value,
+.store-pack-name,
+.store-pack-compute,
+.store-offer-title,
+.store-offer-value,
+.store-daily-title,
+.store-daily-amount,
+.roster-row-name,
+.roster-recruit-btn,
+.soldier-sheet-name,
+.medical-soldier-name,
+.recruit-name-call,
+.recruit-balance-value,
+.battle-card-name,
+.result-title,
+.camp-bottom-btn-label {
+  -webkit-text-stroke: 0.5px rgba(0, 0, 0, 0.6);
+  paint-order: stroke fill;
+}
+
 /* ── Shared Keyframes ─────────────────────────────────────── */
 
 @keyframes fadeIn {
