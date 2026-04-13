@@ -327,8 +327,8 @@ export function poseAim(p: SoldierParts, t: number): void {
   p.leftArm.rotation.x = -Math.PI / 2 + 0.1
   p.leftArm.rotation.z = 0.3
   p.leftElbow.rotation.x = -0.3
-  // Rifle stays aligned with forearm — just cancel the elbow bend + a small forward tilt
-  p.rifleGrp.rotation.x = -elbowX - spineX
+  // Cancel the full parent rotation chain so the rifle points forward
+  p.rifleGrp.rotation.x = -(spineX + armX + elbowX)
   p.headGrp.rotation.x = -0.1
   p.headGrp.rotation.y = 0.05
   p.headGrp.rotation.z = -0.05
@@ -357,8 +357,9 @@ export function poseFireRecoil(p: SoldierParts, progress: number): void {
   p.spine.rotation.z = kick * 0.08
   // Left arm braces against recoil
   p.leftElbow.rotation.x = -0.3 - kick * 0.1
-  // Keep rifle aligned with forearm, add recoil kick-up
-  p.rifleGrp.rotation.x = 0.2 - p.spine.rotation.x + kick * 0.1
+  // Cancel full parent chain (spine + arm + elbow), add recoil kick-up
+  const elbowX = -0.2 // elbow unchanged from poseAim
+  p.rifleGrp.rotation.x = -(p.spine.rotation.x + p.rightArm.rotation.x + elbowX) + kick * 0.1
 }
 
 /** Shoot — aim + fire recoil combined, with muzzle flash visibility. */
