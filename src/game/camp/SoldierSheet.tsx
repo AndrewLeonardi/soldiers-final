@@ -9,6 +9,7 @@ import { useSceneStore } from '@stores/sceneStore'
 import { useCampStore } from '@stores/campStore'
 import { RankBadge } from './RankBadge'
 import { getRank, getNextRank } from '@config/ranks'
+import type { WeaponType } from '@config/types'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
 
@@ -33,6 +34,8 @@ export function SoldierSheet() {
     setSoldierSheetId(null)
   }, [setSoldierSheetId])
 
+  const setFiringRange = useSceneStore((s) => s.setFiringRange)
+
   const handleTrainNow = useCallback(() => {
     if (!soldierSheetId) return
     sfx.buttonTap()
@@ -40,6 +43,13 @@ export function SoldierSheet() {
     setSoldierSheetId(null)
     setTrainingSheetOpen(true)
   }, [soldierSheetId, setPreselectedTrainingSoldierId, setSoldierSheetId, setTrainingSheetOpen])
+
+  const handleTestWeapon = useCallback((weapon: WeaponType) => {
+    if (!soldierSheetId) return
+    sfx.weaponEquip()
+    setSoldierSheetId(null)
+    setFiringRange(soldierSheetId, weapon)
+  }, [soldierSheetId, setSoldierSheetId, setFiringRange])
 
   if (!soldier) return null
 
@@ -112,15 +122,23 @@ export function SoldierSheet() {
           )}
         </div>
 
-        {/* Trained brains */}
+        {/* Trained brains + test buttons */}
         {trainedBrains.length > 0 && (
           <div className="soldier-sheet-brains">
             <div className="soldier-stat-label">TRAINED WEAPONS</div>
             <div className="soldier-brains-list">
               {trainedBrains.map((w) => (
-                <span key={w} className="soldier-brain-badge">
-                  {WEAPON_LABELS[w] ?? w}
-                </span>
+                <div key={w} className="soldier-brain-row">
+                  <span className="soldier-brain-badge">
+                    {WEAPON_LABELS[w] ?? w}
+                  </span>
+                  <button
+                    className="soldier-brain-test-btn"
+                    onClick={() => handleTestWeapon(w as WeaponType)}
+                  >
+                    TEST
+                  </button>
+                </div>
               ))}
             </div>
           </div>

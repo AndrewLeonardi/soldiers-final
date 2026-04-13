@@ -348,11 +348,15 @@ export function poseFireRecoil(p: SoldierParts, progress: number): void {
     const settle = (progress - 0.3) / 0.7
     kick = Math.exp(-settle * 5) * Math.sin(settle * 12) * 0.4
   }
-  const armKick = kick * 0.15
+  // Dramatic recoil — arm, spine, and head all kick hard
+  const armKick = kick * 0.35
   p.rightArm.rotation.x = -Math.PI / 2 + armKick
-  p.spine.rotation.x = 0.15 - kick * 0.06
-  p.headGrp.rotation.x = -0.1 + kick * 0.04
-  p.spine.rotation.z = kick * 0.03
+  p.rightArm.rotation.z = -0.1 - kick * 0.08 // shoulder lift
+  p.spine.rotation.x = 0.15 - kick * 0.15
+  p.headGrp.rotation.x = -0.1 + kick * 0.10
+  p.spine.rotation.z = kick * 0.08
+  // Left arm braces against recoil
+  p.leftElbow.rotation.x = -0.3 - kick * 0.1
   // Keep rifle aligned with forearm, add recoil kick-up
   p.rifleGrp.rotation.x = 0.2 - p.spine.rotation.x + kick * 0.1
 }
@@ -362,9 +366,9 @@ export function poseShoot(p: SoldierParts, progress: number): void {
   poseAim(p, 0)
   poseFireRecoil(p, progress)
   if (p.muzzleFlash) {
-    p.muzzleFlash.visible = progress < 0.15
+    p.muzzleFlash.visible = progress < 0.25
     if (p.muzzleFlash.visible) {
-      p.muzzleFlash.scale.setScalar(0.8 + Math.random() * 0.4)
+      p.muzzleFlash.scale.setScalar(1.5 + Math.random() * 1.0)
       p.muzzleFlash.rotation.z = Math.random() * Math.PI
     }
   }

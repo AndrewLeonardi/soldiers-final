@@ -148,6 +148,12 @@ export const SHAKE = {
   BARREL: 0.25,
   MULTI_KILL: 0.3,
   DEFEAT: 0.3,
+  // Fire shake — triggered when soldier fires (not on impact)
+  FIRE_RIFLE: 0.015,
+  FIRE_MG: 0.01,
+  FIRE_ROCKET: 0.08,
+  FIRE_GRENADE: 0.02,
+  FIRE_TANK: 0.10,
 } as const
 
 // ── Rapier material properties ────────────────────────────

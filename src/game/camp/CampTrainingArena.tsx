@@ -24,6 +24,8 @@ import { applyWeaponToSoldier, createWeaponMesh } from '@three/models/weaponMesh
 import { getPlasticMat, TOY } from '@three/models/materials'
 import { GhostSoldier } from './GhostSoldier'
 import * as sfx from '@audio/sfx'
+import { triggerShake } from '@three/effects/ScreenShake'
+import { SHAKE } from '@engine/physics/battlePhysics'
 import type { WeaponType } from '@config/types'
 
 const TARGET_RED = '#cc3333'
@@ -150,10 +152,19 @@ function ObservationSoldier({ slotIndex }: { slotIndex: number }) {
     const justFired = simState.justFired
 
     if (justFired && !prevFired.current) {
-      if (weapon === 'rocketLauncher' || weapon === 'tank') sfx.rocketLaunch()
-      else if (weapon === 'grenade') sfx.grenadeThrow()
-      else if (weapon === 'machineGun') sfx.mgBurst()
-      else sfx.rifleShot()
+      if (weapon === 'rocketLauncher' || weapon === 'tank') {
+        sfx.rocketLaunch()
+        triggerShake(SHAKE.FIRE_ROCKET)
+      } else if (weapon === 'grenade') {
+        sfx.grenadeThrow()
+        triggerShake(SHAKE.FIRE_GRENADE)
+      } else if (weapon === 'machineGun') {
+        sfx.mgBurst()
+        triggerShake(SHAKE.FIRE_MG)
+      } else {
+        sfx.rifleShot()
+        triggerShake(SHAKE.FIRE_RIFLE)
+      }
     }
     prevFired.current = justFired
 

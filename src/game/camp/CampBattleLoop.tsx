@@ -576,6 +576,7 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
             vz = Math.cos(finalAngle) * Math.cos(elev) * speed
             projType = 'rocket'
             sfx.rocketLaunch()
+            triggerShake(SHAKE.FIRE_ROCKET)
             break
           }
           case 'grenade': {
@@ -586,6 +587,7 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
             vz = Math.cos(finalAngle) * Math.cos(elev) * speed
             projType = 'grenade'
             sfx.grenadeThrow()
+            triggerShake(SHAKE.FIRE_GRENADE)
             break
           }
           case 'machineGun': {
@@ -602,6 +604,7 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
             vy = (dyMG / lenMG) * speed + (Math.random() - 0.5) * spread * speed
             vz = (dzMG / lenMG) * speed + (Math.random() - 0.5) * spread * speed
             sfx.mgBurst()
+            triggerShake(SHAKE.FIRE_MG)
             break
           }
           default: { // rifle
@@ -615,6 +618,7 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
             vy = (dirY / len) * speed
             vz = (dirZ / len) * speed
             sfx.rifleShot()
+            triggerShake(SHAKE.FIRE_RIFLE)
             break
           }
         }
@@ -698,6 +702,7 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
               vz = Math.cos(finalAngle) * Math.cos(elev) * ROCKET_SPEED
               projType = 'rocket'
               sfx.rocketLaunch()
+              triggerShake(SHAKE.FIRE_ROCKET)
               break
             }
             case 'grenade': {
@@ -706,6 +711,7 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
               vz = Math.cos(finalAngle) * Math.cos(0.5) * GRENADE_SPEED
               projType = 'grenade'
               sfx.grenadeThrow()
+              triggerShake(SHAKE.FIRE_GRENADE)
               break
             }
             case 'machineGun': {
@@ -719,6 +725,7 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
               vy = (dyMGe / lenMGe) * MG_BULLET_SPEED + (Math.random() - 0.5) * espread * MG_BULLET_SPEED
               vz = (dzMGe / lenMGe) * MG_BULLET_SPEED + (Math.random() - 0.5) * espread * MG_BULLET_SPEED
               sfx.mgBurst()
+              triggerShake(SHAKE.FIRE_MG)
               break
             }
             default: { // rifle
@@ -731,6 +738,7 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
               vy = (dirY / len) * BULLET_SPEED
               vz = (dirZ / len) * BULLET_SPEED
               sfx.rifleShot()
+              triggerShake(SHAKE.FIRE_RIFLE)
               break
             }
           }

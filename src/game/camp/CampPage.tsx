@@ -35,6 +35,7 @@ import { MedicalSheet } from './MedicalSheet'
 import { RecruitSheet } from './RecruitSheet'
 import { ObservationHUD } from './ObservationHUD'
 import { CampNeuralNetViz } from './CampNeuralNetViz'
+import { FiringRangeHUD } from './FiringRangeHUD'
 import { TutorialGuide } from './TutorialGuide'
 import { AudioBed } from '@audio/AudioBed'
 import { resumeOnInteraction, ensureContext } from '@audio/context'
@@ -45,6 +46,7 @@ import '@styles/camp-ui.css'
 export default function CampPage() {
   const [booted, setBooted] = useState(false)
   const isObserving = useSceneStore((s) => s.observingSlotIndex) !== null
+  const isFiringRange = useSceneStore((s) => s.firingRangeSoldierId) !== null
   const tutorialCompleted = useCampStore((s) => s.tutorialCompleted)
   const tutorialActive = useSceneStore((s) => s.tutorialActive)
 
@@ -102,22 +104,25 @@ export default function CampPage() {
       {isObserving && <ObservationHUD />}
       {isObserving && <CampNeuralNetViz />}
 
-      {/* HUD + sheets — hidden during observation */}
-      {!isObserving && <CampHUD />}
-      {!isObserving && <SettingsSheet />}
-      {!isObserving && <TrainingSheet />}
-      {!isObserving && <StoreSheet />}
-      {!isObserving && <RosterSheet />}
-      {!isObserving && <MilestoneCallout />}
-      {!isObserving && <BattlePickerSheet />}
-      {!isObserving && <PlacementOverlay />}
-      {!isObserving && <LoadingScreen />}
-      {!isObserving && <BattleHUD />}
-      {!isObserving && <ResultOverlay />}
-      {!isObserving && <SoldierSheet />}
-      {!isObserving && <MedicalSheet />}
-      {!isObserving && <RecruitSheet />}
-      {!isObserving && <ComputeModal />}
+      {/* Firing range overlay */}
+      {isFiringRange && <FiringRangeHUD />}
+
+      {/* HUD + sheets — hidden during observation and firing range */}
+      {!isObserving && !isFiringRange && <CampHUD />}
+      {!isObserving && !isFiringRange && <SettingsSheet />}
+      {!isObserving && !isFiringRange && <TrainingSheet />}
+      {!isObserving && !isFiringRange && <StoreSheet />}
+      {!isObserving && !isFiringRange && <RosterSheet />}
+      {!isObserving && !isFiringRange && <MilestoneCallout />}
+      {!isObserving && !isFiringRange && <BattlePickerSheet />}
+      {!isObserving && !isFiringRange && <PlacementOverlay />}
+      {!isObserving && !isFiringRange && <LoadingScreen />}
+      {!isObserving && !isFiringRange && <BattleHUD />}
+      {!isObserving && !isFiringRange && <ResultOverlay />}
+      {!isObserving && !isFiringRange && <SoldierSheet />}
+      {!isObserving && !isFiringRange && <MedicalSheet />}
+      {!isObserving && !isFiringRange && <RecruitSheet />}
+      {!isObserving && !isFiringRange && <ComputeModal />}
 
       {/* Tutorial overlay */}
       {tutorialActive && <TutorialGuide />}

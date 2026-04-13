@@ -27,7 +27,9 @@ import { useCampTrainingStore } from '@stores/campTrainingStore'
 import { useSceneStore } from '@stores/sceneStore'
 import { useCampBattleStore } from '@stores/campBattleStore'
 import { CampTrainingArena } from './CampTrainingArena'
+import { FiringRange } from './FiringRange'
 import type { WallBlock } from '@three/models/Defenses'
+import type { WeaponType } from '@config/types'
 
 function TrainingTickDriver() {
   const tick = useCampTrainingStore((s) => s.tick)
@@ -82,16 +84,22 @@ export function CampScene() {
   const battlePhase = useSceneStore((s) => s.battlePhase)
   const battleConfig = useCampBattleStore((s) => s.battleConfig)
   const observingSlotIndex = useSceneStore((s) => s.observingSlotIndex)
+  const firingRangeSoldierId = useSceneStore((s) => s.firingRangeSoldierId)
+  const firingRangeWeapon = useSceneStore((s) => s.firingRangeWeapon)
   const inBattle = battlePhase === 'placing' || battlePhase === 'loading' || battlePhase === 'fighting' || battlePhase === 'result'
   const showArena = battlePhase === 'placing' || battlePhase === 'loading' || battlePhase === 'fighting' || battlePhase === 'result'
   const isObserving = observingSlotIndex !== null
+  const isFiringRange = firingRangeSoldierId !== null && firingRangeWeapon !== null
 
   return (
     <>
       {/* Training tick driver — ALWAYS mounted, ticks GA regardless of view */}
       <TrainingTickDriver />
 
-      {isObserving ? (
+      {isFiringRange ? (
+        /* Full-screen weapon testing / firing range */
+        <FiringRange soldierId={firingRangeSoldierId} weapon={firingRangeWeapon as WeaponType} />
+      ) : isObserving ? (
         /* Full-screen immersive training observation */
         <CampTrainingArena slotIndex={observingSlotIndex} />
       ) : (

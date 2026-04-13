@@ -10,6 +10,7 @@
  */
 import { create } from 'zustand'
 import type { SoldierRecord } from './campStore'
+import type { WeaponType } from '@config/types'
 
 export interface PendingPlacement {
   soldier: SoldierRecord
@@ -43,6 +44,10 @@ interface SceneState {
   // Weapon picker (pending placement for multi-brain soldiers)
   pendingPlacement: PendingPlacement | null
 
+  // Firing range (weapon testing)
+  firingRangeSoldierId: string | null
+  firingRangeWeapon: WeaponType | null
+
   // Tutorial (ephemeral — resets on reload)
   tutorialActive: boolean
   tutorialStep: number
@@ -62,6 +67,7 @@ interface SceneState {
   setSoldierSheetId: (id: string | null) => void
   setPreselectedTrainingSoldierId: (id: string | null) => void
   setObservingSlotIndex: (index: number | null) => void
+  setFiringRange: (soldierId: string | null, weapon: WeaponType | null) => void
   setPendingPlacement: (pending: PendingPlacement | null) => void
   setTutorialStep: (step: number) => void
   startTutorial: () => void
@@ -93,6 +99,10 @@ export const useSceneStore = create<SceneState>()((set) => ({
   // Battle phase
   battlePhase: 'idle' as const,
 
+  // Firing range
+  firingRangeSoldierId: null,
+  firingRangeWeapon: null,
+
   // Weapon picker
   pendingPlacement: null,
 
@@ -115,6 +125,7 @@ export const useSceneStore = create<SceneState>()((set) => ({
   setSoldierSheetId: (id) => set({ soldierSheetId: id }),
   setPreselectedTrainingSoldierId: (id) => set({ preselectedTrainingSoldierId: id }),
   setObservingSlotIndex: (index) => set({ observingSlotIndex: index }),
+  setFiringRange: (soldierId, weapon) => set({ firingRangeSoldierId: soldierId, firingRangeWeapon: weapon }),
   setPendingPlacement: (pending) => set({ pendingPlacement: pending }),
   setTutorialStep: (step) => set({ tutorialStep: step }),
   startTutorial: () => set({ tutorialActive: true, tutorialStep: 0 }),

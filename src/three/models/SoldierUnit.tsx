@@ -57,11 +57,11 @@ export function SoldierUnit({ unit, physicsControlled = false }: SoldierUnitProp
     // for "ragdolling" soldiers. The body never tumbles outside its collider.
     animateFlexSoldier(soldier, unit.status as any, state.clock.getElapsedTime(), delta)
 
-    // Muzzle flash: bright point light when firing
+    // Muzzle flash: bright point light when firing — dramatic intensity
     if (muzzleFlashRef.current) {
-      const isFiring = unit.status === 'firing' && (unit.stateAge ?? 1) < 0.1
+      const isFiring = unit.status === 'firing' && (unit.stateAge ?? 1) < 0.2
       if (isFiring) {
-        muzzleFlashRef.current.intensity = 4 * (1 - (unit.stateAge ?? 0) / 0.1)
+        muzzleFlashRef.current.intensity = 15 * (1 - (unit.stateAge ?? 0) / 0.2)
       } else {
         muzzleFlashRef.current.intensity = 0
       }
@@ -100,7 +100,7 @@ export function SoldierUnit({ unit, physicsControlled = false }: SoldierUnitProp
         ref={muzzleFlashRef}
         color={0xffaa22}
         intensity={0}
-        distance={4}
+        distance={8}
         position={[0, 0.8, 0.3]}
       />
     </group>

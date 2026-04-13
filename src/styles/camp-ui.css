@@ -3531,3 +3531,181 @@
   0% { transform: scale(0) rotate(-180deg); opacity: 0; }
   100% { transform: scale(1) rotate(0deg); opacity: 1; }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   FIRING RANGE HUD
+   ═══════════════════════════════════════════════════════════ */
+
+.fr-hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  font-family: 'Black Ops One', 'Inter', sans-serif;
+}
+
+.fr-top-left {
+  position: absolute;
+  top: max(env(safe-area-inset-top, 8px), 12px);
+  left: max(env(safe-area-inset-left, 8px), 12px);
+  pointer-events: auto;
+  background: rgba(10, 15, 25, 0.85);
+  border: 1px solid rgba(100, 140, 100, 0.3);
+  border-radius: 10px;
+  padding: 10px 14px;
+  backdrop-filter: blur(8px);
+}
+
+.fr-soldier-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: #d4e0d0;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.fr-weapon-name {
+  font-size: 18px;
+  font-weight: 900;
+  color: #7cfc00;
+  letter-spacing: 2px;
+  margin-top: 2px;
+}
+
+.fr-weapon-desc {
+  font-size: 10px;
+  color: #8a9a80;
+  margin-top: 4px;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+}
+
+.fr-stats {
+  position: absolute;
+  top: max(env(safe-area-inset-top, 8px), 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 16px;
+  pointer-events: auto;
+  background: rgba(10, 15, 25, 0.85);
+  border: 1px solid rgba(100, 140, 100, 0.3);
+  border-radius: 10px;
+  padding: 8px 16px;
+  backdrop-filter: blur(8px);
+}
+
+.fr-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.fr-stat-label {
+  font-size: 9px;
+  color: #6a7a60;
+  letter-spacing: 1.5px;
+  font-weight: 600;
+}
+
+.fr-stat-value {
+  font-size: 16px;
+  font-weight: 900;
+  color: #e0ecd8;
+  letter-spacing: 1px;
+}
+
+.fr-bottom {
+  position: absolute;
+  bottom: max(env(safe-area-inset-bottom, 8px), 16px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  pointer-events: auto;
+}
+
+.fr-weapon-swap {
+  display: flex;
+  gap: 8px;
+}
+
+.fr-swap-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 2px solid rgba(100, 140, 100, 0.4);
+  border-radius: 8px;
+  background: rgba(10, 15, 25, 0.85);
+  color: #b0c0a0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  backdrop-filter: blur(8px);
+  text-transform: uppercase;
+}
+
+.fr-swap-btn.active {
+  border-color: #7cfc00;
+  color: #7cfc00;
+  background: rgba(30, 60, 20, 0.8);
+  box-shadow: 0 0 12px rgba(124, 252, 0, 0.2);
+}
+
+.fr-swap-btn:not(.active):active {
+  transform: scale(0.95);
+}
+
+.fr-exit-btn {
+  padding: 12px 32px;
+  border: 2px solid rgba(200, 80, 60, 0.6);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(180, 50, 30, 0.9) 0%, rgba(120, 30, 15, 0.9) 100%);
+  color: #ffd0c0;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  cursor: pointer;
+  text-transform: uppercase;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transition: all 0.15s ease;
+}
+
+.fr-exit-btn:active {
+  transform: scale(0.95);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* SoldierSheet inline TEST button */
+.soldier-brain-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.soldier-brain-test-btn {
+  padding: 4px 10px;
+  border: 1px solid rgba(100, 200, 100, 0.4);
+  border-radius: 6px;
+  background: rgba(40, 80, 40, 0.6);
+  color: #a0d890;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.15s ease;
+}
+
+.soldier-brain-test-btn:active {
+  transform: scale(0.95);
+  background: rgba(60, 120, 60, 0.8);
+}
