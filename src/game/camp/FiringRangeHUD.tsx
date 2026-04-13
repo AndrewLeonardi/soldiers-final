@@ -14,6 +14,8 @@ import * as sfx from '@audio/sfx'
 import type { WeaponType } from '@config/types'
 import '@styles/camp-ui.css'
 
+const ALL_WEAPONS: WeaponType[] = ['rifle', 'rocketLauncher', 'grenade', 'machineGun', 'tank']
+
 const WEAPON_LABELS: Record<string, string> = {
   rifle: 'RIFLE',
   rocketLauncher: 'ROCKET',
@@ -77,20 +79,19 @@ export function FiringRangeHUD() {
 
       {/* Bottom: weapon swap + exit */}
       <div className="fr-bottom">
-        {trainedWeapons.length > 1 && (
-          <div className="fr-weapon-swap">
-            {trainedWeapons.map((w) => (
-              <button
-                key={w}
-                className={`fr-swap-btn ${w === weapon ? 'active' : ''}`}
-                onClick={() => handleSwapWeapon(w)}
-              >
-                <WeaponIcon weapon={w} size={20} />
-                <span>{WEAPON_LABELS[w] ?? w}</span>
-              </button>
-            ))}
-          </div>
-        )}
+        {/* All weapons — test any weapon regardless of training */}
+        <div className="fr-weapon-swap">
+          {ALL_WEAPONS.map((w) => (
+            <button
+              key={w}
+              className={`fr-swap-btn ${w === weapon ? 'active' : ''}`}
+              onClick={() => handleSwapWeapon(w)}
+            >
+              <WeaponIcon weapon={w} size={20} />
+              <span>{WEAPON_LABELS[w] ?? w}</span>
+            </button>
+          ))}
+        </div>
         <button className="fr-exit-btn" onClick={handleExit}>
           EXIT RANGE
         </button>
