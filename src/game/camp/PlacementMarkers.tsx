@@ -51,6 +51,7 @@ export function PlacementMarkers({ wallBlocksRef }: PlacementMarkersProps) {
             <Html
               position={[groundPos[0], 1.8, groundPos[2]]}
               center
+              zIndexRange={[5, 0]}
               style={{
                 color: '#fff',
                 fontSize: '10px',

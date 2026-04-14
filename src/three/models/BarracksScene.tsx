@@ -64,6 +64,7 @@ function BarracksSoldier({ soldier, positionX, onClick }: BarracksSoldierProps) 
         position={[0, 1.35, 0]}
         center
         distanceFactor={4}
+        zIndexRange={[5, 0]}
         style={{ pointerEvents: 'none' }}
       >
         <div style={{

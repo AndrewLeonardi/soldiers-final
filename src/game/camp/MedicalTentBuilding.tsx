@@ -54,7 +54,8 @@ export function MedicalTentBuilding() {
   const setMedicalSheetOpen = useSceneStore((s) => s.setMedicalSheetOpen)
   const anySheetOpen = useSceneStore((s) =>
     s.trainingSheetOpen || s.storeSheetOpen || s.rosterSheetOpen ||
-    s.soldierSheetId !== null || s.medicalSheetOpen
+    s.soldierSheetId !== null || s.medicalSheetOpen || s.dailyRewardOpen ||
+    s.recruitSheetOpen || s.armorySheetOpen || s.computeModalOpen
   )
   const battlePhase = useSceneStore((s) => s.battlePhase)
 
@@ -261,6 +262,7 @@ export function MedicalTentBuilding() {
         <Html
           position={[0, 1.8, 0]}
           center
+          zIndexRange={[5, 0]}
           style={{ pointerEvents: 'none' }}
         >
           <div style={{

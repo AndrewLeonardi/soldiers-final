@@ -164,6 +164,7 @@ function SoldierEntry({ data, xp, isSelected, isHovered, onSelect, onHover }: So
           <Html
             position={[0, 1.4, 0]}
             center
+            zIndexRange={[5, 0]}
             style={{ pointerEvents: 'none', whiteSpace: 'nowrap' }}
           >
             <div style={{
