@@ -67,10 +67,10 @@ export function BattlePickerSheet() {
 
   if (battlePhase !== 'picking') return null
 
-  // Node positions: winding path from bottom to top
+  // Node positions: winding path from top to bottom
   const nodePositions = levels.map((_, i) => ({
     x: 200 + (i % 2 === 0 ? -55 : 55) + Math.sin(i * 0.7) * 15,
-    y: 520 - i * 100,
+    y: 80 + i * 120,
   }))
 
   // SVG path through nodes
@@ -95,11 +95,11 @@ export function BattlePickerSheet() {
 
       {/* Map container */}
       <div className="cm-scroll-container">
-        <svg className="cm-map" viewBox="0 0 400 650" preserveAspectRatio="xMidYMid meet">
+        <svg className="cm-map" viewBox="0 0 400 550" preserveAspectRatio="xMidYMid meet">
           {/* Dirt path */}
-          <path d={pathD} fill="none" stroke="#4a3a20" strokeWidth="28" strokeLinecap="round" opacity="0.3" />
-          <path d={pathD} fill="none" stroke="#6a5a38" strokeWidth="18" strokeLinecap="round" opacity="0.5" />
-          <path d={pathD} fill="none" stroke="#8a7a50" strokeWidth="8" strokeLinecap="round" strokeDasharray="4 6" opacity="0.4" />
+          <path d={pathD} fill="none" stroke="#5a4a28" strokeWidth="28" strokeLinecap="round" opacity="0.4" />
+          <path d={pathD} fill="none" stroke="#7a6a40" strokeWidth="18" strokeLinecap="round" opacity="0.6" />
+          <path d={pathD} fill="none" stroke="#9a8a58" strokeWidth="8" strokeLinecap="round" strokeDasharray="4 6" opacity="0.5" />
 
           {/* Battle nodes */}
           {levels.map(({ level, config }, i) => {
@@ -133,9 +133,16 @@ export function BattlePickerSheet() {
                 {/* Node circle */}
                 <circle
                   cx={pos.x} cy={pos.y} r="20"
-                  fill={isLocked ? '#2a2a2a' : completed ? '#2a4a2a' : '#3a5a3a'}
-                  stroke={isLocked ? '#444' : completed ? '#4caf50' : '#6a8a6a'}
+                  fill={isLocked ? '#1a1a1a' : completed ? '#2a5a2a' : '#3a6a3a'}
+                  stroke={isLocked ? '#444' : completed ? '#66cc66' : '#8aaa8a'}
                   strokeWidth="3"
+                />
+                {/* Inner highlight for depth */}
+                <circle
+                  cx={pos.x} cy={pos.y - 2} r="16"
+                  fill="none"
+                  stroke={isLocked ? 'transparent' : 'rgba(255,255,255,0.12)'}
+                  strokeWidth="1"
                 />
 
                 {/* Node content */}
@@ -177,10 +184,10 @@ export function BattlePickerSheet() {
           })}
 
           {/* Decorative elements */}
-          <text x="60" y="560" fill="#5a6a4a" fontSize="18" opacity="0.3">🌿</text>
-          <text x="340" y="480" fill="#5a6a4a" fontSize="16" opacity="0.3">🪨</text>
-          <text x="80" y="380" fill="#5a6a4a" fontSize="14" opacity="0.25">⛺</text>
-          <text x="320" y="300" fill="#5a6a4a" fontSize="16" opacity="0.3">🏴</text>
+          <text x="60" y="60" fill="#5a6a4a" fontSize="18" opacity="0.3">🌿</text>
+          <text x="340" y="160" fill="#5a6a4a" fontSize="16" opacity="0.3">🪨</text>
+          <text x="80" y="280" fill="#5a6a4a" fontSize="14" opacity="0.25">⛺</text>
+          <text x="320" y="400" fill="#5a6a4a" fontSize="16" opacity="0.3">🏴</text>
         </svg>
       </div>
 
