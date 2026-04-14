@@ -1,14 +1,11 @@
 /**
- * PlacementOverlay — place soldiers onto the battlefield with action verbs.
+ * PlacementOverlay — place soldiers AND defenses onto the battlefield.
  *
- * Sprint 5 (battle rework). Player places soldiers in spawn zone and assigns
- * pre-battle tactical orders (CHARGE / ADVANCE / FLANK / HOLD).
- * Defense placement removed — defenses belong to the enemy now.
+ * Sprint A (UI redesign). Player places soldiers with action verbs AND
+ * defenses (walls, sandbags, towers) in their spawn zone.
  *
- * Bottom tray shows:
- *   - Soldier cards (tap to select, tap ground to place)
- *   - Action verb selector for placed soldiers
- *   - START BATTLE button (requires ≥1 placed soldier)
+ * Bottom tray:
+ *   [Soldier cards + verb pills] | [Divider] | [Defense cards + rotate] | [START BATTLE]
  */
 import { useCallback, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
@@ -17,6 +14,9 @@ import { useSceneStore } from '@stores/sceneStore'
 import { useCampStore } from '@stores/campStore'
 import { useCampBattleStore } from '@stores/campBattleStore'
 import type { PlacedSoldier } from '@stores/campBattleStore'
+import { DEFENSE_OPTIONS } from '@config/defenses'
+import type { DefenseType } from '@config/defenses'
+import { DEFENSE_GHOST } from '@config/defenseRendering'
 import { WeaponPicker } from './WeaponPicker'
 import { RankBadge } from './RankBadge'
 import type { WeaponType, ActionVerb } from '@config/types'
@@ -43,6 +43,10 @@ export function PlacementOverlay() {
   const placeSoldier = useCampBattleStore((s) => s.placeSoldier)
   const removePlacedSoldier = useCampBattleStore((s) => s.removePlacedSoldier)
   const setActionVerb = useCampBattleStore((s) => s.setActionVerb)
+  const selectedDefenseType = useCampBattleStore((s) => s.selectedDefenseType)
+  const selectDefenseType = useCampBattleStore((s) => s.selectDefenseType)
+  const rotateDefense = useCampBattleStore((s) => s.rotateDefense)
+  const placedDefenses = useCampBattleStore((s) => s.placedDefenses)
   const reset = useCampBattleStore((s) => s.reset)
 
   const handleWeaponPick = useCallback((weapon: WeaponType) => {
@@ -73,6 +77,20 @@ export function PlacementOverlay() {
     selectForPlacement(soldierId)
   }, [placedSoldiers, selectForPlacement, removePlacedSoldier])
 
+  const handleSelectDefense = useCallback((type: DefenseType) => {
+    sfx.buttonTap()
+    if (selectedDefenseType === type) {
+      selectDefenseType(null)
+    } else {
+      selectDefenseType(type)
+    }
+  }, [selectedDefenseType, selectDefenseType])
+
+  const handleRotate = useCallback(() => {
+    sfx.buttonTap()
+    rotateDefense()
+  }, [rotateDefense])
+
   const handleVerbSelect = useCallback((soldierId: string, verb: ActionVerb) => {
     sfx.buttonTap()
     setActionVerb(soldierId, verb)
@@ -95,6 +113,7 @@ export function PlacementOverlay() {
   const maxSoldiers = battleConfig.maxSoldiers
   const placedIds = new Set(placedSoldiers.map(p => p.soldierId))
   const placedMap = new Map(placedSoldiers.map(p => [p.soldierId, p]))
+  const isDefenseSelected = selectedDefenseType !== null
 
   return (
     <div className="placement-overlay">
@@ -107,9 +126,10 @@ export function PlacementOverlay() {
         </div>
       </div>
 
-      {/* Bottom soldier tray */}
+      {/* Bottom tray: soldiers + defenses */}
       <div className="placement-tray">
         <div className="placement-tray-scroll">
+          {/* ── Soldier cards ── */}
           {soldiers.filter(s => !s.injuredUntil || s.injuredUntil <= Date.now()).map((sol) => {
             const isPlaced = placedIds.has(sol.id)
             const isSelected = selectedPlacementId === sol.id
@@ -141,7 +161,6 @@ export function PlacementOverlay() {
                   {isPlaced && <span className="placement-card-check">✓</span>}
                 </button>
 
-                {/* Action verb selector — only visible for placed soldiers */}
                 {isPlaced && (
                   <div className="placement-verb-row">
                     {ACTION_VERBS.map((av) => (
@@ -162,6 +181,41 @@ export function PlacementOverlay() {
               </div>
             )
           })}
+
+          {/* ── Divider ── */}
+          <div className="placement-divider" />
+
+          {/* ── Defense cards ── */}
+          {DEFENSE_OPTIONS.map((def) => {
+            const placedCount = placedDefenses.filter(d => d.type === def.type).length
+            const maxCount = def.maxCount ?? 5
+            const hasRemaining = placedCount < maxCount
+            const isSelected = selectedDefenseType === def.type
+            return (
+              <button
+                key={def.type}
+                className={`placement-card defense-card ${isSelected ? 'selected' : ''} ${!hasRemaining ? 'disabled' : ''}`}
+                onClick={() => hasRemaining && handleSelectDefense(def.type)}
+                disabled={!hasRemaining}
+              >
+                <span className="placement-card-icon defense-icon">{def.icon}</span>
+                <span className="placement-card-name">{def.label}</span>
+                <span className="placement-card-cost">
+                  <span>{placedCount}/{maxCount}</span>
+                </span>
+              </button>
+            )
+          })}
+
+          {/* ── Rotate button ── */}
+          {isDefenseSelected && (
+            <button className="placement-rotate-btn" onClick={handleRotate}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="1 4 1 10 7 10" />
+                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+              </svg>
+            </button>
+          )}
         </div>
 
         {/* Start battle button */}
@@ -188,14 +242,85 @@ export function PlacementOverlay() {
 
 /**
  * PlacementGroundHandler — invisible 3D plane for ground clicks during placement.
- * Constrains soldier placement to the playerSpawnZone from battle config.
- * Mounts inside CampScene (R3F context).
+ * Handles BOTH soldier and defense placement, constrained to playerSpawnZone.
+ * Shows ghost preview of selected defense at pointer position.
  */
+const ghostMat = new THREE.MeshBasicMaterial({
+  color: 0x4CAF50,
+  transparent: true,
+  opacity: 0.35,
+  depthWrite: false,
+})
+
+const _mouse = new THREE.Vector2(9999, 9999)
+const _groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
+const _intersect = new THREE.Vector3()
+const _raycaster = new THREE.Raycaster()
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('pointermove', (e) => {
+    _mouse.x = (e.clientX / window.innerWidth) * 2 - 1
+    _mouse.y = -(e.clientY / window.innerHeight) * 2 + 1
+  })
+}
+
+/** Ghost preview mesh — shows translucent defense shape at cursor position. */
+function PlacementGhost() {
+  const meshRef = useRef<THREE.Mesh>(null!)
+  const { camera } = useThree()
+  const selectedDefenseType = useCampBattleStore((s) => s.selectedDefenseType)
+  const defenseRotation = useCampBattleStore((s) => s.defenseRotation)
+  const battleConfig = useCampBattleStore((s) => s.battleConfig)
+
+  useFrame(() => {
+    if (!meshRef.current) return
+    if (!selectedDefenseType) {
+      meshRef.current.visible = false
+      return
+    }
+
+    const config = DEFENSE_GHOST[selectedDefenseType]
+    if (!config) {
+      meshRef.current.visible = false
+      return
+    }
+
+    _raycaster.setFromCamera(_mouse, camera)
+    _raycaster.ray.intersectPlane(_groundPlane, _intersect)
+
+    if (!_intersect) {
+      meshRef.current.visible = false
+      return
+    }
+
+    // Constrain ghost to player spawn zone
+    const zone = battleConfig?.playerSpawnZone
+    const x = zone
+      ? Math.max(zone.minX, Math.min(zone.maxX, _intersect.x))
+      : Math.max(-11, Math.min(11, _intersect.x))
+    const z = zone
+      ? Math.max(zone.minZ, Math.min(zone.maxZ, _intersect.z))
+      : Math.max(-8, Math.min(8, _intersect.z))
+
+    meshRef.current.visible = true
+    meshRef.current.geometry = config.geo
+    meshRef.current.material = ghostMat
+    meshRef.current.position.set(x, config.yOffset, z)
+    meshRef.current.rotation.y = defenseRotation
+  })
+
+  return <mesh ref={meshRef} />
+}
+
 export function PlacementGroundHandler() {
   const battlePhase = useSceneStore((s) => s.battlePhase)
   const selectedPlacementId = useCampBattleStore((s) => s.selectedPlacementId)
+  const selectedDefenseType = useCampBattleStore((s) => s.selectedDefenseType)
+  const defenseRotation = useCampBattleStore((s) => s.defenseRotation)
   const placeSoldier = useCampBattleStore((s) => s.placeSoldier)
+  const placeDefense = useCampBattleStore((s) => s.placeDefense)
   const selectForPlacement = useCampBattleStore((s) => s.selectForPlacement)
+  const selectDefenseType = useCampBattleStore((s) => s.selectDefenseType)
   const soldiers = useCampStore((s) => s.soldiers)
   const battleConfig = useCampBattleStore((s) => s.battleConfig)
 
@@ -203,15 +328,9 @@ export function PlacementGroundHandler() {
     if (battlePhase !== 'placing') return
     e.stopPropagation()
 
-    // Only soldier placement — no defense placement
-    if (!selectedPlacementId) return
-
-    const sol = soldiers.find(s => s.id === selectedPlacementId)
-    if (!sol) return
-
     const point = e.point
 
-    // Constrain to spawn zone if defined, otherwise full arena
+    // Constrain to spawn zone
     const zone = battleConfig?.playerSpawnZone
     const x = zone
       ? Math.max(zone.minX, Math.min(zone.maxX, point.x))
@@ -220,16 +339,33 @@ export function PlacementGroundHandler() {
       ? Math.max(zone.minZ, Math.min(zone.maxZ, point.z))
       : Math.max(-8, Math.min(8, point.z))
 
+    // ── Defense placement ──
+    if (selectedDefenseType) {
+      const defense = {
+        id: `defense-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        type: selectedDefenseType,
+        position: [x, 0, z] as [number, number, number],
+        rotation: defenseRotation,
+      }
+      placeDefense(defense)
+      sfx.buttonTap()
+      return
+    }
+
+    // ── Soldier placement ──
+    if (!selectedPlacementId) return
+
+    const sol = soldiers.find(s => s.id === selectedPlacementId)
+    if (!sol) return
+
     const trainedWeapons = sol.trainedBrains ? Object.keys(sol.trainedBrains) : []
 
-    // Multi-brain soldier → weapon picker
     if (trainedWeapons.length >= 2) {
       useSceneStore.getState().setPendingPlacement({ soldier: sol, position: [x, 0, z] })
       selectForPlacement(null)
       return
     }
 
-    // Single brain or untrained — deploy immediately
     const deployWeapon = trainedWeapons.length > 0
       ? trainedWeapons[trainedWeapons.length - 1]!
       : 'rifle'
@@ -245,18 +381,23 @@ export function PlacementGroundHandler() {
     placeSoldier(placed)
     selectForPlacement(null)
     sfx.buttonTap()
-  }, [battlePhase, selectedPlacementId, soldiers, battleConfig, placeSoldier, selectForPlacement])
+  }, [battlePhase, selectedPlacementId, selectedDefenseType, defenseRotation, soldiers, battleConfig, placeSoldier, placeDefense, selectForPlacement, selectDefenseType])
 
   if (battlePhase !== 'placing') return null
 
   return (
-    <mesh
-      position={[0, 0.01, 0]}
-      rotation={[-Math.PI / 2, 0, 0]}
-      onPointerUp={handleGroundClick}
-    >
-      <planeGeometry args={[28, 22]} />
-      <meshBasicMaterial transparent opacity={0} />
-    </mesh>
+    <>
+      <mesh
+        position={[0, 0.01, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        onPointerUp={handleGroundClick}
+      >
+        <planeGeometry args={[28, 22]} />
+        <meshBasicMaterial transparent opacity={0} />
+      </mesh>
+
+      {/* Ghost preview for defense placement */}
+      <PlacementGhost />
+    </>
   )
 }

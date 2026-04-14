@@ -204,19 +204,33 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
     // Store Intel position
     intelPositionRef.current = config.intelPosition ?? [8, 0, 0]
 
-    // Build wall collision bounds from enemy defenses
+    // Build wall collision bounds from enemy defenses + player defenses
     const enemyDefenses = config.enemyDefenses ?? []
-    _activeWallBounds = enemyDefenses.map((def, i) => {
-      const ext = DEFENSE_HALF_EXTENTS[def.type] ?? DEFENSE_HALF_EXTENTS['wall']
-      const isRotated = Math.abs(Math.sin(def.rotation)) > 0.5
-      return {
-        cx: def.position[0],
-        cz: def.position[2],
-        halfW: isRotated ? ext.halfD : ext.halfW,
-        halfD: isRotated ? ext.halfW : ext.halfD,
-        wallId: `enemy-def-${i}`,
-      }
-    })
+    const playerDefenses = store.placedDefenses ?? []
+    _activeWallBounds = [
+      ...enemyDefenses.map((def, i) => {
+        const ext = DEFENSE_HALF_EXTENTS[def.type] ?? DEFENSE_HALF_EXTENTS['wall']
+        const isRotated = Math.abs(Math.sin(def.rotation)) > 0.5
+        return {
+          cx: def.position[0],
+          cz: def.position[2],
+          halfW: isRotated ? ext.halfD : ext.halfW,
+          halfD: isRotated ? ext.halfW : ext.halfD,
+          wallId: `enemy-def-${i}`,
+        }
+      }),
+      ...playerDefenses.map((def) => {
+        const ext = DEFENSE_HALF_EXTENTS[def.type] ?? DEFENSE_HALF_EXTENTS['wall']
+        const isRotated = Math.abs(Math.sin(def.rotation)) > 0.5
+        return {
+          cx: def.position[0],
+          cz: def.position[2],
+          halfW: isRotated ? ext.halfD : ext.halfW,
+          halfD: isRotated ? ext.halfW : ext.halfD,
+          wallId: def.id,
+        }
+      }),
+    ]
 
     // Build flow field with Intel as target, enemy defenses as obstacles
     const worldSize: [number, number] = [BASE_HALF_W * 2, BASE_HALF_D * 2]

@@ -28,6 +28,7 @@ export function BattleEntities({ wallBlocksRef }: BattleEntitiesProps) {
   const projectiles = useCampBattleStore((s) => s.projectiles)
   const explosions = useCampBattleStore((s) => s.explosions)
   const battleConfig = useCampBattleStore((s) => s.battleConfig)
+  const placedDefenses = useCampBattleStore((s) => s.placedDefenses)
 
   if (battlePhase !== 'fighting' && battlePhase !== 'result') return null
 
@@ -79,6 +80,22 @@ export function BattleEntities({ wallBlocksRef }: BattleEntitiesProps) {
             rotation={def.rotation}
             wallBlocksRef={wallBlocksRef}
             wallId={`enemy-def-${i}`}
+            tableBounds={TABLE_BOUNDS}
+          />
+        )
+      })}
+
+      {/* Player-placed defenses */}
+      {placedDefenses.map((def) => {
+        const DefComp = DEFENSE_COMPONENTS[def.type]
+        if (!DefComp) return null
+        return (
+          <DefComp
+            key={def.id}
+            position={def.position}
+            rotation={def.rotation}
+            wallBlocksRef={wallBlocksRef}
+            wallId={def.id}
             tableBounds={TABLE_BOUNDS}
           />
         )

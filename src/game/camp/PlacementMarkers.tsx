@@ -33,6 +33,7 @@ interface PlacementMarkersProps {
 export function PlacementMarkers({ wallBlocksRef }: PlacementMarkersProps) {
   const battlePhase = useSceneStore((s) => s.battlePhase)
   const placedSoldiers = useCampBattleStore((s) => s.placedSoldiers)
+  const placedDefenses = useCampBattleStore((s) => s.placedDefenses)
   const battleConfig = useCampBattleStore((s) => s.battleConfig)
 
   if (battlePhase !== 'placing' || !battleConfig) return null
@@ -111,6 +112,22 @@ export function PlacementMarkers({ wallBlocksRef }: PlacementMarkersProps) {
             rotation={def.rotation}
             wallBlocksRef={wallBlocksRef}
             wallId={`enemy-def-${i}`}
+            tableBounds={TABLE_BOUNDS}
+          />
+        )
+      })}
+
+      {/* ── Player placed defenses ── */}
+      {placedDefenses.map((def) => {
+        const DefComp = DEFENSE_COMPONENTS[def.type]
+        if (!DefComp) return null
+        return (
+          <DefComp
+            key={def.id}
+            position={def.position}
+            rotation={def.rotation}
+            wallBlocksRef={wallBlocksRef}
+            wallId={def.id}
             tableBounds={TABLE_BOUNDS}
           />
         )
