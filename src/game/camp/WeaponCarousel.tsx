@@ -11,13 +11,12 @@ import type { WeaponType } from '@config/types'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
 
-// Emoji stand-ins until WeaponIcon SVGs (Phase 5)
-const WEAPON_EMOJI: Record<WeaponType, string> = {
-  rifle: '🔫',
-  rocketLauncher: '🚀',
-  grenade: '💣',
-  machineGun: '🔥',
-  tank: '🛡️',
+const WEAPON_ABBREV: Record<WeaponType, string> = {
+  rifle: 'RF',
+  rocketLauncher: 'RL',
+  grenade: 'GR',
+  machineGun: 'MG',
+  tank: 'TK',
 }
 
 interface WeaponCarouselProps {
@@ -45,11 +44,8 @@ export function WeaponCarousel({ selected, onSelect }: WeaponCarouselProps) {
             className={`weapon-card ${isSelected ? 'selected' : ''}`}
             onClick={() => handleTap(weapon)}
           >
-            <span className="weapon-card-icon">{WEAPON_EMOJI[weapon]}</span>
+            <span className="weapon-card-icon">{WEAPON_ABBREV[weapon]}</span>
             <span className="weapon-card-name">{display.name}</span>
-            {isSelected && (
-              <span className="weapon-card-check">✓</span>
-            )}
           </button>
         )
       })}

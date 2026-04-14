@@ -56,6 +56,9 @@ interface SceneState {
   armorySheetOpen: boolean
   armoryScrollToItem: string | null
 
+  // Daily reward
+  dailyRewardOpen: boolean
+
   // Actions
   selectSoldier: (id: string | null) => void
   hoverSoldier: (id: string | null) => void
@@ -79,6 +82,7 @@ interface SceneState {
   setBattlePhase: (phase: 'idle' | 'picking' | 'placing' | 'loading' | 'fighting' | 'result') => void
   setArmorySheetOpen: (open: boolean) => void
   setArmoryScrollToItem: (id: string | null) => void
+  setDailyRewardOpen: (open: boolean) => void
 }
 
 export const useSceneStore = create<SceneState>()((set) => ({
@@ -120,6 +124,9 @@ export const useSceneStore = create<SceneState>()((set) => ({
   armorySheetOpen: false,
   armoryScrollToItem: null,
 
+  // Daily reward
+  dailyRewardOpen: false,
+
   // Actions
   selectSoldier: (id) => set({ selectedSoldierId: id }),
   hoverSoldier: (id) => set({ hoveredSoldierId: id }),
@@ -143,4 +150,5 @@ export const useSceneStore = create<SceneState>()((set) => ({
   setBattlePhase: (phase) => set({ battlePhase: phase }),
   setArmorySheetOpen: (open) => set({ armorySheetOpen: open }),
   setArmoryScrollToItem: (id) => set({ armoryScrollToItem: id }),
+  setDailyRewardOpen: (open) => set({ dailyRewardOpen: open }),
 }))

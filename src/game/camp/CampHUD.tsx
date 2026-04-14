@@ -11,6 +11,12 @@
 import { useCallback, useEffect, useMemo } from 'react'
 import { ComputeCounter } from './ComputeCounter'
 import { GoldCounter } from './GoldCounter'
+import { CrossedSwordsIcon } from './icons/CrossedSwordsIcon'
+import { ExplosionIcon } from './icons/ExplosionIcon'
+import { StorefrontIcon } from './icons/StorefrontIcon'
+import { TrophyIcon } from './icons/TrophyIcon'
+import { ClipboardIcon } from './icons/ClipboardIcon'
+import { GearIcon } from './icons/GearIcon'
 import { useSceneStore } from '@stores/sceneStore'
 import { useCampStore } from '@stores/campStore'
 import { CAMP_BATTLES } from '@config/campBattles'
@@ -133,9 +139,8 @@ export function CampHUD() {
 
   return (
     <>
-      {/* Top center — dual currency counters */}
+      {/* Top center — compute counter */}
       <div className="camp-top-bar">
-        <GoldCounter />
         <ComputeCounter hasUnclaimedDaily={hasUnclaimedDaily} />
       </div>
 
@@ -156,32 +161,32 @@ export function CampHUD() {
       {/* Bottom bar — 6 beveled action buttons */}
       <div className="camp-bottom-bar">
         <button className={`camp-bottom-btn${trainingSheetOpen ? ' active' : ''}`} onClick={handleTrain}>
-          <span className="camp-bottom-btn-icon">⚔</span>
+          <span className="camp-bottom-btn-icon"><CrossedSwordsIcon size={22} /></span>
           <span className="camp-bottom-btn-label">TRAIN</span>
         </button>
 
         <button className={`camp-bottom-btn attack${battlePhase === 'picking' ? ' active' : ''}`} onClick={handleAttack}>
-          <span className="camp-bottom-btn-icon">💥</span>
+          <span className="camp-bottom-btn-icon"><ExplosionIcon size={26} /></span>
           <span className="camp-bottom-btn-label">ATTACK</span>
         </button>
 
         <button className={`camp-bottom-btn${storeSheetOpen ? ' active' : ''}`} onClick={handleStore}>
-          <span className="camp-bottom-btn-icon">🏪</span>
+          <span className="camp-bottom-btn-icon"><StorefrontIcon size={22} /></span>
           <span className="camp-bottom-btn-label">STORE</span>
         </button>
 
         <button className={`camp-bottom-btn${armorySheetOpen ? ' active' : ''}`} onClick={handleArmory}>
-          <span className="camp-bottom-btn-icon">🏆</span>
+          <span className="camp-bottom-btn-icon"><TrophyIcon size={22} /></span>
           <span className="camp-bottom-btn-label">ARMORY</span>
         </button>
 
         <button className={`camp-bottom-btn${rosterSheetOpen ? ' active' : ''}`} onClick={handleRoster}>
-          <span className="camp-bottom-btn-icon">📋</span>
+          <span className="camp-bottom-btn-icon"><ClipboardIcon size={22} /></span>
           <span className="camp-bottom-btn-label">ROSTER</span>
         </button>
 
         <button className={`camp-bottom-btn${settingsOpen ? ' active' : ''}`} onClick={handleSettings}>
-          <span className="camp-bottom-btn-icon">⚙</span>
+          <span className="camp-bottom-btn-icon"><GearIcon size={22} /></span>
           <span className="camp-bottom-btn-label">SETTINGS</span>
         </button>
       </div>

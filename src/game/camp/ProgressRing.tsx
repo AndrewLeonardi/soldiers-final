@@ -9,7 +9,6 @@ import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { useCampTrainingStore } from '@stores/campTrainingStore'
-import { COMPUTE_TIERS } from './trainingConstants'
 import type { TrainingSlot } from '@stores/campTrainingStore'
 
 const RING_RADIUS = 1.2
@@ -22,8 +21,7 @@ function SlotRing({ slot, yOffset }: { slot: TrainingSlot; yOffset: number }) {
 
   const progress = slot.timerTotal > 0 ? Math.min(slot.timerElapsed / slot.timerTotal, 1) : 0
   const remaining = Math.max(0, slot.timerTotal - slot.timerElapsed)
-  const tierConfig = COMPUTE_TIERS[slot.computeTier - 1]
-  const tierColor = tierConfig?.color ?? '#00e5ff'
+  const tierColor = '#00e5ff'
 
   const arcGeometry = useMemo(() => {
     const arcAngle = progress * Math.PI * 2
@@ -53,7 +51,7 @@ function SlotRing({ slot, yOffset }: { slot: TrainingSlot; yOffset: number }) {
       </mesh>
 
       {/* Timer countdown + stats */}
-      <Html center style={{ pointerEvents: 'none' }}>
+      <Html center zIndexRange={[5, 0]} style={{ pointerEvents: 'none' }}>
         <div style={{
           textAlign: 'center',
           fontFamily: "'Black Ops One', monospace",

@@ -17,11 +17,11 @@ function hexToCSS(hex: number): string {
 }
 
 const THEME_ICONS: Record<string, string> = {
-  garden: '🌸',
-  desert: '🌵',
-  arctic: '❄️',
-  volcanic: '🌋',
-  jungle: '🌿',
+  garden: 'G',
+  desert: 'D',
+  arctic: 'A',
+  volcanic: 'V',
+  jungle: 'J',
 }
 
 export function LoadingScreen() {
@@ -48,7 +48,7 @@ export function LoadingScreen() {
 
   const themeId = battleConfig.themeId ?? 'garden'
   const theme = getTheme(themeId)
-  const icon = THEME_ICONS[themeId] ?? '⚔️'
+  const icon = THEME_ICONS[themeId] ?? 'X'
 
   const totalEnemies = battleConfig.waves.reduce(
     (sum, w) => sum + w.enemies.reduce((s, e) => s + e.count, 0), 0,

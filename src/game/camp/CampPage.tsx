@@ -53,9 +53,12 @@ export default function CampPage() {
   const tutorialCompleted = useCampStore((s) => s.tutorialCompleted)
   const tutorialActive = useSceneStore((s) => s.tutorialActive)
   const lastDailyClaimDate = useCampStore((s) => s.lastDailyClaimDate)
+  const dailyRewardOpen = useSceneStore((s) => s.dailyRewardOpen)
+  const setDailyRewardOpen = useSceneStore((s) => s.setDailyRewardOpen)
 
   const today = new Date().toISOString().split('T')[0]!
-  const showDailyPopup = booted && lastDailyClaimDate !== today && !dailyPopupDismissed && !isObserving && !isFiringRange && tutorialCompleted && !tutorialActive
+  const autoShowDaily = booted && lastDailyClaimDate !== today && !dailyPopupDismissed && !isObserving && !isFiringRange && tutorialCompleted && !tutorialActive
+  const showDailyPopup = autoShowDaily || dailyRewardOpen
 
   const handleBootDone = useCallback(() => setBooted(true), [])
   const setTrainingSheetOpen = useSceneStore((s) => s.setTrainingSheetOpen)
@@ -107,8 +110,8 @@ export default function CampPage() {
         </Suspense>
       </Canvas>
 
-      {/* Daily reward popup — first thing player sees after boot */}
-      {showDailyPopup && <DailyRewardPopup onClose={() => setDailyPopupDismissed(true)} />}
+      {/* Daily reward popup — auto-shows after boot or manually from compute counter */}
+      {showDailyPopup && <DailyRewardPopup onClose={() => { setDailyPopupDismissed(true); setDailyRewardOpen(false) }} />}
 
       {/* Observation mode overlays */}
       {isObserving && <ObservationHUD />}
@@ -141,12 +144,6 @@ export default function CampPage() {
       {/* Ambient audio bed — always active */}
       <AudioBed />
 
-      {/* Dev indicator */}
-      {import.meta.env.DEV && !isObserving && (
-        <div className="dev-indicator">
-          DEV | G=grenade T=train S=store R=roster M=medical
-        </div>
-      )}
     </div>
   )
 }

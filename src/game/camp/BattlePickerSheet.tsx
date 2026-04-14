@@ -16,6 +16,7 @@ import { generateLevel, getMaxAccessibleLevel } from '@config/levelGenerator'
 import type { CampBattleConfig } from '@config/campBattles'
 import { BattleDiorama } from './BattleDiorama'
 import { ComputeIcon } from './ComputeIcon'
+import { LockIcon } from './icons/LockIcon'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
 
@@ -27,10 +28,10 @@ const WEAPON_LABELS: Record<string, string> = {
 }
 
 const WEAPON_ICONS: Record<string, string> = {
-  rocketLauncher: '🚀',
-  grenade: '💣',
-  machineGun: '🔫',
-  tank: '🪖',
+  rocketLauncher: 'RL',
+  grenade: 'GR',
+  machineGun: 'MG',
+  tank: 'TK',
 }
 
 export function BattlePickerSheet() {
@@ -95,7 +96,7 @@ export function BattlePickerSheet() {
       <div className="level-selector-diorama">
         {isLocked ? (
           <div className="level-selector-locked-preview">
-            <span className="level-selector-lock-icon">🔒</span>
+            <span className="level-selector-lock-icon"><LockIcon size={32} /></span>
           </div>
         ) : (
           <BattleDiorama themeId={themeId} level={currentLevel} />
@@ -177,7 +178,7 @@ export function BattlePickerSheet() {
         onClick={handleDeploy}
         disabled={isLocked}
       >
-        {isLocked ? '🔒 LOCKED' : 'DEPLOY'}
+        {isLocked ? <><LockIcon size={14} /> LOCKED</> : 'DEPLOY'}
       </button>
     </div>
   )

@@ -1,10 +1,8 @@
 /**
  * TrainingSheet — bottom sheet for committing a soldier to training.
  *
- * Sprint 2→3. Content: slot selector → soldier roster picker →
- * weapon carousel → tier selector → cost display → START button.
- *
- * Sprint 3: multi-slot support, weapon carousel, per-weapon training.
+ * Sprint 4 polish: soldier-first flow, auto-assigned slots, no emojis.
+ * Flow: soldier chips → weapon carousel → time package → sim speed → START.
  */
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useCampStore } from '@stores/campStore'
@@ -14,6 +12,8 @@ import { WeaponCarousel } from './WeaponCarousel'
 import { TIME_PACKAGES, SIM_SPEED_OPTIONS } from './trainingConstants'
 import type { WeaponType } from '@config/types'
 import { ComputeIcon } from './ComputeIcon'
+import { LockIcon } from './icons/LockIcon'
+import { RefreshIcon } from './icons/RefreshIcon'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
 
@@ -34,7 +34,6 @@ export function TrainingSheet() {
   const preselectedId = useSceneStore((s) => s.preselectedTrainingSoldierId)
   const clearPreselection = useSceneStore((s) => s.setPreselectedTrainingSoldierId)
 
-  const [activeSlotIndex, setActiveSlotIndex] = useState(0)
   const [selectedSoldierId, setSelectedSoldierId] = useState<string | null>(null)
 
   // Auto-select soldier when coming from SoldierSheet "TRAIN NOW"
@@ -44,12 +43,33 @@ export function TrainingSheet() {
       clearPreselection(null)
     }
   }, [preselectedId, trainingSheetOpen, clearPreselection])
+
+  // Auto-select first available soldier on open
+  useEffect(() => {
+    if (trainingSheetOpen && !preselectedId && !selectedSoldierId) {
+      const available = soldiers.find(s =>
+        (!s.injuredUntil || s.injuredUntil <= Date.now()) &&
+        !isSoldierInTraining(s.id)
+      )
+      if (available) setSelectedSoldierId(available.id)
+    }
+  }, [trainingSheetOpen, preselectedId, selectedSoldierId, soldiers, isSoldierInTraining])
+
   const [selectedWeapon, setSelectedWeapon] = useState<WeaponType>('rifle')
   const [selectedPackageId, setSelectedPackageId] = useState('quick')
   const [selectedSpeed, setSelectedSpeed] = useState(1)
 
-  const activeSlot = slots[activeSlotIndex]
-  const slotIsEmpty = !activeSlot || activeSlot.trainingPhase === 'empty' || activeSlot.trainingPhase === 'selecting'
+  // Auto-compute slot index: first available empty slot
+  const autoSlotIndex = useMemo(() => {
+    for (let i = 0; i < unlockedSlots; i++) {
+      const slot = slots[i]
+      if (!slot || slot.trainingPhase === 'empty' || slot.trainingPhase === 'selecting') return i
+    }
+    return -1 // All busy
+  }, [slots, unlockedSlots])
+
+  const activeSlot = autoSlotIndex >= 0 ? slots[autoSlotIndex] : null
+  const slotIsEmpty = autoSlotIndex >= 0
 
   const selectedPackage = TIME_PACKAGES.find(p => p.id === selectedPackageId) ?? TIME_PACKAGES[0]!
   const cost = selectedPackage.compute
@@ -62,44 +82,36 @@ export function TrainingSheet() {
   // Check if selected soldier has a trained brain for selected weapon
   const hasBrainForWeapon = selectedSoldier?.trainedBrains?.[selectedWeapon] != null
 
-  // Slot labels for display
-  const slotLabels = useMemo(() =>
-    Array.from({ length: 3 }, (_, i) => {
-      const slot = slots[i]
-      const isLocked = i >= unlockedSlots
-      if (isLocked) return { label: `SLOT ${i + 1}`, sub: <>{'🔒'} {SLOT_COSTS[i]} <ComputeIcon size={12} /></>, locked: true, active: false }
-      if (!slot || slot.trainingPhase === 'empty') return { label: `SLOT ${i + 1}`, sub: 'EMPTY', locked: false, active: false }
-      return { label: `SLOT ${i + 1}`, sub: slot.slotSoldierName ?? 'ACTIVE', locked: false, active: true }
-    }),
+  // Available soldiers (not injured)
+  const availableSoldiers = useMemo(() =>
+    soldiers.filter(s => !s.injuredUntil || s.injuredUntil <= Date.now()),
+  [soldiers])
+
+  // Active training slots info
+  const activeTrainingSlots = useMemo(() =>
+    slots.filter((s, i) => i < unlockedSlots && s && s.trainingPhase !== 'empty' && s.trainingPhase !== 'selecting'),
   [slots, unlockedSlots])
 
-  const handleSlotTap = useCallback((index: number) => {
-    if (index >= unlockedSlots) {
-      // Try to unlock
-      sfx.buttonTap()
-      const success = unlockSlot()
-      if (success) {
-        sfx.deployHorn()
-        setActiveSlotIndex(index)
-      }
-      return
-    }
+  // Next locked slot cost
+  const nextLockedSlotCost = unlockedSlots < 3 ? SLOT_COSTS[unlockedSlots] : null
+
+  const handleUnlockSlot = useCallback(() => {
     sfx.buttonTap()
-    setActiveSlotIndex(index)
-  }, [unlockedSlots, unlockSlot])
+    const success = unlockSlot()
+    if (success) sfx.deployHorn()
+  }, [unlockSlot])
 
   const setObservingSlotIndex = useSceneStore((s) => s.setObservingSlotIndex)
 
   const handleStart = useCallback(() => {
-    if (!selectedSoldierId || !selectedSoldier) return
-    const success = commitToTrain(activeSlotIndex, selectedSoldierId, selectedSoldier.name, selectedWeapon, selectedPackageId, selectedSpeed)
+    if (!selectedSoldierId || !selectedSoldier || autoSlotIndex < 0) return
+    const success = commitToTrain(autoSlotIndex, selectedSoldierId, selectedSoldier.name, selectedWeapon, selectedPackageId, selectedSpeed)
     if (success) {
       sfx.buttonTap()
       setTrainingSheetOpen(false)
-      // Enter immersive training observation view
-      setObservingSlotIndex(activeSlotIndex)
+      setObservingSlotIndex(autoSlotIndex)
     }
-  }, [activeSlotIndex, selectedSoldierId, selectedSoldier, selectedWeapon, selectedPackageId, selectedSpeed, commitToTrain, setTrainingSheetOpen, setObservingSlotIndex])
+  }, [autoSlotIndex, selectedSoldierId, selectedSoldier, selectedWeapon, selectedPackageId, selectedSpeed, commitToTrain, setTrainingSheetOpen, setObservingSlotIndex])
 
   const handleClose = useCallback(() => {
     setTrainingSheetOpen(false)
@@ -115,141 +127,131 @@ export function TrainingSheet() {
         </div>
 
         <div className="game-sheet-body">
-          {/* Slot selector */}
-          <div className="training-section-label">SELECT SLOT</div>
-          <div className="training-slot-row">
-            {slotLabels.map((info, i) => (
+          {/* Active training slots (informational) */}
+          {activeTrainingSlots.length > 0 && (
+            <div className="training-active-slots">
+              {activeTrainingSlots.map((slot, i) => (
+                <div key={i} className="training-active-slot-info">
+                  <RefreshIcon size={12} />
+                  <span>{slot.slotSoldierName} — {slot.slotWeapon?.toUpperCase()}</span>
+                  <span className="training-active-slot-stats">GEN {slot.generation} | {(slot.bestFitness * 100).toFixed(0)}%</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Soldier chips (horizontal scroll) */}
+          <div className="training-section-label">SELECT SOLDIER</div>
+          {availableSoldiers.length === 0 ? (
+            <div className="training-empty">No soldiers in roster</div>
+          ) : (
+            <div className="training-soldier-chips">
+              {availableSoldiers.map((s) => {
+                const inTraining = isSoldierInTraining(s.id)
+                return (
+                  <button
+                    key={s.id}
+                    className={`training-soldier-chip ${selectedSoldierId === s.id ? 'selected' : ''} ${inTraining ? 'busy' : ''}`}
+                    onClick={() => { if (!inTraining) { sfx.buttonTap(); setSelectedSoldierId(s.id) } }}
+                    disabled={inTraining}
+                  >
+                    <span className="training-chip-dot" />
+                    <span className="training-chip-name">{s.name.split(' ').slice(1).join(' ') || s.name}</span>
+                    {inTraining && <span className="training-chip-busy">BUSY</span>}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Weapon carousel */}
+          <div className="training-section-label">WEAPON</div>
+          <WeaponCarousel selected={selectedWeapon} onSelect={setSelectedWeapon} />
+
+          {hasBrainForWeapon && (
+            <div className="training-retrain-notice">
+              <ComputeIcon size={14} /> Re-training will improve existing {selectedWeapon} brain
+            </div>
+          )}
+
+          {/* Time package picker */}
+          <div className="training-section-label">TRAINING TIME</div>
+          <div className="training-tier-row">
+            {TIME_PACKAGES.map((pkg) => (
               <button
-                key={i}
-                className={`training-slot-btn ${activeSlotIndex === i ? 'selected' : ''} ${info.locked ? 'locked' : ''} ${info.active ? 'active' : ''}`}
-                onClick={() => handleSlotTap(i)}
+                key={pkg.id}
+                className={`training-tier-btn ${selectedPackageId === pkg.id ? 'selected' : ''}`}
+                style={{
+                  borderColor: selectedPackageId === pkg.id ? '#00e5ff' : 'transparent',
+                  color: selectedPackageId === pkg.id ? '#00e5ff' : '#7a8a7a',
+                }}
+                onClick={() => setSelectedPackageId(pkg.id)}
               >
-                <span className="training-slot-label">{info.label}</span>
-                <span className="training-slot-sub">{info.sub}</span>
+                <span className="training-tier-multiplier">{pkg.label}</span>
+                <span className="training-tier-label">{pkg.compute} <ComputeIcon size={10} /></span>
               </button>
             ))}
           </div>
 
-          {/* Show active slot info if not empty */}
-          {activeSlot && !slotIsEmpty && (
-            <div className="training-active-slot-info">
-              <span>🔄 {activeSlot.slotSoldierName} — {activeSlot.slotWeapon?.toUpperCase()}</span>
-              <span>GEN {activeSlot.generation} | {(activeSlot.bestFitness * 100).toFixed(0)}%</span>
-            </div>
-          )}
-
-          {/* Only show selection UI if slot is available */}
-          {slotIsEmpty && (
-            <>
-              {/* Soldier roster picker */}
-              <div className="training-section-label">SELECT SOLDIER</div>
-              <div className="training-roster">
-                {soldiers.length === 0 && (
-                  <div className="training-empty">No soldiers in roster</div>
-                )}
-                {soldiers.filter(s => !s.injuredUntil || s.injuredUntil <= Date.now()).map((s) => {
-                  const inTraining = isSoldierInTraining(s.id)
-                  const weaponBrains = s.trainedBrains ? Object.keys(s.trainedBrains) : []
-                  return (
-                    <button
-                      key={s.id}
-                      className={`training-roster-item ${selectedSoldierId === s.id ? 'selected' : ''} ${inTraining ? 'busy' : ''}`}
-                      onClick={() => !inTraining && setSelectedSoldierId(s.id)}
-                      disabled={inTraining}
-                    >
-                      <span className="training-roster-name">{s.name}</span>
-                      <span className="training-roster-badges">
-                        {inTraining && <span className="training-roster-badge busy">IN TRAINING</span>}
-                        {weaponBrains.length > 0 && !inTraining && (
-                          <span className="training-roster-badge">
-                            {weaponBrains.length} BRAIN{weaponBrains.length > 1 ? 'S' : ''}
-                          </span>
-                        )}
-                        {weaponBrains.length === 0 && !inTraining && (
-                          <span className="training-roster-badge untrained">UNTRAINED</span>
-                        )}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-
-              {/* Weapon carousel */}
-              <div className="training-section-label">WEAPON</div>
-              <WeaponCarousel selected={selectedWeapon} onSelect={setSelectedWeapon} />
-
-              {hasBrainForWeapon && (
-                <div className="training-retrain-notice">
-                  <ComputeIcon size={14} /> This soldier already has a {selectedWeapon} brain — re-training will improve it
-                </div>
-              )}
-
-              {/* Time package picker */}
-              <div className="training-section-label">TRAINING TIME</div>
-              <div className="training-tier-row">
-                {TIME_PACKAGES.map((pkg) => (
-                  <button
-                    key={pkg.id}
-                    className={`training-tier-btn ${selectedPackageId === pkg.id ? 'selected' : ''}`}
-                    style={{
-                      borderColor: selectedPackageId === pkg.id ? '#00e5ff' : 'transparent',
-                      color: selectedPackageId === pkg.id ? '#00e5ff' : '#7a8a7a',
-                    }}
-                    onClick={() => setSelectedPackageId(pkg.id)}
-                  >
-                    <span className="training-tier-multiplier">{pkg.label}</span>
-                    <span className="training-tier-label">{pkg.compute} <ComputeIcon size={10} /></span>
-                  </button>
-                ))}
-              </div>
-
-              {/* Sim speed toggle */}
-              <div className="training-section-label">SIM SPEED</div>
-              <div className="training-speed-row">
-                {SIM_SPEED_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.multiplier}
-                    className={`training-speed-btn ${selectedSpeed === opt.multiplier ? 'selected' : ''}`}
-                    style={{
-                      borderColor: selectedSpeed === opt.multiplier ? opt.color : 'transparent',
-                      color: selectedSpeed === opt.multiplier ? opt.color : '#7a8a7a',
-                    }}
-                    onClick={() => setSelectedSpeed(opt.multiplier)}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Cost + duration display */}
-              <div className="training-cost-row">
-                <div className="training-cost-item">
-                  <span className="training-cost-label">COST</span>
-                  <span className={`training-cost-value ${!canAfford ? 'insufficient' : ''}`}>
-                    {cost} <ComputeIcon size={12} />
-                  </span>
-                </div>
-                <div className="training-cost-item">
-                  <span className="training-cost-label">TIME</span>
-                  <span className="training-cost-value">
-                    {duration >= 60 ? `${Math.floor(duration / 60)}m ${duration % 60}s` : `${duration}s`}
-                  </span>
-                </div>
-              </div>
-
-              {/* Start button */}
+          {/* Sim speed toggle */}
+          <div className="training-section-label">SIM SPEED</div>
+          <div className="training-speed-row">
+            {SIM_SPEED_OPTIONS.map((opt) => (
               <button
-                className={`game-btn training-start-btn ${!canStart ? 'disabled' : ''}`}
-                onClick={handleStart}
-                disabled={!canStart}
+                key={opt.multiplier}
+                className={`training-speed-btn ${selectedSpeed === opt.multiplier ? 'selected' : ''}`}
+                style={{
+                  borderColor: selectedSpeed === opt.multiplier ? opt.color : 'transparent',
+                  color: selectedSpeed === opt.multiplier ? opt.color : '#7a8a7a',
+                }}
+                onClick={() => setSelectedSpeed(opt.multiplier)}
               >
-                {soldierBusy ? 'SOLDIER IN TRAINING' :
-                 !selectedSoldierId ? 'SELECT A SOLDIER' :
-                 !canAfford ? 'NOT ENOUGH COMPUTE' :
-                 'START TRAINING'}
+                {opt.label}
               </button>
-            </>
-          )}
+            ))}
+          </div>
+
+          {/* Cost + duration display */}
+          <div className="training-cost-row">
+            <div className="training-cost-item">
+              <span className="training-cost-label">COST</span>
+              <span className={`training-cost-value ${!canAfford ? 'insufficient' : ''}`}>
+                {cost} <ComputeIcon size={12} />
+              </span>
+            </div>
+            <div className="training-cost-item">
+              <span className="training-cost-label">TIME</span>
+              <span className="training-cost-value">
+                {duration >= 60 ? `${Math.floor(duration / 60)}m ${duration % 60}s` : `${duration}s`}
+              </span>
+            </div>
+          </div>
+
+          {/* Slot indicator */}
+          <div className="training-slot-indicator">
+            {slotIsEmpty ? (
+              <span className="training-slot-indicator-text">SLOT {autoSlotIndex + 1} AVAILABLE</span>
+            ) : nextLockedSlotCost != null ? (
+              <button className="training-unlock-slot-btn game-btn" onClick={handleUnlockSlot}>
+                <LockIcon size={12} /> UNLOCK SLOT ({nextLockedSlotCost} <ComputeIcon size={10} />)
+              </button>
+            ) : (
+              <span className="training-slot-indicator-text">ALL SLOTS BUSY</span>
+            )}
+          </div>
+
+          {/* Start button */}
+          <button
+            className={`game-btn training-start-btn ${!canStart ? 'disabled' : ''}`}
+            onClick={handleStart}
+            disabled={!canStart}
+          >
+            {soldierBusy ? 'SOLDIER IN TRAINING' :
+             !selectedSoldierId ? 'SELECT A SOLDIER' :
+             !slotIsEmpty ? 'ALL SLOTS BUSY' :
+             !canAfford ? 'NOT ENOUGH COMPUTE' :
+             'START TRAINING'}
+          </button>
         </div>
       </div>
     </div>

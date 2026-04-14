@@ -318,7 +318,9 @@
     0 0 0 1px rgba(0, 0, 0, 0.3),
     inset 0 2px 0 rgba(255, 255, 255, 0.2),
     inset 0 -2px 4px rgba(0, 0, 0, 0.2);
-  min-width: 64px;
+  flex: 1;
+  max-width: 72px;
+  min-width: 0;
   position: relative;
 }
 
@@ -376,7 +378,7 @@
 
 .camp-bottom-btn.attack .camp-bottom-btn-icon {
   color: #fff;
-  font-size: 28px;
+  height: 30px;
   filter: drop-shadow(0 0 6px rgba(255, 200, 100, 0.5));
 }
 
@@ -386,8 +388,10 @@
 }
 
 .camp-bottom-btn-icon {
-  font-size: 24px;
-  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 26px;
   color: #a0cc80;
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
 }
@@ -411,17 +415,6 @@
 }
 
 /* ── Dev indicator ── */
-.dev-indicator {
-  position: absolute;
-  bottom: 12px;
-  left: 12px;
-  font-family: monospace;
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.2);
-  pointer-events: none;
-  z-index: 10;
-}
-
 /* ── Training sheet ── */
 .training-section-label {
   font-family: 'Black Ops One', cursive;
@@ -738,6 +731,133 @@
   cursor: not-allowed;
 }
 
+/* Training soldier chips (horizontal scroll) */
+.training-soldier-chips {
+  display: flex;
+  overflow-x: auto;
+  gap: 8px;
+  padding: 4px 0 8px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.training-soldier-chip {
+  min-width: 80px;
+  max-width: 110px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 2px solid #3a5a3a;
+  border-bottom: 3px solid #1a3a1a;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #2a402a 0%, #1e321e 100%);
+  cursor: pointer;
+  transition: all 0.12s ease;
+  font-family: 'Black Ops One', cursive;
+  flex-shrink: 0;
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.training-soldier-chip:active {
+  transform: scale(0.95) translateY(1px);
+}
+
+.training-soldier-chip.selected {
+  border-color: #00e5ff;
+  background: linear-gradient(180deg, #2a3a40 0%, #1e2e35 100%);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.15), 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.training-soldier-chip.busy {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.training-chip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4CAF50;
+}
+
+.training-soldier-chip.busy .training-chip-dot {
+  background: #ff8844;
+}
+
+.training-soldier-chip.selected .training-chip-dot {
+  background: #00e5ff;
+}
+
+.training-chip-name {
+  font-size: 10px;
+  color: #d0e0c0;
+  letter-spacing: 1px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 80px;
+  text-align: center;
+}
+
+.training-chip-busy {
+  font-size: 7px;
+  color: #ff8844;
+  letter-spacing: 1.5px;
+}
+
+/* Active training slots */
+.training-active-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.training-active-slot-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: rgba(68, 255, 68, 0.06);
+  border: 1px solid rgba(68, 255, 68, 0.15);
+  font-family: 'Black Ops One', cursive;
+  font-size: 10px;
+  color: #44ff44;
+  letter-spacing: 0.5px;
+}
+
+.training-active-slot-stats {
+  margin-left: auto;
+  color: rgba(68, 255, 68, 0.6);
+}
+
+/* Slot indicator (compact strip) */
+.training-slot-indicator {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
+}
+
+.training-slot-indicator-text {
+  font-family: 'Black Ops One', cursive;
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.training-unlock-slot-btn {
+  font-size: 10px !important;
+  letter-spacing: 1.5px !important;
+  padding: 8px 16px !important;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 /* ── Milestone callout ── */
 .milestone-overlay {
   position: fixed;
@@ -978,70 +1098,6 @@
   letter-spacing: 1px;
   float: right;
   text-shadow: 0 0 8px rgba(0, 229, 255, 0.3);
-}
-
-.store-tabs {
-  display: flex;
-  gap: 6px;
-  padding: 0 16px;
-  margin-bottom: 4px;
-}
-
-.store-tab {
-  flex: 1;
-  padding: 10px 4px;
-  border: 2px solid #3a5a3a;
-  border-bottom: 4px solid #2a4a2a;
-  border-radius: var(--radius-md);
-  background: linear-gradient(180deg, #2a3f2a 0%, #1e321e 100%);
-  font-family: 'Black Ops One', cursive;
-  font-size: 9px;
-  color: rgba(255, 255, 255, 0.45);
-  letter-spacing: 1px;
-  cursor: pointer;
-  text-align: center;
-  position: relative;
-  transition: all 0.15s ease;
-  box-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-}
-
-.store-tab:active {
-  transform: scale(0.94) translateY(2px);
-  border-bottom-width: 2px;
-}
-
-.store-tab.active {
-  color: var(--brass-light);
-  border-color: var(--brass-dark);
-  background: linear-gradient(180deg, #3a4a2a 0%, #2a3a1e 100%);
-  box-shadow:
-    0 2px 8px rgba(212, 170, 64, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  text-shadow: 0 0 8px rgba(212, 170, 64, 0.4);
-}
-
-.store-tab.has-badge::after {
-  content: '';
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #ff4444;
-}
-
-.store-tab-dot {
-  display: inline-block;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #44ff44;
-  margin-left: 4px;
-  vertical-align: middle;
 }
 
 /* Store packs grid */
@@ -1406,7 +1462,7 @@
 }
 
 .roster-card-canvas {
-  height: 120px;
+  height: 140px;
   width: 100%;
   position: relative;
   background: linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.4) 100%);
@@ -3573,44 +3629,14 @@
   flex-wrap: wrap;
 }
 
-/* Bigger sort/filter pills */
-
-.roster-sort-pill,
-.roster-filter-pill {
-  padding: 6px 12px;
-  border: 2px solid #3a5a3a;
-  border-bottom: 3px solid #1a3a1a;
-  border-radius: 10px;
-  background: linear-gradient(180deg, #2a402a 0%, #1e321e 100%);
-  color: rgba(200,220,200,0.5);
+/* Sort label */
+.roster-sort-label {
   font-family: 'Black Ops One', cursive;
-  font-size: 10px;
-  letter-spacing: 1.5px;
-  cursor: pointer;
-  transition: all 0.12s ease;
-  box-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: rgba(200,220,200,0.35);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
-
-.roster-sort-pill:active,
-.roster-filter-pill:active {
-  transform: scale(0.94) translateY(1px);
-  border-bottom-width: 2px;
-}
-
-.roster-sort-pill.active,
-.roster-filter-pill.active {
-  background: linear-gradient(180deg, #3a6a3a 0%, #2a5a2a 100%);
-  border-color: #5a9a5a;
-  color: #b0e8b0;
-  box-shadow:
-    0 2px 8px rgba(100, 220, 100, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
-}
-
-/* Old .roster-row styles removed in Sprint 3 card grid rewrite */
 
 /* ── Sprint C: Weapon Picker (Placement) ── */
 .weapon-picker {
@@ -4492,6 +4518,28 @@
   pointer-events: none;
 }
 
+/* Daily timer below compute pill */
+.compute-daily-timer {
+  font-family: 'Black Ops One', cursive;
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  color: rgba(0, 229, 255, 0.45);
+  text-align: center;
+  margin-top: 2px;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.compute-daily-timer:active {
+  transform: scale(0.95);
+}
+
+.compute-daily-timer.unclaimed {
+  color: #ff4444;
+  animation: badgePulse 1.5s ease infinite;
+  text-shadow: 0 0 6px rgba(255, 68, 68, 0.4);
+}
+
 /* ═══════════════════════════════════════════════════════════════
    SPRINT ECONOMY — Compute / Gold Wallet Popups
    ═══════════════════════════════════════════════════════════════ */
@@ -5031,10 +5079,14 @@
   color: #00e5ff;
   border: 1px solid rgba(0, 229, 255, 0.25);
 }
-.store-bal-pill.gold {
-  background: rgba(255, 215, 0, 0.12);
-  color: #ffd700;
-  border: 1px solid rgba(255, 215, 0, 0.25);
+.store-subtitle {
+  font-family: 'Black Ops One', cursive;
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: rgba(255, 255, 255, 0.3);
+  text-align: center;
+  margin-bottom: 12px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 /* ── Chunky card upgrade ── */
@@ -5046,117 +5098,6 @@
   background: linear-gradient(180deg, #4488ff 0%, #2266cc 100%);
   color: #fff;
   box-shadow: 0 2px 6px rgba(68, 136, 255, 0.4);
-}
-
-/* Gold card variants */
-.store-pack-card.gold-card {
-  border-color: rgba(255, 215, 0, 0.35);
-  background: linear-gradient(180deg, #3a3520 0%, #2a2818 100%);
-}
-.store-pack-card.gold-card.featured {
-  border-color: #ffd700;
-  box-shadow: 0 4px 14px rgba(255, 215, 0, 0.2), 0 0 20px rgba(255, 215, 0, 0.08);
-}
-
-.gold-amount {
-  font-size: 24px;
-  color: #ffd700 !important;
-  text-shadow: 0 0 12px rgba(255, 215, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.5) !important;
-}
-
-.gold-badge {
-  background: linear-gradient(180deg, #FFD700 0%, #D4AA40 100%) !important;
-}
-
-/* ── Hero Banner (Featured tab) ── */
-.store-hero-banner {
-  position: relative;
-  padding: 24px 20px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #1a3040, #2a1a40, #1a3040);
-  border: 2px solid rgba(156, 39, 176, 0.4);
-  overflow: hidden;
-  cursor: pointer;
-  margin-bottom: 14px;
-  text-align: center;
-  transition: transform 0.15s;
-  box-shadow:
-    0 6px 20px rgba(0, 0, 0, 0.5),
-    0 0 30px rgba(156, 39, 176, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-}
-.store-hero-banner:active {
-  transform: scale(0.97);
-}
-
-.store-hero-sparkle {
-  position: absolute;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: #fff;
-  top: 20%;
-  animation: heroSparkle 2s ease-in-out infinite;
-  pointer-events: none;
-}
-
-@keyframes heroSparkle {
-  0%, 100% { opacity: 0; transform: translateY(0) scale(0.5); }
-  50%      { opacity: 0.8; transform: translateY(-20px) scale(1.2); }
-}
-
-.store-hero-badge {
-  display: inline-block;
-  font-family: 'Black Ops One', cursive;
-  font-size: 9px;
-  letter-spacing: 2px;
-  color: #1a1a0a;
-  background: linear-gradient(180deg, #FFD700 0%, #D4AA40 100%);
-  padding: 4px 14px;
-  border-radius: 8px;
-  margin-bottom: 8px;
-  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
-}
-
-.store-hero-name {
-  font-family: 'Black Ops One', cursive;
-  font-size: 24px;
-  color: #f0e6d2;
-  letter-spacing: 3px;
-  text-shadow: 0 0 20px rgba(240, 230, 210, 0.3), 0 2px 4px rgba(0, 0, 0, 0.8);
-}
-
-.store-hero-amount {
-  font-family: 'Black Ops One', cursive;
-  font-size: 32px;
-  color: #00e5ff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin: 6px 0;
-  text-shadow: 0 0 16px rgba(0, 229, 255, 0.5);
-}
-
-.store-hero-desc {
-  font-family: 'Inter', sans-serif;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.45);
-  letter-spacing: 0.5px;
-}
-
-.store-hero-price {
-  display: inline-block;
-  font-family: 'Black Ops One', cursive;
-  font-size: 16px;
-  color: #44ff44;
-  margin-top: 10px;
-  padding: 8px 28px;
-  border: 2px solid rgba(68, 255, 68, 0.3);
-  border-bottom: 3px solid rgba(40, 160, 40, 0.4);
-  border-radius: 10px;
-  background: linear-gradient(180deg, rgba(68, 255, 68, 0.12) 0%, rgba(68, 255, 68, 0.04) 100%);
-  text-shadow: 0 0 10px rgba(68, 255, 68, 0.4);
 }
 
 /* ── Starter Card ── */
@@ -5215,128 +5156,6 @@
   padding: 10px 24px !important;
 }
 
-/* ── Quick-buy grid (Featured tab) ── */
-.store-quick-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-}
-
-.store-quick-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 12px 8px;
-  border-radius: 10px;
-  border: 1px solid rgba(0, 229, 255, 0.2);
-  border-bottom: 3px solid rgba(0, 100, 120, 0.4);
-  background: linear-gradient(180deg, rgba(0, 229, 255, 0.08), rgba(0, 229, 255, 0.02));
-  cursor: pointer;
-  transition: transform 0.15s;
-  font-family: 'Black Ops One', cursive;
-}
-.store-quick-card:active { transform: scale(0.95); }
-
-.store-quick-amount {
-  font-size: 14px;
-  color: #00e5ff;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  text-shadow: 0 0 8px rgba(0, 229, 255, 0.3);
-}
-
-.store-quick-price {
-  font-size: 11px;
-  color: #44ff44;
-  text-shadow: 0 0 6px rgba(68, 255, 68, 0.2);
-}
-
-/* ── Bundle cards ── */
-.store-bundles {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.store-bundle-card {
-  display: flex;
-  border-radius: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  border-bottom: 4px solid rgba(0, 0, 0, 0.3);
-  background: linear-gradient(145deg, #1a2838, #0e1a28);
-  overflow: hidden;
-  cursor: pointer;
-  transition: transform 0.15s;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-}
-.store-bundle-card:active { transform: scale(0.97); }
-
-.store-bundle-canvas {
-  width: 100px;
-  min-height: 100px;
-  flex-shrink: 0;
-  background: rgba(0, 0, 0, 0.2);
-}
-
-.store-bundle-info {
-  flex: 1;
-  padding: 12px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.store-bundle-rarity {
-  font-family: 'Black Ops One', cursive;
-  font-size: 8px;
-  letter-spacing: 2px;
-}
-
-.store-bundle-name {
-  font-family: 'Black Ops One', cursive;
-  font-size: 15px;
-  color: #f0e6d2;
-  letter-spacing: 1px;
-}
-
-.store-bundle-tagline {
-  font-family: 'Inter', sans-serif;
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.4);
-}
-
-.store-bundle-contents {
-  display: flex;
-  gap: 10px;
-  margin-top: 4px;
-}
-
-.store-bundle-item {
-  font-family: 'Black Ops One', cursive;
-  font-size: 11px;
-  color: #00e5ff;
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-.store-bundle-item.gold {
-  color: #ffd700;
-}
-
-.store-bundle-price {
-  font-family: 'Black Ops One', cursive;
-  font-size: 13px;
-  color: #44ff44;
-  margin-top: auto;
-  text-shadow: 0 0 8px rgba(68, 255, 68, 0.3);
-}
-
-.store-featured {
-  display: flex;
-  flex-direction: column;
-}
 
 /* ═══════════════════════════════════════════════════════════
    PROGRESSION BREADCRUMB — Sprint 2 (The Hook)
@@ -5345,10 +5164,10 @@
 
 .progression-breadcrumb {
   position: fixed;
-  bottom: 92px;
+  bottom: 100px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 900;
+  z-index: 9;
   display: flex;
   align-items: center;
   gap: 6px;

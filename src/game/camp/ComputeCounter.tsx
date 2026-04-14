@@ -1,8 +1,8 @@
 /**
- * ComputeCounter — compute currency pill with expandable wallet popup.
+ * ComputeCounter — compute currency pill with daily timer and wallet popup.
  *
- * Sprint Economy. Tap the pill to see balance, streak info, next daily timer.
- * Shows pulsing red badge when daily reward is unclaimed.
+ * Sprint 4 polish. Shows daily countdown/CLAIM directly below the pill.
+ * Tapping the timer opens the daily reward popup.
  */
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useCampStore } from '@stores/campStore'
@@ -20,6 +20,7 @@ export function ComputeCounter({ hasUnclaimedDaily }: ComputeCounterProps) {
   const dailyStreak = useCampStore((s) => s.dailyStreak)
   const lastDailyClaimDate = useCampStore((s) => s.lastDailyClaimDate)
   const setStoreSheetOpen = useSceneStore((s) => s.setStoreSheetOpen)
+  const setDailyRewardOpen = useSceneStore((s) => s.setDailyRewardOpen)
 
   const [walletOpen, setWalletOpen] = useState(false)
   const [countdown, setCountdown] = useState('')
@@ -35,6 +36,11 @@ export function ComputeCounter({ hasUnclaimedDaily }: ComputeCounterProps) {
     setWalletOpen(false)
   }, [setStoreSheetOpen])
 
+  const handleDailyTap = useCallback(() => {
+    sfx.buttonTap()
+    setDailyRewardOpen(true)
+  }, [setDailyRewardOpen])
+
   // Click-outside to dismiss
   useEffect(() => {
     if (!walletOpen) return
@@ -47,9 +53,8 @@ export function ComputeCounter({ hasUnclaimedDaily }: ComputeCounterProps) {
     return () => document.removeEventListener('pointerdown', handler)
   }, [walletOpen])
 
-  // Countdown to next daily
+  // Countdown timer (always running, not just when wallet is open)
   useEffect(() => {
-    if (!walletOpen) return
     const update = () => {
       if (!lastDailyClaimDate) {
         setCountdown('NOW')
@@ -70,7 +75,7 @@ export function ComputeCounter({ hasUnclaimedDaily }: ComputeCounterProps) {
     update()
     const interval = setInterval(update, 60000)
     return () => clearInterval(interval)
-  }, [walletOpen, lastDailyClaimDate])
+  }, [lastDailyClaimDate])
 
   return (
     <div className="compute-counter-wrapper" ref={wrapperRef}>
@@ -80,9 +85,15 @@ export function ComputeCounter({ hasUnclaimedDaily }: ComputeCounterProps) {
         color="#00e5ff"
         onPlusClick={handlePlus}
         onTap={handleTap}
+      />
+
+      {/* Daily timer below pill */}
+      <div
+        className={`compute-daily-timer ${hasUnclaimedDaily ? 'unclaimed' : ''}`}
+        onClick={handleDailyTap}
       >
-        {hasUnclaimedDaily && <span className="daily-unclaimed-badge" />}
-      </CurrencyPill>
+        {hasUnclaimedDaily ? 'CLAIM!' : countdown}
+      </div>
 
       {walletOpen && (
         <div className="compute-wallet">

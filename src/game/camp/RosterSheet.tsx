@@ -1,24 +1,21 @@
 /**
  * RosterSheet — 2-column card grid with 3D soldier models.
  *
- * Sprint 3: The Identity. Each card shows a rotating 3D soldier,
- * rank-colored border, name, weapon, XP bar, status indicator.
- * Tap card to open full-screen SoldierSheet detail.
+ * Sprint 4 polish: removed sort/filter buttons, auto-sorts by most trained.
+ * Each card shows a rotating 3D soldier, rank-colored border, name, weapon,
+ * XP bar, status indicator. Tap card to open full-screen SoldierSheet detail.
  */
-import { useState, useCallback, useMemo, useRef } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useCampStore } from '@stores/campStore'
 import { useSceneStore } from '@stores/sceneStore'
 import { RankBadge } from './RankBadge'
-import { getRank, getNextRank, rankIndex } from '@config/ranks'
+import { getRank, getNextRank } from '@config/ranks'
 import { createFlexSoldier, animateFlexSoldier } from '@three/models/flexSoldier'
 import type { SoldierRecord } from '@stores/campStore'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
-
-type SortBy = 'rank' | 'fitness' | 'name'
-type FilterBy = 'all' | 'ready' | 'trained' | 'injured'
 
 const WEAPON_LABELS: Record<string, string> = {
   rifle: 'RIFLE',
@@ -28,36 +25,14 @@ const WEAPON_LABELS: Record<string, string> = {
   tank: 'TANK',
 }
 
-function sortSoldiers(soldiers: SoldierRecord[], sortBy: SortBy): SoldierRecord[] {
-  const sorted = [...soldiers]
-  switch (sortBy) {
-    case 'rank':
-      return sorted.sort((a, b) => {
-        const ri = rankIndex(b.xp ?? 0) - rankIndex(a.xp ?? 0)
-        if (ri !== 0) return ri
-        return (b.xp ?? 0) - (a.xp ?? 0)
-      })
-    case 'fitness':
-      return sorted.sort((a, b) => (b.fitnessScore ?? 0) - (a.fitnessScore ?? 0))
-    case 'name':
-      return sorted.sort((a, b) => a.name.localeCompare(b.name))
-    default:
-      return sorted
-  }
-}
-
-function filterSoldiers(soldiers: SoldierRecord[], filterBy: FilterBy): SoldierRecord[] {
-  const now = Date.now()
-  switch (filterBy) {
-    case 'ready':
-      return soldiers.filter(s => s.trained && !(s.injuredUntil && s.injuredUntil > now))
-    case 'trained':
-      return soldiers.filter(s => s.trained)
-    case 'injured':
-      return soldiers.filter(s => s.injuredUntil && s.injuredUntil > now)
-    default:
-      return soldiers
-  }
+/** Default sort: most trained brains (desc), then XP (desc) */
+function sortByMostTrained(soldiers: SoldierRecord[]): SoldierRecord[] {
+  return [...soldiers].sort((a, b) => {
+    const aBrains = a.trainedBrains ? Object.keys(a.trainedBrains).length : 0
+    const bBrains = b.trainedBrains ? Object.keys(b.trainedBrains).length : 0
+    if (bBrains !== aBrains) return bBrains - aBrains
+    return (b.xp ?? 0) - (a.xp ?? 0)
+  })
 }
 
 /** 3D soldier model for card preview */
@@ -112,7 +87,7 @@ function SoldierCard({
         }}
       >
         <Canvas
-          camera={{ position: [0, 0.8, 2.2], fov: 35 }}
+          camera={{ position: [0, 0.2, 3.6], fov: 40 }}
           gl={{ alpha: true, antialias: true }}
           frameloop="demand"
           style={{ width: '100%', height: '100%' }}
@@ -182,13 +157,7 @@ export function RosterSheet() {
   const soldiers = useCampStore((s) => s.soldiers)
   const gold = useCampStore((s) => s.gold)
 
-  const [sortBy, setSortBy] = useState<SortBy>('rank')
-  const [filterBy, setFilterBy] = useState<FilterBy>('all')
-
-  const displaySoldiers = useMemo(() => {
-    const filtered = filterSoldiers(soldiers, filterBy)
-    return sortSoldiers(filtered, sortBy)
-  }, [soldiers, sortBy, filterBy])
+  const displaySoldiers = useMemo(() => sortByMostTrained(soldiers), [soldiers])
 
   const handleClose = useCallback(() => {
     setRosterSheetOpen(false)
@@ -224,33 +193,13 @@ export function RosterSheet() {
             + RECRUIT NEW SOLDIER
           </button>
 
-          {/* Sort/Filter bar */}
+          {/* Sort indicator */}
           <div className="roster-sort-bar">
-            {(['rank', 'fitness', 'name'] as SortBy[]).map(s => (
-              <button
-                key={s}
-                className={`roster-sort-pill ${sortBy === s ? 'active' : ''}`}
-                onClick={() => { sfx.buttonTap(); setSortBy(s) }}
-              >
-                {s.toUpperCase()}
-              </button>
-            ))}
-            <span style={{ flex: 1 }} />
-            {(['all', 'ready', 'trained', 'injured'] as FilterBy[]).map(f => (
-              <button
-                key={f}
-                className={`roster-filter-pill ${filterBy === f ? 'active' : ''}`}
-                onClick={() => { sfx.buttonTap(); setFilterBy(f) }}
-              >
-                {f.toUpperCase()}
-              </button>
-            ))}
+            <span className="roster-sort-label">MOST TRAINED FIRST</span>
           </div>
 
           {soldiers.length === 0 ? (
             <div className="store-empty">No soldiers recruited yet</div>
-          ) : displaySoldiers.length === 0 ? (
-            <div className="store-empty">No soldiers match filter</div>
           ) : (
             <div className="roster-card-grid">
               {displaySoldiers.map((sol, i) => (

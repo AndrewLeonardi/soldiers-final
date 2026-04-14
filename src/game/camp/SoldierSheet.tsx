@@ -15,6 +15,8 @@ import { getRank, getNextRank, RANKS } from '@config/ranks'
 import { createFlexSoldier, animateFlexSoldier } from '@three/models/flexSoldier'
 import { createDisplayWeapon } from '@three/models/weaponMeshes'
 import type { WeaponType } from '@config/types'
+import { CrossedSwordsIcon } from './icons/CrossedSwordsIcon'
+import { MedicIcon } from './icons/MedicIcon'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
 
@@ -142,7 +144,7 @@ export function SoldierSheet() {
         {/* Hero 3D model */}
         <div className="soldier-hero-canvas" style={isInjured ? { filter: 'saturate(0.4)' } : undefined}>
           <Canvas
-            camera={{ position: [0, 0.8, 2.4], fov: 32 }}
+            camera={{ position: [0, 0.2, 4.0], fov: 40 }}
             gl={{ alpha: true, antialias: true }}
             style={{ width: '100%', height: '100%' }}
           >
@@ -255,11 +257,11 @@ export function SoldierSheet() {
         {/* Action buttons */}
         <div className="soldier-detail-actions">
           <button className="game-btn soldier-action-btn train" onClick={handleTrainNow}>
-            ⚔ {hasLegacy ? 'RE-TRAIN' : 'TRAIN'}
+            <CrossedSwordsIcon size={14} /> {hasLegacy ? 'RE-TRAIN' : 'TRAIN'}
           </button>
           {isInjured && (
             <button className="game-btn soldier-action-btn heal" onClick={handleHeal}>
-              💊 HEAL ({injuredMin}:{String(injuredSec).padStart(2, '0')})
+              <MedicIcon size={14} /> HEAL ({injuredMin}:{String(injuredSec).padStart(2, '0')})
             </button>
           )}
         </div>

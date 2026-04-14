@@ -9,6 +9,9 @@
 import { useCallback, useMemo, useRef, useState, useEffect } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { LockIcon } from './icons/LockIcon'
+import { CrossedSwordsIcon } from './icons/CrossedSwordsIcon'
+import { GoldCoinIcon } from './GoldCoinIcon'
 import { useSceneStore } from '@stores/sceneStore'
 import { useCampStore } from '@stores/campStore'
 import { createDisplayWeapon } from '@three/models/weaponMeshes'
@@ -153,7 +156,7 @@ function ArmoryCard({
       {/* 3D Preview */}
       <div className="armory-card-canvas" style={{ filter: isUnlocked ? 'none' : 'brightness(0.12) saturate(0)' }}>
         <Canvas
-          camera={{ position: [0, 0.15, 1.4], fov: 35 }}
+          camera={{ position: [0, 0.0, 1.8], fov: 38 }}
           gl={{ alpha: true, antialias: true }}
           frameloop="demand"
           style={{ width: '100%', height: '100%' }}
@@ -173,7 +176,7 @@ function ArmoryCard({
       {/* Lock overlay */}
       {!isUnlocked && (
         <div className="armory-card-lock">
-          <span className="armory-lock-icon">🔒</span>
+          <span className="armory-lock-icon"><LockIcon size={18} /></span>
           <span className="armory-lock-text">{item.unlockReq ?? 'LOCKED'}</span>
         </div>
       )}
@@ -189,7 +192,7 @@ function ArmoryCard({
       {/* Cost badge for defenses */}
       {item.cost != null && (
         <div className="armory-card-cost">
-          <span className="armory-cost-icon">🪙</span> {item.cost}
+          <GoldCoinIcon size={12} /> {item.cost}
         </div>
       )}
     </div>
@@ -221,7 +224,7 @@ function ArmoryDetail({
         {/* Big 3D model */}
         <div className="armory-detail-canvas">
           <Canvas
-            camera={{ position: [0, 0.2, 1.8], fov: 35 }}
+            camera={{ position: [0, 0.1, 2.2], fov: 38 }}
             gl={{ alpha: true, antialias: true }}
             style={{ width: '100%', height: '100%' }}
           >
@@ -264,14 +267,14 @@ function ArmoryDetail({
         {/* Defense cost */}
         {item.cost != null && (
           <div className="armory-detail-cost">
-            <span className="armory-cost-icon">🪙</span> {item.cost} GOLD
+            <GoldCoinIcon size={12} /> {item.cost} GOLD
           </div>
         )}
 
         {/* Lock status */}
         {!isUnlocked && (
           <div className="armory-detail-locked">
-            🔒 {item.unlockReq}
+            <LockIcon size={14} /> {item.unlockReq}
           </div>
         )}
 
@@ -361,7 +364,7 @@ export function ArmorySheet() {
             className={`armory-tab${activeTab === tab ? ' active' : ''}`}
             onClick={() => handleTabSwitch(tab)}
           >
-            {tab === 'weapons' ? '⚔ WEAPONS' : tab === 'defenses' ? '🛡 DEFENSES' : '🚀 VEHICLES'}
+            {tab.toUpperCase()}
           </button>
         ))}
       </div>
