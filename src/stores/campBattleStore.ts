@@ -9,7 +9,7 @@
  */
 import { create } from 'zustand'
 import type { CampBattleConfig } from '@config/campBattles'
-import type { WeaponType } from '@config/types'
+import type { WeaponType, ActionVerb } from '@config/types'
 import { DEFENSE_COSTS } from '@config/defenses'
 import type { DefenseType } from '@config/defenses'
 
@@ -44,9 +44,11 @@ export interface BattleUnit {
   soldierId?: string       // campStore soldier ID
   isTrained: boolean
   brainWeights?: number[]  // NN weights if trained
+  actionVerb?: ActionVerb  // pre-battle tactical order
 
   // Enemy-only
   enemyType?: 'infantry' | 'jeep' | 'tank'
+  spawnPosition?: [number, number, number]  // anchor point for defend-position AI
 
   // Combat movement state (enemy AI)
   _combatTimer?: number
@@ -80,6 +82,7 @@ export interface PlacedSoldier {
   name: string
   weapon: WeaponType
   position: [number, number, number]
+  actionVerb: ActionVerb
 }
 
 // ── Placed defense (during placement phase) ──
@@ -133,7 +136,10 @@ interface CampBattleState {
   removePlacedSoldier: (soldierId: string) => void
   selectForPlacement: (soldierId: string | null) => void
 
-  // Actions — defenses
+  // Actions — action verbs
+  setActionVerb: (soldierId: string, verb: ActionVerb) => void
+
+  // Actions — defenses (legacy — player no longer places defenses in new battles)
   placeDefense: (defense: PlacedDefense) => void
   removeDefense: (defenseId: string) => void
   selectDefenseType: (type: DefenseType | null) => void
@@ -181,7 +187,7 @@ export const useCampBattleStore = create<CampBattleState>()((set, get) => ({
       explosions: [],
       battleTime: 0,
       currentWave: 0,
-      wavesSpawned: new Array(config.waves.length).fill(false),
+      wavesSpawned: new Array(config.waves?.length ?? 0).fill(false),
       result: null,
       starsEarned: 0,
       weaponUnlocked: null,
@@ -209,6 +215,14 @@ export const useCampBattleStore = create<CampBattleState>()((set, get) => ({
 
   selectForPlacement: (soldierId) => {
     set({ selectedPlacementId: soldierId, selectedDefenseType: null })
+  },
+
+  setActionVerb: (soldierId, verb) => {
+    set((s) => ({
+      placedSoldiers: s.placedSoldiers.map((p) =>
+        p.soldierId === soldierId ? { ...p, actionVerb: verb } : p
+      ),
+    }))
   },
 
   placeDefense: (defense) => {

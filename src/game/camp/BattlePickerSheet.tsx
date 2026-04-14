@@ -52,9 +52,11 @@ export function BattlePickerSheet() {
   const levelConfig = useMemo(() => generateLevel(currentLevel), [currentLevel])
   const completed = battlesCompleted?.[levelConfig.id]
   const isLocked = currentLevel > maxLevel
-  const totalEnemies = levelConfig.waves.reduce(
-    (sum, w) => sum + w.enemies.reduce((s, e) => s + e.count, 0), 0,
-  )
+  const totalEnemies = levelConfig.enemySoldiers
+    ? levelConfig.enemySoldiers.length
+    : (levelConfig.waves ?? []).reduce(
+        (sum, w) => sum + w.enemies.reduce((s, e) => s + e.count, 0), 0,
+      )
 
   const handleDeploy = useCallback(() => {
     if (isLocked) return
@@ -110,11 +112,15 @@ export function BattlePickerSheet() {
 
         {/* Meta row: waves, enemies, reward */}
         <div className="level-selector-meta">
+          {levelConfig.intelPosition ? (
+            <span className="level-selector-meta-item">CAPTURE INTEL</span>
+          ) : (
+            <span className="level-selector-meta-item">
+              {levelConfig.waves?.length ?? 0} WAVE{(levelConfig.waves?.length ?? 0) > 1 ? 'S' : ''}
+            </span>
+          )}
           <span className="level-selector-meta-item">
-            {levelConfig.waves.length} WAVE{levelConfig.waves.length > 1 ? 'S' : ''}
-          </span>
-          <span className="level-selector-meta-item">
-            {totalEnemies} ENEMIES
+            {totalEnemies} {totalEnemies === 1 ? 'ENEMY' : 'ENEMIES'}
           </span>
           <span className="level-selector-meta-item">
             +{levelConfig.reward} <TokenIcon size={12} />

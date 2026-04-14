@@ -1916,6 +1916,38 @@
   color: #4caf50;
 }
 
+/* ── Action verb selector ── */
+.placement-card-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.placement-verb-row {
+  display: flex;
+  gap: 3px;
+  justify-content: center;
+}
+
+.placement-verb-pill {
+  padding: 2px 6px;
+  font-family: 'Black Ops One', cursive;
+  font-size: 8px;
+  letter-spacing: 1px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1.5px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.placement-verb-pill.active {
+  background: rgba(0, 0, 0, 0.6);
+  font-weight: 900;
+}
+
 .placement-start-btn {
   padding: 14px 0;
   background: linear-gradient(180deg, #e85d4a 0%, #c0392b 100%);
@@ -2064,6 +2096,14 @@
 }
 .battle-hud-allies {
   color: #4caf50;
+}
+.battle-hud-intel-open {
+  color: #ffd740;
+  animation: battle-hud-intel-pulse 0.8s ease-in-out infinite;
+}
+@keyframes battle-hud-intel-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 /* ═══════════════════════════════════════════════════════════════

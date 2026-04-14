@@ -10,6 +10,9 @@ export type Team = 'green' | 'tan'
 
 export type UnitStatus = 'idle' | 'walking' | 'firing' | 'hit' | 'dead'
 
+/** Pre-battle tactical order assigned to each soldier */
+export type ActionVerb = 'charge' | 'advance' | 'flank' | 'hold'
+
 export interface PlacementSlot {
   id: string
   pos: [number, number, number]

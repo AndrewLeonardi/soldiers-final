@@ -57,14 +57,13 @@ export const TUTORIAL_STEPS: TutorialStepDef[] = [
     // Side effect: opens RosterSheet (handled in TutorialGuide)
   },
 
-  // ── Step 3: Guide during recruitment ──
+  // ── Step 3: Wait for recruitment (silent — no tooltip) ──
   {
     id: 'recruit-wait',
-    type: 'hint',
-    title: 'RECRUIT A SOLDIER',
-    body: 'Tap "+ SLOT AVAILABLE" to pick a name.',
+    type: 'wait',
+    title: '',
+    body: '',
     advanceOn: 'action',
-    hintPosition: 'top',
     // Auto-advances when soldiers.length >= 1
   },
 

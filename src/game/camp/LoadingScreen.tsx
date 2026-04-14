@@ -50,9 +50,11 @@ export function LoadingScreen() {
   const theme = getTheme(themeId)
   const icon = THEME_ICONS[themeId] ?? 'X'
 
-  const totalEnemies = battleConfig.waves.reduce(
-    (sum, w) => sum + w.enemies.reduce((s, e) => s + e.count, 0), 0,
-  )
+  const totalEnemies = battleConfig.enemySoldiers
+    ? battleConfig.enemySoldiers.length
+    : (battleConfig.waves ?? []).reduce(
+        (sum, w) => sum + w.enemies.reduce((s, e) => s + e.count, 0), 0,
+      )
 
   const bgStyle = {
     background: `linear-gradient(180deg, ${hexToCSS(theme.bgGradient[0])} 0%, ${hexToCSS(theme.bgGradient[1])} 100%)`,
@@ -79,10 +81,18 @@ export function LoadingScreen() {
             <span className="loading-screen-intel-label">HOSTILES</span>
             <span className="loading-screen-intel-value">{totalEnemies}</span>
           </div>
-          <div className="loading-screen-intel-row">
-            <span className="loading-screen-intel-label">WAVES</span>
-            <span className="loading-screen-intel-value">{battleConfig.waves.length}</span>
-          </div>
+          {(battleConfig.waves?.length ?? 0) > 0 && (
+            <div className="loading-screen-intel-row">
+              <span className="loading-screen-intel-label">WAVES</span>
+              <span className="loading-screen-intel-value">{battleConfig.waves!.length}</span>
+            </div>
+          )}
+          {battleConfig.intelPosition && (
+            <div className="loading-screen-intel-row">
+              <span className="loading-screen-intel-label">OBJECTIVE</span>
+              <span className="loading-screen-intel-value">CAPTURE INTEL</span>
+            </div>
+          )}
           <div className="loading-screen-intel-row">
             <span className="loading-screen-intel-label">MAX SOLDIERS</span>
             <span className="loading-screen-intel-value">{battleConfig.maxSoldiers}</span>

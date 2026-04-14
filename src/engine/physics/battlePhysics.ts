@@ -23,6 +23,29 @@ export const WALL_HIT_RADIUS = 0.3
 // ── Map geometry ──────────────────────────────────────────
 export const FALL_DEATH_Y = -2      // Y threshold for fall-off-table death
 export const LOSE_THRESHOLD = 1.5
+export const INTEL_CAPTURE_RADIUS = 1.5  // distance to Intel for victory
+
+// ── Action verb modifiers ────────────────────────────────
+import type { ActionVerb } from '@config/types'
+
+/** Speed multiplier per verb */
+export const VERB_SPEED: Record<ActionVerb, number> = {
+  charge: 1.5,
+  advance: 1.0,
+  flank: 1.0,
+  hold: 0,
+}
+
+/** Aim error multiplier per verb (lower = more accurate) */
+export const VERB_AIM_SCALE: Record<ActionVerb, number> = {
+  charge: 1.6,
+  advance: 1.0,
+  flank: 1.0,
+  hold: 0.5,
+}
+
+/** Perpendicular blend for FLANK verb (0-1) */
+export const VERB_FLANK_PERP_BIAS = 0.4
 
 /** Computed boundaries derived from a world's ground.size */
 export interface WorldBounds {

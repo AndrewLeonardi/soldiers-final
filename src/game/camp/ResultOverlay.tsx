@@ -139,7 +139,7 @@ export function ResultOverlay() {
       <div className={`result-card ${isVictory ? 'victory' : 'defeat'}`}>
         {/* Title */}
         <h1 className={`result-title ${isVictory ? 'victory' : 'defeat'}`}>
-          {isVictory ? 'VICTORY' : 'DEFEAT'}
+          {isVictory ? 'INTEL CAPTURED' : 'DEFEAT'}
         </h1>
 
         {isVictory && (
@@ -239,7 +239,7 @@ export function ResultOverlay() {
 
         {!isVictory && (
           <div className="result-defeat-section">
-            <div className="result-defeat-msg">Your soldiers have fallen.</div>
+            <div className="result-defeat-msg">Your squad was eliminated before reaching the Intel.</div>
             <div className="result-defeat-hint">TRAIN HARDER AND TRY AGAIN</div>
           </div>
         )}
