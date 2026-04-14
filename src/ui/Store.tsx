@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useGameStore } from '@stores/gameStore'
-import { COMPUTE_PACKS, DAILY_DRIP_INTERVAL_MS } from '@config/store'
+import { TOKEN_PACKS, DAILY_DRIP_INTERVAL_MS } from '@config/store'
 import { MicrochipIcon } from './ToyIcons'
 import * as sfx from '@audio/sfx'
 import '@styles/store.css'
@@ -14,11 +14,11 @@ function formatCountdown(ms: number): string {
 
 export function Store() {
   const showStore = useGameStore((s) => s.showStore)
-  const compute = useGameStore((s) => s.compute)
+  const tokens = useGameStore((s) => s.tokens)
   const closeStore = useGameStore((s) => s.closeStore)
-  const addCompute = useGameStore((s) => s.addCompute)
+  const addTokens = useGameStore((s) => s.addTokens)
   const lastClaimTime = useGameStore((s) => s.lastDailyClaimTime)
-  const claimDailyCompute = useGameStore((s) => s.claimDailyCompute)
+  const claimDailyTokens = useGameStore((s) => s.claimDailyTokens)
 
   // Countdown timer (updates every minute)
   const [, setTick] = useState(0)
@@ -33,17 +33,17 @@ export function Store() {
   const msUntilClaim = Math.max(0, (lastClaimTime + DAILY_DRIP_INTERVAL_MS) - Date.now())
   const canClaim = msUntilClaim <= 0
 
-  const featured = COMPUTE_PACKS.find((p) => p.featured)
-  const regular = COMPUTE_PACKS.filter((p) => !p.featured)
+  const featured = TOKEN_PACKS.find((p) => p.featured)
+  const regular = TOKEN_PACKS.filter((p) => !p.featured)
 
   function handleBuy(packId: string, amount: number) {
-    // Placeholder: directly add compute (real IAP integration later)
-    addCompute(amount)
+    // Placeholder: directly add tokens (real IAP integration later)
+    addTokens(amount)
     sfx.recruitChime()
   }
 
   function handleClaim() {
-    if (claimDailyCompute()) {
+    if (claimDailyTokens()) {
       sfx.recruitChime()
     }
   }
@@ -58,16 +58,16 @@ export function Store() {
               <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
-          <div className="store-title">COMPUTE SUPPLY</div>
+          <div className="store-title">TOKEN SUPPLY</div>
           <div className="store-balance">
             <MicrochipIcon size={18} color="#4ADE80" />
-            <span>{compute}</span>
+            <span>{tokens}</span>
           </div>
         </div>
 
         {/* Featured pack */}
         {featured && (
-          <div className="store-featured" onPointerDown={() => handleBuy(featured.id, featured.compute)}>
+          <div className="store-featured" onPointerDown={() => handleBuy(featured.id, featured.tokens)}>
             <div className="store-best-badge">BEST VALUE</div>
             <div className="store-featured-content">
               <div className="store-featured-icon">
@@ -79,7 +79,7 @@ export function Store() {
                 <div className="store-featured-name">{featured.name}</div>
                 <div className="store-featured-amount">
                   <MicrochipIcon size={16} color="#4ADE80" />
-                  {featured.compute.toLocaleString()}
+                  {featured.tokens.toLocaleString()}
                 </div>
                 <div className="store-featured-desc">{featured.description}</div>
               </div>
@@ -96,14 +96,14 @@ export function Store() {
             <div
               key={pack.id}
               className="store-card"
-              onPointerDown={() => handleBuy(pack.id, pack.compute)}
+              onPointerDown={() => handleBuy(pack.id, pack.tokens)}
             >
               <div className="store-card-icon">
                 <MicrochipIcon size={28} color="#4ADE80" />
               </div>
               <div className="store-card-amount">
                 <MicrochipIcon size={14} color="#4ADE80" />
-                {pack.compute.toLocaleString()}
+                {pack.tokens.toLocaleString()}
               </div>
               <div className="store-card-desc">{pack.description}</div>
               <button className="store-buy-btn">
@@ -115,7 +115,7 @@ export function Store() {
 
         {/* Daily drip section */}
         <div className="store-daily">
-          <div className="store-daily-label">DAILY FREE COMPUTE</div>
+          <div className="store-daily-label">DAILY FREE TOKENS</div>
           {canClaim ? (
             <button
               className="store-claim-btn"
@@ -126,7 +126,7 @@ export function Store() {
             </button>
           ) : (
             <div className="store-countdown">
-              Next free compute in: {formatCountdown(msUntilClaim)}
+              Next free tokens in: {formatCountdown(msUntilClaim)}
             </div>
           )}
         </div>

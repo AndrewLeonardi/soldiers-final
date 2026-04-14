@@ -3,13 +3,11 @@ import { useRosterStore } from '@stores/rosterStore'
 import * as sfx from '@audio/sfx'
 import { WEAPON_DISPLAY } from '@config/roster'
 import { DEFENSE_OPTIONS } from '@config/defenses'
-import { SoldierIcon, GoldCoinIcon } from './ToyIcons'
+import { SoldierIcon } from './ToyIcons'
 import '@styles/game-ui.css'
 
-const SOLDIER_COST = 100
-
 export function PlacementTray() {
-  const gold = useGameStore((s) => s.gold)
+  const tokens = useGameStore((s) => s.tokens)
   const phase = useGameStore((s) => s.phase)
   const level = useGameStore((s) => s.level)
   const startBattle = useGameStore((s) => s.startBattle)
@@ -33,7 +31,6 @@ export function PlacementTray() {
 
       {/* Soldier cards */}
       {soldiers.map((sol) => {
-        const canAfford = gold >= SOLDIER_COST
         const isPlaced = placedSoldierIds.includes(sol.id)
         const isSelected = selectedPlacement === sol.id
         const wpnName = WEAPON_DISPLAY[sol.equippedWeapon].name
@@ -44,10 +41,10 @@ export function PlacementTray() {
         return (
           <div
             key={sol.id}
-            className={`placement-card soldier-card ${isSelected ? 'selected' : ''} ${isPlaced ? 'placed' : ''} ${!canAfford && !isPlaced ? 'disabled' : ''}`}
+            className={`placement-card soldier-card ${isSelected ? 'selected' : ''} ${isPlaced ? 'placed' : ''}`}
             onPointerDown={(e) => {
               e.stopPropagation()
-              if (isPlaced || !canAfford) return
+              if (isPlaced) return
               selectPlacement(isSelected ? null : sol.id)
             }}
           >
@@ -60,9 +57,7 @@ export function PlacementTray() {
               <span className="placement-card-placed">PLACED</span>
             ) : !isTrained ? (
               <span className="placement-card-untrained">UNTRAINED</span>
-            ) : (
-              <span className="placement-card-cost"><span className="coin" />{SOLDIER_COST}</span>
-            )}
+            ) : null}
           </div>
         )
       })}
@@ -72,7 +67,7 @@ export function PlacementTray() {
 
       {/* Defense cards */}
       {DEFENSE_OPTIONS.map((def) => {
-        const canAfford = gold >= def.cost
+        const canAfford = tokens >= def.cost
         const isSelected = selectedPlacement === def.type
         return (
           <div

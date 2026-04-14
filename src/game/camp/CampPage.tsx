@@ -4,12 +4,12 @@
  * Sprint 1-3. This is the route component that wires together:
  *   - Boot screen (Subsystem 4)
  *   - Canvas + Physics + CampScene (Subsystem 1-3)
- *   - CampHUD: bottom bar + compute counter (Sprint 3)
+ *   - CampHUD: bottom bar + token counter (Sprint 3)
  *   - Settings sheet (Subsystem 4)
  *   - Training sheet (Sprint 2)
  *   - Store sheet (Sprint 3)
  *   - Roster sheet (Sprint 3)
- *   - Compute modal (Sprint 3)
+ *   - Token modal (Sprint 3)
  *   - Milestone callout (Sprint 2)
  *   - Ambient audio bed (Subsystem 5)
  */
@@ -23,7 +23,7 @@ import { SettingsSheet } from './SettingsSheet'
 import { MilestoneCallout } from './MilestoneCallout'
 import { StoreSheet } from './StoreSheet'
 import { RosterSheet } from './RosterSheet'
-import { ComputeModal } from './ComputeModal'
+import { TokenModal } from './TokenModal'
 import { BattlePickerSheet } from './BattlePickerSheet'
 import { PlacementOverlay } from './PlacementOverlay'
 import { BattleHUD } from './BattleHUD'
@@ -107,7 +107,7 @@ export default function CampPage() {
         </Suspense>
       </Canvas>
 
-      {/* Daily reward popup — auto-shows after boot or manually from compute counter */}
+      {/* Daily reward popup — auto-shows after boot or manually from token counter */}
       {showDailyPopup && <DailyRewardPopup onClose={() => { setDailyPopupDismissed(true); setDailyRewardOpen(false) }} />}
 
       {/* Observation mode overlays */}
@@ -131,7 +131,7 @@ export default function CampPage() {
       {!isObserving && !isFiringRange && <SoldierSheet />}
       {!isObserving && !isFiringRange && <MedicalSheet />}
       {!isObserving && !isFiringRange && <RecruitSheet />}
-      {!isObserving && !isFiringRange && <ComputeModal />}
+      {!isObserving && !isFiringRange && <TokenModal />}
       {!isObserving && !isFiringRange && <ArmorySheet />}
 
       {/* Tutorial overlay */}

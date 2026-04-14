@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "soldiers-final",
-      "runtimeExecutable": "/Users/andrewleonardi/.nvm/versions/node/v20.20.0/bin/node",
-      "runtimeArgs": ["node_modules/.bin/vite", "--port", "5175"],
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "--port", "5175"],
       "port": 5175
     }
   ]

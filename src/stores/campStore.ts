@@ -5,17 +5,15 @@
  * Split by lifetime: this store is persisted (localStorage), while
  * useSceneStore (ephemeral) handles transient scene state.
  *
- * Version 3 adds:
- *   - Per-soldier trainedBrains (multi-weapon brain storage)
- *   - Global weapon unlocks
- *   - Parallel training slot unlocks
- *   - Daily drip tracking
- *   - Starter pack flag
+ * Version 12 adds:
+ *   - Rename compute → tokens
+ *   - Remove gold currency entirely
+ *   - Soldier slots system (derived from level)
  */
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { WEAPON_UNLOCK_COST, SOLDIER_RECRUIT_COST } from '@config/roster'
-import { DAILY_DRIP_AMOUNT, DAILY_GOLD_DRIP_AMOUNT, DAILY_DRIP_INTERVAL_MS, DAILY_DRIP_MAX_DAYS, DAILY_STREAK_REWARDS, DAILY_STREAK_FORGIVENESS } from '@config/store'
+import { WEAPON_UNLOCK_COST } from '@config/roster'
+import { DAILY_DRIP_AMOUNT, DAILY_DRIP_INTERVAL_MS, DAILY_DRIP_MAX_DAYS, DAILY_STREAK_REWARDS, DAILY_STREAK_FORGIVENESS } from '@config/store'
 import type { WeaponType } from '@config/types'
 
 // ── Soldier record (persisted) ──
@@ -44,19 +42,31 @@ export interface SoldierRecord {
 /** Healing cooldown: 60 seconds */
 const HEAL_DURATION_MS = 60 * 1000
 
+// ── Soldier slot milestones ──
+/** Level → max soldier slots at that level */
+export const SLOT_MILESTONES: Record<number, number> = { 2: 3, 4: 4, 6: 5, 8: 6 }
+
+/** Derive max soldier slots from player level */
+export function getMaxSoldierSlots(battlesCompleted: Record<string, { stars: number }>): number {
+  const level = Object.keys(battlesCompleted).length + 1
+  let slots = 2 // base
+  for (const [lvl, count] of Object.entries(SLOT_MILESTONES)) {
+    if (level >= Number(lvl)) slots = count
+  }
+  return slots
+}
+
 // ── State shape ──
 interface CampState {
   // Economy
-  compute: number
-  gold: number
+  tokens: number
 
   // Global unlocks
   unlockedWeapons: string[]
-  unlockedSlots: number   // 1 = free slot only, 2 = slot 2 unlocked, 3 = all
+  unlockedSlots: number   // 1 = free slot only, 2 = slot 2 unlocked, 3 = all (training slots)
 
   // Daily drip (legacy)
   lastDailyClaimTime: number  // Unix ms, 0 = never claimed
-  lastDailyGoldClaimTime: number  // Unix ms, 0 = never claimed
 
   // Daily streak (Sprint Economy)
   dailyStreak: number            // 0-7, current streak day (0 = never claimed)
@@ -68,6 +78,9 @@ interface CampState {
   // Roster
   soldiers: SoldierRecord[]
 
+  // Soldier slot unlock acknowledgments
+  acknowledgedSlotUnlocks: number[]
+
   // Battle progress
   battlesCompleted: Record<string, { stars: number }>
 
@@ -78,23 +91,19 @@ interface CampState {
   tutorialCompleted: boolean
 
   // Actions — economy
-  setCompute: (value: number) => void
-  addCompute: (delta: number) => void
-  spendCompute: (amount: number) => boolean
-  setGold: (value: number) => void
-  addGold: (delta: number) => void
-  spendGold: (amount: number) => boolean
+  setTokens: (value: number) => void
+  addTokens: (delta: number) => void
+  spendTokens: (amount: number) => boolean
 
   // Actions — unlocks
   unlockWeapon: (weapon: WeaponType) => boolean
   unlockSlot: () => boolean
 
   // Actions — daily drip (legacy)
-  claimDailyCompute: () => { claimed: number; backfillDays: number } | null
-  claimDailyGold: () => { claimed: number; backfillDays: number } | null
+  claimDailyTokens: () => { claimed: number; backfillDays: number } | null
 
   // Actions — daily streak (Sprint Economy)
-  claimDailyReward: () => { compute: number; gold: number; streakDay: number } | null
+  claimDailyReward: () => { tokens: number; streakDay: number } | null
   canClaimDaily: () => boolean
 
   // Actions — recruitment
@@ -106,8 +115,11 @@ interface CampState {
   updateSoldierBrain: (id: string, weapon: string, weights: number[], fitness: number, generations: number) => void
   awardSoldierXP: (id: string, amount: number) => void
 
+  // Actions — slot unlock acknowledgment
+  acknowledgeSlotUnlock: (level: number) => void
+
   // Actions — battles
-  completeBattle: (battleId: string, stars: number, reward: number, weaponReward?: string, goldReward?: number) => void
+  completeBattle: (battleId: string, stars: number, tokenReward: number, weaponReward?: string) => void
 
   // Actions — injury / healing
   injureSoldier: (id: string) => void
@@ -124,15 +136,14 @@ interface CampState {
   completeTutorial: () => void
 }
 
-// Slot unlock costs
-const SLOT_UNLOCK_COSTS: Record<number, number> = { 2: 200, 3: 500 }
+// Training slot unlock costs (these are training-parallelism slots, not roster slots)
+const TRAINING_SLOT_UNLOCK_COSTS: Record<number, number> = { 2: 200, 3: 500 }
 
 export const useCampStore = create<CampState>()(
   persist(
     (set, get) => ({
       // Economy
-      compute: 500,
-      gold: 600,
+      tokens: 500,
 
       // Global unlocks
       unlockedWeapons: ['rifle'],
@@ -140,7 +151,6 @@ export const useCampStore = create<CampState>()(
 
       // Daily drip (legacy)
       lastDailyClaimTime: 0,
-      lastDailyGoldClaimTime: 0,
 
       // Daily streak
       dailyStreak: 0,
@@ -152,6 +162,9 @@ export const useCampStore = create<CampState>()(
       // Roster
       soldiers: [],
 
+      // Slot unlock acknowledgments
+      acknowledgedSlotUnlocks: [],
+
       // Battle progress
       battlesCompleted: {},
 
@@ -162,20 +175,12 @@ export const useCampStore = create<CampState>()(
       tutorialCompleted: false,
 
       // ── Economy actions ──
-      setCompute: (value) => set({ compute: value }),
-      addCompute: (delta) => set((s) => ({ compute: s.compute + delta })),
-      spendCompute: (amount) => {
+      setTokens: (value) => set({ tokens: value }),
+      addTokens: (delta) => set((s) => ({ tokens: s.tokens + delta })),
+      spendTokens: (amount) => {
         const state = get()
-        if (state.compute < amount) return false
-        set({ compute: state.compute - amount })
-        return true
-      },
-      setGold: (value) => set({ gold: value }),
-      addGold: (delta) => set((s) => ({ gold: s.gold + delta })),
-      spendGold: (amount) => {
-        const state = get()
-        if (state.gold < amount) return false
-        set({ gold: state.gold - amount })
+        if (state.tokens < amount) return false
+        set({ tokens: state.tokens - amount })
         return true
       },
 
@@ -184,9 +189,9 @@ export const useCampStore = create<CampState>()(
         const state = get()
         if (state.unlockedWeapons.includes(weapon)) return true // already unlocked
         const cost = WEAPON_UNLOCK_COST[weapon]
-        if (state.compute < cost) return false
+        if (state.tokens < cost) return false
         set({
-          compute: state.compute - cost,
+          tokens: state.tokens - cost,
           unlockedWeapons: [...state.unlockedWeapons, weapon],
         })
         return true
@@ -195,18 +200,18 @@ export const useCampStore = create<CampState>()(
       unlockSlot: () => {
         const state = get()
         const nextSlot = state.unlockedSlots + 1
-        const cost = SLOT_UNLOCK_COSTS[nextSlot]
+        const cost = TRAINING_SLOT_UNLOCK_COSTS[nextSlot]
         if (!cost) return false // already at max (3)
-        if (state.compute < cost) return false
+        if (state.tokens < cost) return false
         set({
-          compute: state.compute - cost,
+          tokens: state.tokens - cost,
           unlockedSlots: nextSlot,
         })
         return true
       },
 
-      // ── Daily drip ──
-      claimDailyCompute: () => {
+      // ── Daily drip (legacy) ──
+      claimDailyTokens: () => {
         const state = get()
         const now = Date.now()
         const last = state.lastDailyClaimTime
@@ -214,7 +219,7 @@ export const useCampStore = create<CampState>()(
         // First ever claim
         if (last === 0) {
           set({
-            compute: state.compute + DAILY_DRIP_AMOUNT,
+            tokens: state.tokens + DAILY_DRIP_AMOUNT,
             lastDailyClaimTime: now,
           })
           return { claimed: DAILY_DRIP_AMOUNT, backfillDays: 0 }
@@ -231,37 +236,8 @@ export const useCampStore = create<CampState>()(
         )
         const totalClaim = DAILY_DRIP_AMOUNT * daysMissed
         set({
-          compute: state.compute + totalClaim,
+          tokens: state.tokens + totalClaim,
           lastDailyClaimTime: now,
-        })
-        return { claimed: totalClaim, backfillDays: daysMissed - 1 }
-      },
-
-      // ── Daily gold drip ──
-      claimDailyGold: () => {
-        const state = get()
-        const now = Date.now()
-        const last = state.lastDailyGoldClaimTime
-
-        if (last === 0) {
-          set({
-            gold: state.gold + DAILY_GOLD_DRIP_AMOUNT,
-            lastDailyGoldClaimTime: now,
-          })
-          return { claimed: DAILY_GOLD_DRIP_AMOUNT, backfillDays: 0 }
-        }
-
-        const elapsed = now - last
-        if (elapsed < DAILY_DRIP_INTERVAL_MS) return null
-
-        const daysMissed = Math.min(
-          Math.floor(elapsed / DAILY_DRIP_INTERVAL_MS),
-          DAILY_DRIP_MAX_DAYS,
-        )
-        const totalClaim = DAILY_GOLD_DRIP_AMOUNT * daysMissed
-        set({
-          gold: state.gold + totalClaim,
-          lastDailyGoldClaimTime: now,
         })
         return { claimed: totalClaim, backfillDays: daysMissed - 1 }
       },
@@ -297,13 +273,12 @@ export const useCampStore = create<CampState>()(
         if (!reward) return null
 
         set({
-          compute: state.compute + reward.compute,
-          gold: state.gold + reward.gold,
+          tokens: state.tokens + reward.tokens,
           dailyStreak: newStreak,
           lastDailyClaimDate: today,
         })
 
-        return { compute: reward.compute, gold: reward.gold, streakDay: newStreak }
+        return { tokens: reward.tokens, streakDay: newStreak }
       },
 
       canClaimDaily: () => {
@@ -311,10 +286,11 @@ export const useCampStore = create<CampState>()(
         return get().lastDailyClaimDate !== today
       },
 
-      // ── Recruitment ──
+      // ── Recruitment (slot-gated, free) ──
       recruitSoldier: (name) => {
         const state = get()
-        if (state.gold < SOLDIER_RECRUIT_COST) return false
+        const maxSlots = getMaxSoldierSlots(state.battlesCompleted)
+        if (state.soldiers.length >= maxSlots) return false
         const newSoldier: SoldierRecord = {
           id: `soldier-${Date.now()}`,
           name,
@@ -323,7 +299,6 @@ export const useCampStore = create<CampState>()(
           xp: 0,
         }
         set({
-          gold: state.gold - SOLDIER_RECRUIT_COST,
           soldiers: [...state.soldiers, newSoldier],
         })
         return true
@@ -360,8 +335,13 @@ export const useCampStore = create<CampState>()(
         ),
       })),
 
+      // ── Slot unlock acknowledgments ──
+      acknowledgeSlotUnlock: (level) => set((s) => ({
+        acknowledgedSlotUnlocks: [...s.acknowledgedSlotUnlocks, level],
+      })),
+
       // ── Battle progress ──
-      completeBattle: (battleId, stars, reward, weaponReward, goldReward) => {
+      completeBattle: (battleId, stars, tokenReward, weaponReward) => {
         const state = get()
         const existing = state.battlesCompleted[battleId]
         // Only update if new star count is higher
@@ -372,8 +352,7 @@ export const useCampStore = create<CampState>()(
           : state.unlockedWeapons
         set({
           battlesCompleted: { ...state.battlesCompleted, [battleId]: { stars: bestStars } },
-          compute: state.compute + reward,
-          gold: state.gold + (goldReward ?? 0),
+          tokens: state.tokens + tokenReward,
           unlockedWeapons: weapons,
         })
       },
@@ -416,11 +395,9 @@ export const useCampStore = create<CampState>()(
     }),
     {
       name: 'toy-soldiers-camp',
-      version: 11,
+      version: 12,
       migrate: (persistedState: any, version: number) => {
         if (version < 2) {
-          // v1 → v2: network shape changed from [6,12,4] to [7,8,4].
-          // Wipe any stale trained weights since they're the wrong size.
           const state = persistedState as any
           if (state.soldiers) {
             state.soldiers = state.soldiers.map((s: any) => ({
@@ -433,7 +410,6 @@ export const useCampStore = create<CampState>()(
           }
         }
         if (version < 3) {
-          // v2 → v3: migrate flat `weights` → `trainedBrains.rifle`
           const state = persistedState as any
           if (state.soldiers) {
             state.soldiers = state.soldiers.map((s: any) => {
@@ -447,19 +423,16 @@ export const useCampStore = create<CampState>()(
               }
             })
           }
-          // Add new top-level fields with defaults
           state.unlockedWeapons = state.unlockedWeapons ?? ['rifle']
           state.unlockedSlots = state.unlockedSlots ?? 1
           state.lastDailyClaimTime = state.lastDailyClaimTime ?? 0
           state.starterPackShown = state.starterPackShown ?? false
         }
         if (version < 4) {
-          // v3 → v4: add battlesCompleted
           const state = persistedState as any
           state.battlesCompleted = state.battlesCompleted ?? {}
         }
         if (version < 5) {
-          // v4 → v5: add injuredUntil to all soldiers
           const state = persistedState as any
           if (state.soldiers) {
             state.soldiers = state.soldiers.map((s: any) => ({
@@ -469,9 +442,6 @@ export const useCampStore = create<CampState>()(
           }
         }
         if (version < 6) {
-          // v5 → v6: Sprint 7 topology change [old] → [10,12,6].
-          // Wipe trainedBrains (incompatible weight count), archive as legacyBrains.
-          // Keep trained:true so player knows soldier WAS trained.
           const state = persistedState as any
           if (state.soldiers) {
             state.soldiers = state.soldiers.map((s: any) => ({
@@ -482,9 +452,6 @@ export const useCampStore = create<CampState>()(
           }
         }
         if (version < 7) {
-          // v6 → v7: Weapon progression overhaul.
-          // Soldiers start untrained — wipe all brains, reset weapon to rifle,
-          // clear battle progress, reset weapon unlocks to rifle-only.
           const state = persistedState as any
           if (state.soldiers) {
             state.soldiers = state.soldiers.map((s: any) => ({
@@ -501,9 +468,6 @@ export const useCampStore = create<CampState>()(
           state.battlesCompleted = {}
         }
         if (version < 8) {
-          // v7 → v8: Gold economy + recruitment.
-          // Give existing players 600 starter gold (enough for 3 recruits).
-          // Clear soldiers — they must now be recruited with gold.
           const state = persistedState as any
           state.gold = 600
           state.soldiers = []
@@ -512,8 +476,6 @@ export const useCampStore = create<CampState>()(
           state.unlockedWeapons = ['rifle']
         }
         if (version < 9) {
-          // v8 → v9: Soldier XP + rank system.
-          // Add xp:0 to all existing soldiers.
           const state = persistedState as any
           if (state.soldiers) {
             state.soldiers = state.soldiers.map((s: any) => ({
@@ -523,17 +485,23 @@ export const useCampStore = create<CampState>()(
           }
         }
         if (version < 10) {
-          // v9 → v10: Tutorial system.
-          // Existing players have already played — skip tutorial.
           const state = persistedState as any
           state.tutorialCompleted = state.tutorialCompleted ?? true
         }
         if (version < 11) {
-          // v10 → v11: Daily streak system (Sprint Economy).
-          // Initialize streak fields. Old daily drip fields preserved but unused.
           const state = persistedState as any
           state.dailyStreak = 0
           state.lastDailyClaimDate = ''
+        }
+        if (version < 12) {
+          // v11 → v12: Rename compute → tokens, remove gold entirely.
+          // Convert remaining gold to bonus tokens at 4:1 ratio.
+          const state = persistedState as any
+          state.tokens = (state.compute ?? 500) + Math.floor((state.gold ?? 0) / 4)
+          delete state.compute
+          delete state.gold
+          delete state.lastDailyGoldClaimTime
+          state.acknowledgedSlotUnlocks = []
         }
         return persistedState as CampState
       },

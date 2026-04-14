@@ -3,8 +3,7 @@ import { useRosterStore } from './rosterStore'
 import { useGameStore } from './gameStore'
 
 export type TutorialStep =
-  | 'welcome-gold'
-  | 'welcome-compute'
+  | 'welcome-tokens'
   | 'recruit'
   | 'tap-soldier'
   | 'tap-rocket'
@@ -36,16 +35,16 @@ interface TutorialState {
 }
 
 export const useTutorialStore = create<TutorialState>((set, get) => ({
-  step: 'welcome-gold',
+  step: 'welcome-tokens',
   active: false,
   completed: isCompleted(),
 
   startTutorial: () => {
     // Always start fresh — tutorial is short enough to restart
     useRosterStore.setState({ soldiers: [], selectedSoldierId: '', detailSoldierId: null })
-    useGameStore.setState({ gold: 0, compute: 0 })
+    useGameStore.setState({ tokens: 0 })
 
-    set({ step: 'welcome-gold', active: true })
+    set({ step: 'welcome-tokens', active: true })
   },
 
   advanceTo: (step) => {

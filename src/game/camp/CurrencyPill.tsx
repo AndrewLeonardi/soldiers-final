@@ -1,10 +1,10 @@
 /**
  * CurrencyPill — generic reusable currency display pill.
  *
- * Sprint A. Extracted tween animation pattern from ComputeCounter.
+ * Sprint A. Extracted tween animation pattern from TokenCounter.
  * Shows: icon + animated number + optional green "+" button.
  *
- * Used by both ComputeCounter and GoldCounter.
+ * Used by TokenCounter.
  */
 import { useRef, useEffect, useState, type ReactNode } from 'react'
 import '@styles/camp-ui.css'

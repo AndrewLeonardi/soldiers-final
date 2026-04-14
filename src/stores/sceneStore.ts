@@ -27,7 +27,7 @@ interface SceneState {
   trainingSheetOpen: boolean
   storeSheetOpen: boolean
   rosterSheetOpen: boolean
-  computeModalOpen: boolean
+  tokenModalOpen: boolean
   medicalSheetOpen: boolean
   recruitSheetOpen: boolean
 
@@ -68,7 +68,7 @@ interface SceneState {
   setTrainingSheetOpen: (open: boolean) => void
   setStoreSheetOpen: (open: boolean) => void
   setRosterSheetOpen: (open: boolean) => void
-  setComputeModalOpen: (open: boolean) => void
+  setTokenModalOpen: (open: boolean) => void
   setMedicalSheetOpen: (open: boolean) => void
   setRecruitSheetOpen: (open: boolean) => void
   setSoldierSheetId: (id: string | null) => void
@@ -95,7 +95,7 @@ export const useSceneStore = create<SceneState>()((set) => ({
   trainingSheetOpen: false,
   storeSheetOpen: false,
   rosterSheetOpen: false,
-  computeModalOpen: false,
+  tokenModalOpen: false,
   medicalSheetOpen: false,
   recruitSheetOpen: false,
 
@@ -136,7 +136,7 @@ export const useSceneStore = create<SceneState>()((set) => ({
   setTrainingSheetOpen: (open) => set({ trainingSheetOpen: open }),
   setStoreSheetOpen: (open) => set({ storeSheetOpen: open }),
   setRosterSheetOpen: (open) => set({ rosterSheetOpen: open }),
-  setComputeModalOpen: (open) => set({ computeModalOpen: open }),
+  setTokenModalOpen: (open) => set({ tokenModalOpen: open }),
   setMedicalSheetOpen: (open) => set({ medicalSheetOpen: open }),
   setRecruitSheetOpen: (open) => set({ recruitSheetOpen: open }),
   setSoldierSheetId: (id) => set({ soldierSheetId: id }),

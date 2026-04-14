@@ -2,7 +2,7 @@
  * Training Selection Sheet — the gamified bottom-sheet the player sees when
  * tapping the Training Grounds in VIEW mode.
  *
- * This is the primary compute-spend surface of the game. Every button is
+ * This is the primary token-spend surface of the game. Every button is
  * beveled. No flat CSS. No web-app patterns. Think mobile game store sheet.
  *
  * Layout: full-width backdrop + sheet slides in from bottom.
@@ -328,28 +328,28 @@
     0 2px 0 rgba(0, 0, 0, 0.35);
 }
 
-.tsheet__compute-label {
+.tsheet__token-label {
   font-size: var(--fs-xs);
   letter-spacing: 2px;
   color: var(--text-muted);
   text-transform: uppercase;
 }
 
-.tsheet__compute-balance {
+.tsheet__token-balance {
   font-size: var(--fs-lg);
   letter-spacing: 1.5px;
   color: var(--gold-text);
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
 }
 
-.tsheet__compute-balance--low {
+.tsheet__token-balance--low {
   color: #ef4444;
   text-shadow:
     0 0 8px rgba(239, 68, 68, 0.5),
     0 1px 0 rgba(0, 0, 0, 0.5);
 }
 
-.tsheet__compute-cost-preview {
+.tsheet__token-cost-preview {
   font-size: var(--fs-xs);
   letter-spacing: 1px;
   color: var(--text-muted);

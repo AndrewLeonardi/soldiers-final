@@ -3,7 +3,7 @@
  *
  * Sprint 2→3. Manages up to 3 parallel training slots, each with its
  * own commit→train→graduate flow:
- *   1. Player picks a slot, commits a soldier + weapon + compute tier
+ *   1. Player picks a slot, commits a soldier + weapon + token tier
  *   2. GA population spawns, sim ticks every frame
  *   3. Timer counts down, milestones fire, fitness climbs
  *   4. Graduation: best weights written to campStore soldier record
@@ -20,7 +20,7 @@ import type { SimState, SimConfig } from '@engine/ml/simulationRunner'
 import { useCampStore } from './campStore'
 import { XP_REWARDS } from '@config/ranks'
 import {
-  TIME_PACKAGES,
+  TIME_PACKAGES, TUTORIAL_TIME_PACKAGE,
   SIM_SPEED_OPTIONS,
   TRAINING_POP_SIZE,
   TRAINING_ELITE_COUNT,
@@ -70,8 +70,8 @@ export interface TrainingSlot {
   slotWeapon: string | null
   timePackageId: string
   simSpeed: number
-  computeTotal: number
-  computeBurned: number
+  tokenTotal: number
+  tokenBurned: number
 
   generation: number
   bestFitness: number
@@ -107,8 +107,8 @@ function createEmptySlot(): TrainingSlot {
     slotWeapon: null,
     timePackageId: '',
     simSpeed: 1,
-    computeTotal: 0,
-    computeBurned: 0,
+    tokenTotal: 0,
+    tokenBurned: 0,
     generation: 0,
     bestFitness: 0,
     bestWeights: [],
@@ -162,8 +162,8 @@ interface CampTrainingState {
   slotWeapon: string | null
   timePackageId: string
   simSpeed: number
-  computeTotal: number
-  computeBurned: number
+  tokenTotal: number
+  tokenBurned: number
   generation: number
   bestFitness: number
   bestWeights: number[]
@@ -202,8 +202,8 @@ export const useCampTrainingStore = create<CampTrainingState>()((set, get) => {
       slotWeapon: slot0.slotWeapon,
       timePackageId: slot0.timePackageId,
       simSpeed: slot0.simSpeed,
-      computeTotal: slot0.computeTotal,
-      computeBurned: slot0.computeBurned,
+      tokenTotal: slot0.tokenTotal,
+      tokenBurned: slot0.tokenBurned,
       generation: slot0.generation,
       bestFitness: slot0.bestFitness,
       bestWeights: slot0.bestWeights,
@@ -237,8 +237,8 @@ export const useCampTrainingStore = create<CampTrainingState>()((set, get) => {
     slotWeapon: null,
     timePackageId: '',
     simSpeed: 1,
-    computeTotal: 0,
-    computeBurned: 0,
+    tokenTotal: 0,
+    tokenBurned: 0,
     generation: 0,
     bestFitness: 0,
     bestWeights: [],
@@ -273,11 +273,13 @@ export const useCampTrainingStore = create<CampTrainingState>()((set, get) => {
         return false
       }
 
-      const pkg = TIME_PACKAGES.find(p => p.id === timePackageId)
+      const pkg = timePackageId === 'tutorial'
+        ? TUTORIAL_TIME_PACKAGE
+        : TIME_PACKAGES.find(p => p.id === timePackageId)
       if (!pkg) return false
 
-      const cost = pkg.compute
-      const spent = useCampStore.getState().spendCompute(cost)
+      const cost = pkg.tokens
+      const spent = useCampStore.getState().spendTokens(cost)
       if (!spent) return false
 
       // Use per-weapon NN shape
@@ -315,8 +317,8 @@ export const useCampTrainingStore = create<CampTrainingState>()((set, get) => {
         slotWeapon: weapon,
         timePackageId,
         simSpeed,
-        computeTotal: cost,
-        computeBurned: 0,
+        tokenTotal: cost,
+        tokenBurned: 0,
         generation: 0,
         bestFitness: 0,
         bestWeights: [],
@@ -357,11 +359,11 @@ export const useCampTrainingStore = create<CampTrainingState>()((set, get) => {
         // Advance wall-clock timer
         const newElapsed = slot.timerElapsed + dt
         if (newElapsed >= slot.timerTotal) {
-          return { ...slot, timerElapsed: slot.timerTotal, computeBurned: slot.computeTotal, trainingPhase: 'graduated' as const }
+          return { ...slot, timerElapsed: slot.timerTotal, tokenBurned: slot.tokenTotal, trainingPhase: 'graduated' as const }
         }
 
-        // Compute burn: proportional to elapsed time (taxi meter)
-        const newComputeBurned = Math.min(slot.computeTotal, (newElapsed / slot.timerTotal) * slot.computeTotal)
+        // Token burn: proportional to elapsed time (taxi meter)
+        const newTokenBurned = Math.min(slot.tokenTotal, (newElapsed / slot.timerTotal) * slot.tokenTotal)
 
         // Run sim ticks — simSpeed is visual only, tutorialSpeedBoost accelerates during tutorial
         const stepsPerFrame = Math.max(1, Math.ceil(slot.simSpeed * 0.5 * state.tutorialSpeedBoost))
@@ -460,7 +462,7 @@ export const useCampTrainingStore = create<CampTrainingState>()((set, get) => {
                 ...slot,
                 trainingPhase: 'graduated' as const,
                 timerElapsed: newElapsed,
-                computeBurned: newComputeBurned,
+                tokenBurned: newTokenBurned,
                 generation, population, fitnesses, bestFitness, bestWeights,
                 fitnessHistory, simStates, totalHits, totalKills, bestStreak,
                 milestones, activeMilestone,
@@ -491,7 +493,7 @@ export const useCampTrainingStore = create<CampTrainingState>()((set, get) => {
         return {
           ...slot,
           timerElapsed: newElapsed,
-          computeBurned: newComputeBurned,
+          tokenBurned: newTokenBurned,
           generation, population, fitnesses, bestFitness, bestWeights,
           fitnessHistory, simStates, totalHits, totalKills, bestStreak,
           milestones, activeMilestone, ghostSnapshots, championIndex,
@@ -510,8 +512,8 @@ export const useCampTrainingStore = create<CampTrainingState>()((set, get) => {
         slotWeapon: slot0.slotWeapon,
         timePackageId: slot0.timePackageId,
         simSpeed: slot0.simSpeed,
-        computeTotal: slot0.computeTotal,
-        computeBurned: slot0.computeBurned,
+        tokenTotal: slot0.tokenTotal,
+        tokenBurned: slot0.tokenBurned,
         generation: slot0.generation,
         bestFitness: slot0.bestFitness,
         bestWeights: slot0.bestWeights,

@@ -2,9 +2,9 @@
  * TrainingSelectionSheet — the gamified bottom-sheet for assigning soldiers
  * to the Training Grounds and choosing a training scenario.
  *
- * This is the primary compute-spend surface in the game. The business model
+ * This is the primary token-spend surface in the game. The business model
  * lives here: players choose a soldier, pick a weapon training type, and
- * confirm. Each deploy charges compute from the player's balance.
+ * confirm. Each deploy charges tokens from the player's balance.
  *
  * Opens when the player taps the Training Grounds building in VIEW mode
  * while no training is running (openTrainingSheet in the training store).
@@ -12,8 +12,8 @@
  * Flow:
  *   1. Player selects a soldier from their roster
  *   2. Player selects a training type (Rocket / Grenade / Machine Gun / Tank)
- *   3. Compute cost is shown; balance turns red if insufficient
- *   4. DEPLOY button activates → charges compute, starts the GA run,
+ *   3. Token cost is shown; balance turns red if insufficient
+ *   4. DEPLOY button activates → charges tokens, starts the GA run,
  *      closes the sheet, and training becomes visible on the base
  *
  * Design rules (per plan.md UX non-negotiables):
@@ -67,14 +67,14 @@ export function TrainingSelectionSheet() {
   const deployTraining = useTrainingStore.getState().deployTraining
 
   const soldiers = useRosterStore((s) => s.soldiers)
-  const compute = useGameStore((s) => s.compute)
+  const compute = useGameStore((s) => s.tokens)
 
   const [selectedSoldierId, setSelectedSoldierId] = useState<string | null>(null)
   const [selectedWeapon, setSelectedWeapon] = useState<WeaponType | null>(null)
 
-  const cost = selectedWeapon ? (WEAPON_TRAINING[selectedWeapon]?.computeCost ?? 0) : 0
-  const hasEnoughCompute = compute >= cost
-  const canDeploy = selectedSoldierId !== null && selectedWeapon !== null && hasEnoughCompute
+  const cost = selectedWeapon ? (WEAPON_TRAINING[selectedWeapon]?.tokenCost ?? 0) : 0
+  const hasEnoughTokens = compute >= cost
+  const canDeploy = selectedSoldierId !== null && selectedWeapon !== null && hasEnoughTokens
 
   const handleDeploy = () => {
     if (!selectedSoldierId || !selectedWeapon) return
@@ -87,7 +87,7 @@ export function TrainingSelectionSheet() {
   // Deploy button label encodes priority: soldier first, then weapon, then compute
   let deployLabel = 'SELECT SOLDIER & TRAINING'
   if (selectedSoldierId && !selectedWeapon) deployLabel = 'SELECT TRAINING TYPE'
-  else if (selectedSoldierId && selectedWeapon && !hasEnoughCompute) deployLabel = 'NOT ENOUGH COMPUTE'
+  else if (selectedSoldierId && selectedWeapon && !hasEnoughTokens) deployLabel = 'NOT ENOUGH TOKENS'
   else if (canDeploy) deployLabel = 'DEPLOY TO TRAINING'
 
   return (
@@ -174,7 +174,7 @@ export function TrainingSelectionSheet() {
                   <div className="tsheet__weapon-body">
                     <span className="tsheet__weapon-name">{display.name}</span>
                     <span className="tsheet__weapon-desc">{cardConfig.desc}</span>
-                    <span className="tsheet__weapon-cost">{config.computeCost} CP</span>
+                    <span className="tsheet__weapon-cost">{config.tokenCost} CP</span>
                   </div>
                 </button>
               )
@@ -184,14 +184,14 @@ export function TrainingSelectionSheet() {
 
         {/* ── Compute balance ── */}
         <div className="tsheet__compute">
-          <span className="tsheet__compute-label">Compute</span>
+          <span className="tsheet__compute-label">Tokens</span>
           <div style={{ textAlign: 'right' }}>
             {selectedWeapon && cost > 0 && (
               <div className="tsheet__compute-cost-preview">
                 Cost: {cost} CP
               </div>
             )}
-            <span className={`tsheet__compute-balance${!hasEnoughCompute && cost > 0 ? ' tsheet__compute-balance--low' : ''}`}>
+            <span className={`tsheet__compute-balance${!hasEnoughTokens && cost > 0 ? ' tsheet__compute-balance--low' : ''}`}>
               {compute} CP
             </span>
           </div>

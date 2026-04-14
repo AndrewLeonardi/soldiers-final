@@ -37,7 +37,7 @@ export function TrainingCampBuilding() {
   const anySheetOpen = useSceneStore((s) =>
     s.storeSheetOpen || s.rosterSheetOpen ||
     s.soldierSheetId !== null || s.medicalSheetOpen || s.dailyRewardOpen ||
-    s.recruitSheetOpen || s.armorySheetOpen || s.computeModalOpen
+    s.recruitSheetOpen || s.armorySheetOpen || s.tokenModalOpen
   )
   const pointerDownPos = useRef<{ x: number; y: number } | null>(null)
   const flagRef = useRef<THREE.Mesh>(null!)

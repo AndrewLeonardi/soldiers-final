@@ -54,7 +54,7 @@ export interface EventMap {
   // that answer "did players actually feel the training moment land?"
   training_slot_seeded: { slotId: string; soldierId: string; weapon: WeaponType }
   training_slot_configured: { slotId: string; soldierId: string; weapon: WeaponType }
-  training_deployed: { slotId: string; soldierId: string; weapon: WeaponType; computeCost: number }
+  training_deployed: { slotId: string; soldierId: string; weapon: WeaponType; tokenCost: number }
   training_observe_started: { slotId: string; soldierId: string; weapon: WeaponType }
   training_observe_stopped: { slotId: string }
   training_run_started: { slotId: string; weapon: WeaponType; seeded: boolean }

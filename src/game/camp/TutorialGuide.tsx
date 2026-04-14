@@ -1,16 +1,16 @@
 /**
- * TutorialGuide — camp tutorial overlay system (v4 — polish pass).
+ * TutorialGuide — camp tutorial overlay system (v5 — simplified onboarding).
  *
- * Sprint D. Modeled on /play's proven TutorialOverlay:
- *   - Separate gold & compute modals with icon circles + animated counters
- *   - Action-modal pattern: button opens real UI, wait step watches for completion
- *   - Hints positioned to avoid covering sheet content
- *   - Sound design: modalAppear, stepAdvance, completionFanfare
- *   - Completion celebration: 3 spinning gold stars
- *   - Training speed boost: 4x GA during tutorial observation
- *   - Completion reward: bonus gold + compute
+ * Sprint E. 8-step flow:
+ *   welcome → claim tokens → recruit → recruit-wait → train (auto) →
+ *   training-active → unlock-weapons → complete
  *
- * 9 steps: welcome → gold → compute → recruit → recruit-wait → train → start → done → complete
+ * Key changes from v4:
+ *   - No gold references anywhere
+ *   - Token chest modal before training (claim daily reward)
+ *   - Training auto-commits (rifle, 15s, 30 tokens) — no config required
+ *   - Unlock-weapons modal explains progression hook
+ *   - 4x GA speed boost during training observation
  */
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useSceneStore } from '@stores/sceneStore'
@@ -18,8 +18,8 @@ import { useCampStore } from '@stores/campStore'
 import { useCampTrainingStore } from '@stores/campTrainingStore'
 import { TUTORIAL_STEPS } from '@config/tutorialSteps'
 import type { TutorialStepDef } from '@config/tutorialSteps'
-import { GoldCoinIcon } from './GoldCoinIcon'
 import { StarIcon } from '@ui/ToyIcons'
+import { TokenIcon } from './TokenIcon'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
 
@@ -30,7 +30,6 @@ function useAutoAdvance(step: TutorialStepDef | undefined) {
 
   const soldierCount = useCampStore((s) => s.soldiers.length)
   const observingSlotIndex = useSceneStore((s) => s.observingSlotIndex)
-  const battlePhase = useSceneStore((s) => s.battlePhase)
 
   useEffect(() => {
     if (!step || step.advanceOn !== 'action') return
@@ -40,15 +39,8 @@ function useAutoAdvance(step: TutorialStepDef | undefined) {
       case 'recruit-wait':
         shouldAdvance = soldierCount >= 1
         break
-      case 'start-training':
-        shouldAdvance = observingSlotIndex !== null
-        break
-      case 'watching-training':
-        // Advance when user exits observation (back to camp view)
+      case 'training-active':
         shouldAdvance = observingSlotIndex === null
-        break
-      case 'training-done':
-        shouldAdvance = battlePhase === 'picking'
         break
     }
 
@@ -58,31 +50,25 @@ function useAutoAdvance(step: TutorialStepDef | undefined) {
       }, 400)
       return () => clearTimeout(timer)
     }
-  }, [step, soldierCount, observingSlotIndex, battlePhase, tutorialStep, setTutorialStep])
+  }, [step, soldierCount, observingSlotIndex, tutorialStep, setTutorialStep])
 }
 
-// ── Step-entry sound effect (matches /play's sound integration) ──
+// ── Step-entry sound effects ──
 function useStepSounds(step: TutorialStepDef | undefined) {
   useEffect(() => {
     if (!step) return
     if (step.type === 'wait') return
 
-    if (step.id === 'explain-gold' || step.id === 'explain-compute') {
+    if (step.id === 'claim-tokens') {
       sfx.modalAppear()
     } else if (step.id === 'complete') {
       sfx.completionFanfare()
     } else if (step.id === 'recruit-wait') {
-      // Roster just opened — play recruit chime
       sfx.recruitChime()
-    } else if (step.id === 'watching-training') {
-      // Entered observation — subtle step sound
+    } else if (step.id === 'training-active') {
       sfx.stepAdvance()
-    } else if (step.id === 'training-done') {
-      // Back at camp after training — play graduation sound
+    } else if (step.id === 'unlock-weapons') {
       sfx.graduationFanfare()
-    } else if (step.id === 'mission-briefing') {
-      // Battle mission briefing — play deploy horn
-      sfx.deployHorn()
     } else {
       sfx.stepAdvance()
     }
@@ -92,7 +78,7 @@ function useStepSounds(step: TutorialStepDef | undefined) {
 // ── Training speed boost during tutorial ──
 function useTutorialSpeedBoost(step: TutorialStepDef | undefined) {
   useEffect(() => {
-    if (step?.id === 'start-training' || step?.id === 'watching-training') {
+    if (step?.id === 'training-active') {
       useCampTrainingStore.getState().setTutorialSpeedBoost(4)
       return () => {
         useCampTrainingStore.getState().setTutorialSpeedBoost(1)
@@ -101,8 +87,8 @@ function useTutorialSpeedBoost(step: TutorialStepDef | undefined) {
   }, [step?.id])
 }
 
-// ── Animated counter (matches /play's AnimatedCounter) ──
-function AnimatedCounter({ target, variant }: { target: number; variant: 'gold' | 'compute' }) {
+// ── Animated counter ──
+function AnimatedCounter({ target }: { target: number }) {
   const [value, setValue] = useState(0)
   const startTime = useRef(0)
 
@@ -120,14 +106,14 @@ function AnimatedCounter({ target, variant }: { target: number; variant: 'gold' 
   }, [target])
 
   return (
-    <div className={`tutorial-counter tutorial-counter-${variant}`}>
-      {value}
+    <div className="tutorial-counter tutorial-counter-tokens">
+      <TokenIcon size={20} /> {value}
     </div>
   )
 }
 
-// ── Compute chip icon (inline SVG, matches /play's MicrochipIcon) ──
-function ComputeChipIcon({ size = 44 }: { size?: number }) {
+// ── Token chip icon (inline SVG) ──
+function TokenChipIcon({ size = 44 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="white">
       <rect x="6" y="6" width="12" height="12" rx="1.5" />
@@ -149,78 +135,32 @@ function ComputeChipIcon({ size = 44 }: { size?: number }) {
   )
 }
 
-// ── Gold modal ──
-function GoldModal({ onNext }: { onNext: () => void }) {
-  return (
-    <div className="tutorial-backdrop" onClick={(e) => e.stopPropagation()}>
-      <div className="tutorial-card tutorial-card-gold" onClick={(e) => e.stopPropagation()}>
-        <div className="tutorial-icon tutorial-icon-gold">
-          <GoldCoinIcon size={44} />
-        </div>
-        <div className="tutorial-card-title tutorial-title-gold">This is Gold</div>
-        <div className="tutorial-card-body">
-          <p><strong className="tutorial-strong-gold">Gold</strong> recruits soldiers for your squad.</p>
-          <p>Each soldier costs 200 gold.</p>
-        </div>
-        <AnimatedCounter target={600} variant="gold" />
-        <button className="tutorial-card-btn tutorial-btn-gold" onClick={onNext}>
-          CONTINUE
-        </button>
-      </div>
-    </div>
-  )
-}
+// ── Token chest modal — claim daily tokens ──
+function TokenChestModal({ onNext }: { onNext: () => void }) {
+  const tokens = useCampStore((s) => s.tokens)
 
-// ── Compute modal ──
-function ComputeModal({ onNext }: { onNext: () => void }) {
   return (
     <div className="tutorial-backdrop" onClick={(e) => e.stopPropagation()}>
       <div className="tutorial-card tutorial-card-compute" onClick={(e) => e.stopPropagation()}>
         <div className="tutorial-icon tutorial-icon-compute">
-          <ComputeChipIcon size={44} />
+          <TokenChipIcon size={44} />
         </div>
-        <div className="tutorial-card-title tutorial-title-compute">This is Compute</div>
+        <div className="tutorial-card-title tutorial-title-compute">YOUR TOKENS</div>
         <div className="tutorial-card-body">
-          <p><strong className="tutorial-strong-compute">Compute</strong> trains your soldiers' brains.</p>
-          <p>It powers real neural network evolution. It's rare — use it wisely.</p>
+          <p><strong className="tutorial-strong-compute">Tokens</strong> power everything — training, upgrades, unlocks.</p>
+          <p>Claim your daily tokens to get started.</p>
         </div>
-        <AnimatedCounter target={500} variant="compute" />
+        <AnimatedCounter target={tokens} />
         <button className="tutorial-card-btn tutorial-btn-compute" onClick={onNext}>
-          CONTINUE
+          CLAIM TOKENS
         </button>
       </div>
     </div>
   )
 }
 
-// ── Mission briefing modal (briefcase icon + battle explanation) ──
-function MissionBriefingModal({ step, onNext }: { step: TutorialStepDef; onNext: () => void }) {
-  return (
-    <div className="tutorial-backdrop" onClick={(e) => e.stopPropagation()}>
-      <div className="tutorial-card tutorial-card-mission" onClick={(e) => e.stopPropagation()}>
-        <div className="tutorial-icon tutorial-icon-mission">
-          <svg width={44} height={44} viewBox="0 0 24 24" fill="#FFD700">
-            <rect x="3" y="7" width="18" height="13" rx="2" />
-            <rect x="8" y="4" width="8" height="5" rx="1" fill="none" stroke="#FFD700" strokeWidth="2" />
-            <circle cx="12" cy="14" r="2" fill="#1a1a2e" />
-          </svg>
-        </div>
-        <div className="tutorial-card-title tutorial-title-mission">{step.title}</div>
-        <div className="tutorial-card-body">
-          {step.body.split('\n').map((line, i) => (
-            <p key={i}>{line || '\u00A0'}</p>
-          ))}
-        </div>
-        <button className="tutorial-card-btn tutorial-btn-mission" onClick={onNext}>
-          {step.buttonText ?? 'CONTINUE'}
-        </button>
-      </div>
-    </div>
-  )
-}
-
-// ── Completion modal (3 spinning stars + enhanced glow) ──
-function CompletionModal({ step, onNext }: { step: TutorialStepDef; onNext: () => void }) {
+// ── Unlock weapons modal — progression hook ──
+function UnlockWeaponsModal({ step, onNext }: { step: TutorialStepDef; onNext: () => void }) {
   return (
     <div className="tutorial-backdrop" onClick={(e) => e.stopPropagation()}>
       <div className="tutorial-card tutorial-card-complete" onClick={(e) => e.stopPropagation()}>
@@ -229,6 +169,25 @@ function CompletionModal({ step, onNext }: { step: TutorialStepDef; onNext: () =
           <span className="tutorial-star"><StarIcon size={48} color="#FFD700" /></span>
           <span className="tutorial-star"><StarIcon size={48} color="#FFD700" /></span>
         </div>
+        <div className="tutorial-card-title">{step.title}</div>
+        <div className="tutorial-card-body">
+          {step.body.split('\n').map((line, i) => (
+            <p key={i}>{line || '\u00A0'}</p>
+          ))}
+        </div>
+        <button className="tutorial-card-btn" onClick={onNext}>
+          {step.buttonText ?? 'CONTINUE'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Completion modal (3 spinning stars) ──
+function CompletionModal({ step, onNext }: { step: TutorialStepDef; onNext: () => void }) {
+  return (
+    <div className="tutorial-backdrop" onClick={(e) => e.stopPropagation()}>
+      <div className="tutorial-card" onClick={(e) => e.stopPropagation()}>
         <div className="tutorial-card-title">{step.title}</div>
         <div className="tutorial-card-body">
           {step.body.split('\n').map((line, i) => (
@@ -279,9 +238,12 @@ export function TutorialGuide() {
   const setTutorialStep = useSceneStore((s) => s.setTutorialStep)
   const endTutorial = useSceneStore((s) => s.endTutorial)
   const completeTutorial = useCampStore((s) => s.completeTutorial)
+  const claimDailyReward = useCampStore((s) => s.claimDailyReward)
 
   const setRecruitSheetOpen = useSceneStore((s) => s.setRecruitSheetOpen)
   const setRosterSheetOpen = useSceneStore((s) => s.setRosterSheetOpen)
+  const setObservingSlotIndex = useSceneStore((s) => s.setObservingSlotIndex)
+  const commitToTrain = useCampTrainingStore((s) => s.commitToTrain)
 
   const step = TUTORIAL_STEPS[tutorialStep]
 
@@ -294,24 +256,38 @@ export function TutorialGuide() {
     const nextIdx = tutorialStep + 1
 
     // Side effects based on which step we're leaving
+    if (currentStep?.id === 'claim-tokens') {
+      // Claim daily reward so player sees their token balance grow
+      claimDailyReward()
+    }
+
     if (currentStep?.id === 'recruit') {
       setRosterSheetOpen(true)
     }
+
     if (currentStep?.id === 'train-intro') {
+      // Auto-commit training: rifle, 15s tutorial package, 1x speed, slot 0
       setRecruitSheetOpen(false)
-      setRosterSheetOpen(true)
+      setRosterSheetOpen(false)
+      const soldiers = useCampStore.getState().soldiers
+      const soldier = soldiers[0]
+      if (soldier) {
+        const success = commitToTrain(0, soldier.id, soldier.name, 'rifle', 'tutorial', 1)
+        if (success) {
+          setObservingSlotIndex(0)
+        }
+      }
     }
 
     if (nextIdx >= TUTORIAL_STEPS.length) {
       // Completion reward
-      useCampStore.getState().addGold(200)
-      useCampStore.getState().addCompute(100)
+      useCampStore.getState().addTokens(100)
       completeTutorial()
       endTutorial()
     } else {
       setTutorialStep(nextIdx)
     }
-  }, [tutorialStep, setTutorialStep, completeTutorial, endTutorial, setRecruitSheetOpen, setRosterSheetOpen])
+  }, [tutorialStep, setTutorialStep, completeTutorial, endTutorial, setRecruitSheetOpen, setRosterSheetOpen, claimDailyReward, commitToTrain, setObservingSlotIndex])
 
   // Close recruit/roster sheets when moving to training step
   useEffect(() => {
@@ -321,25 +297,15 @@ export function TutorialGuide() {
     }
   }, [step?.id, setRecruitSheetOpen, setRosterSheetOpen])
 
-  // Close roster sheet when training is done (so ATTACK button is visible)
-  useEffect(() => {
-    if (step?.id === 'training-done') {
-      setRosterSheetOpen(false)
-    }
-  }, [step?.id, setRosterSheetOpen])
-
   if (!step) return null
   if (step.type === 'wait') return null
 
   // Variant-specific modals
-  if (step.id === 'explain-gold') {
-    return <GoldModal onNext={handleNext} />
+  if (step.id === 'claim-tokens') {
+    return <TokenChestModal onNext={handleNext} />
   }
-  if (step.id === 'explain-compute') {
-    return <ComputeModal onNext={handleNext} />
-  }
-  if (step.id === 'mission-briefing') {
-    return <MissionBriefingModal step={step} onNext={handleNext} />
+  if (step.id === 'unlock-weapons') {
+    return <UnlockWeaponsModal step={step} onNext={handleNext} />
   }
   if (step.id === 'complete') {
     return <CompletionModal step={step} onNext={handleNext} />

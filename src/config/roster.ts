@@ -9,8 +9,6 @@ export const WEAPON_UNLOCK_COST: Record<WeaponType, number> = {
   tank: 0,
 }
 
-export const SOLDIER_RECRUIT_COST = 200
-
 export const WEAPON_DISPLAY: Record<WeaponType, { name: string; desc: string }> = {
   rifle: {
     name: 'Rifle',
@@ -37,12 +35,12 @@ export const WEAPON_DISPLAY: Record<WeaponType, { name: string; desc: string }> 
 export const WEAPON_TRAINING: Partial<Record<WeaponType, {
   fitnessThreshold: number
   simDuration: number
-  computeCost: number
+  tokenCost: number
 }>> = {
-  rocketLauncher: { fitnessThreshold: 0.6, simDuration: 6, computeCost: 100 },
-  grenade: { fitnessThreshold: 0.55, simDuration: 5, computeCost: 100 },
-  machineGun: { fitnessThreshold: 0.65, simDuration: 5, computeCost: 200 },
-  tank: { fitnessThreshold: 0.4, simDuration: 8, computeCost: 300 },
+  rocketLauncher: { fitnessThreshold: 0.6, simDuration: 6, tokenCost: 100 },
+  grenade: { fitnessThreshold: 0.55, simDuration: 5, tokenCost: 100 },
+  machineGun: { fitnessThreshold: 0.65, simDuration: 5, tokenCost: 200 },
+  tank: { fitnessThreshold: 0.4, simDuration: 8, tokenCost: 300 },
 }
 
 const SOLDIER_NAMES = [

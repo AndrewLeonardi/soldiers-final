@@ -122,16 +122,16 @@ export function ObservationHUD() {
         <div className="obs-tier-badge" style={{ borderColor: tierColor, color: tierColor }}>
           {speedLabel}
         </div>
-        {slot.computeTotal > 0 && (
+        {slot.tokenTotal > 0 && (
           <div className="obs-taxi-meter">
             <div className="obs-taxi-label">TOKENS</div>
             <div className="obs-taxi-value" style={{ color: '#00e5ff' }}>
-              {Math.floor(slot.computeBurned)} / {slot.computeTotal}
+              {Math.floor(slot.tokenBurned)} / {slot.tokenTotal}
             </div>
             <div className="obs-taxi-bar">
               <div
                 className="obs-taxi-bar-fill"
-                style={{ width: `${(slot.computeBurned / slot.computeTotal) * 100}%` }}
+                style={{ width: `${(slot.tokenBurned / slot.tokenTotal) * 100}%` }}
               />
             </div>
           </div>

@@ -7,8 +7,7 @@
 import { useState, useCallback } from 'react'
 import { useCampStore } from '@stores/campStore'
 import { DAILY_STREAK_REWARDS } from '@config/store'
-import { ComputeIcon } from './ComputeIcon'
-import { GoldCoinIcon } from './GoldCoinIcon'
+import { TokenIcon } from './TokenIcon'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
 
@@ -21,7 +20,7 @@ export function DailyRewardPopup({ onClose }: DailyRewardPopupProps) {
   const dailyStreak = useCampStore((s) => s.dailyStreak)
 
   const [claimed, setClaimed] = useState(false)
-  const [claimedReward, setClaimedReward] = useState<{ compute: number; gold: number; streakDay: number } | null>(null)
+  const [claimedReward, setClaimedReward] = useState<{ tokens: number; streakDay: number } | null>(null)
 
   // Next streak day (what will be claimed)
   const nextDay = (dailyStreak % 7) + 1
@@ -74,13 +73,8 @@ export function DailyRewardPopup({ onClose }: DailyRewardPopupProps) {
                   {isPast ? '\u2713' : `D${reward.day}`}
                 </span>
                 <span className="daily-reward-day-amount">
-                  <ComputeIcon size={12} /> {reward.compute}
+                  <TokenIcon size={12} /> {reward.tokens}
                 </span>
-                {reward.gold > 0 && (
-                  <span className="daily-reward-day-gold">
-                    <GoldCoinIcon size={12} /> {reward.gold}
-                  </span>
-                )}
                 {reward.isJackpot && (
                   <span className="daily-reward-jackpot-label">JACKPOT</span>
                 )}
@@ -97,10 +91,7 @@ export function DailyRewardPopup({ onClose }: DailyRewardPopupProps) {
         ) : (
           <div className="daily-reward-collected">
             <span className="daily-reward-collected-amount">
-              +{claimedReward?.compute} <ComputeIcon size={16} />
-              {(claimedReward?.gold ?? 0) > 0 && (
-                <> +{claimedReward?.gold} <GoldCoinIcon size={16} /></>
-              )}
+              +{claimedReward?.tokens} <TokenIcon size={16} />
             </span>
             {/* Particle burst */}
             <div className="daily-reward-particles">

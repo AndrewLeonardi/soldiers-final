@@ -6,12 +6,11 @@
  * Bottom tray shows:
  *   - Soldier cards (tap to select, tap ground to place)
  *   - Divider
- *   - Defense cards: WALL (50g), BAGS (75g), TOWER (200g)
+ *   - Defense cards with count limits (X/Y remaining)
  *   - Rotate button (when a defense is selected)
  *   - START BATTLE button (requires ≥1 placed soldier)
  *
- * Defenses cost gold from campStore. Soldiers are free to place
- * (gold was spent at recruit time).
+ * Defenses are count-limited. Soldiers are free to place.
  */
 import { useCallback, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
@@ -21,12 +20,11 @@ import { useCampStore } from '@stores/campStore'
 import type { SoldierRecord } from '@stores/campStore'
 import { useCampBattleStore } from '@stores/campBattleStore'
 import type { PlacedSoldier } from '@stores/campBattleStore'
-import { DEFENSE_COSTS, DEFENSE_OPTIONS } from '@config/defenses'
+import { DEFENSE_OPTIONS } from '@config/defenses'
 import type { DefenseType } from '@config/defenses'
 import { DEFENSE_GHOST } from '@config/defenseRendering'
 import { WeaponPicker } from './WeaponPicker'
 import { RankBadge } from './RankBadge'
-import { GoldCoinIcon } from './GoldCoinIcon'
 import type { WeaponType } from '@config/types'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
@@ -37,7 +35,6 @@ export function PlacementOverlay() {
   const pendingPlacement = useSceneStore((s) => s.pendingPlacement)
   const setPendingPlacement = useSceneStore((s) => s.setPendingPlacement)
   const soldiers = useCampStore((s) => s.soldiers)
-  const gold = useCampStore((s) => s.gold)
   const battleConfig = useCampBattleStore((s) => s.battleConfig)
   const placedSoldiers = useCampBattleStore((s) => s.placedSoldiers)
   const selectedPlacementId = useCampBattleStore((s) => s.selectedPlacementId)
@@ -118,10 +115,6 @@ export function PlacementOverlay() {
         <button className="placement-cancel-btn" onClick={handleCancel}>CANCEL</button>
         <span className="placement-title">{battleConfig.name}</span>
         <div className="placement-top-right">
-          <span className="placement-gold-display">
-            <GoldCoinIcon size={14} />
-            <span className="placement-gold-value">{gold}</span>
-          </span>
           <span className="placement-count">{placedSoldiers.length}/{maxSoldiers}</span>
         </div>
       </div>
@@ -166,20 +159,21 @@ export function PlacementOverlay() {
 
           {/* ── Defense cards ── */}
           {DEFENSE_OPTIONS.map((def) => {
-            const canAfford = gold >= def.cost
+            const placedCount = placedDefenses.filter(d => d.type === def.type).length
+            const maxCount = def.maxCount ?? 5
+            const hasRemaining = placedCount < maxCount
             const isSelected = selectedDefenseType === def.type
             return (
               <button
                 key={def.type}
-                className={`placement-card defense-card ${isSelected ? 'selected' : ''} ${!canAfford ? 'disabled' : ''}`}
-                onClick={() => canAfford && handleSelectDefense(def.type)}
-                disabled={!canAfford}
+                className={`placement-card defense-card ${isSelected ? 'selected' : ''} ${!hasRemaining ? 'disabled' : ''}`}
+                onClick={() => hasRemaining && handleSelectDefense(def.type)}
+                disabled={!hasRemaining}
               >
                 <span className="placement-card-icon defense-icon">{def.icon}</span>
                 <span className="placement-card-name">{def.label}</span>
                 <span className="placement-card-cost">
-                  <GoldCoinIcon size={10} />
-                  <span>{def.cost}</span>
+                  <span>{placedCount}/{maxCount}</span>
                 </span>
               </button>
             )
@@ -297,8 +291,6 @@ export function PlacementGroundHandler() {
   const selectForPlacement = useCampBattleStore((s) => s.selectForPlacement)
   const selectDefenseType = useCampBattleStore((s) => s.selectDefenseType)
   const soldiers = useCampStore((s) => s.soldiers)
-  const gold = useCampStore((s) => s.gold)
-  const spendGold = useCampStore((s) => s.spendGold)
 
   const handleGroundClick = useCallback((e: any) => {
     if (battlePhase !== 'placing') return
@@ -311,12 +303,6 @@ export function PlacementGroundHandler() {
 
     // ── Defense placement ──
     if (selectedDefenseType) {
-      const cost = DEFENSE_COSTS[selectedDefenseType]
-      if (gold < cost) return
-
-      const success = spendGold(cost)
-      if (!success) return
-
       const defense = {
         id: `defense-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         type: selectedDefenseType,
@@ -358,7 +344,7 @@ export function PlacementGroundHandler() {
     placeSoldier(placed)
     selectForPlacement(null)
     sfx.buttonTap()
-  }, [battlePhase, selectedPlacementId, selectedDefenseType, defenseRotation, soldiers, gold, placeSoldier, placeDefense, selectForPlacement, selectDefenseType, spendGold])
+  }, [battlePhase, selectedPlacementId, selectedDefenseType, defenseRotation, soldiers, placeSoldier, placeDefense, selectForPlacement, selectDefenseType])
 
   if (battlePhase !== 'placing') return null
 

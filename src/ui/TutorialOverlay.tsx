@@ -5,7 +5,7 @@ import { useGameStore } from '@stores/gameStore'
 import { useRosterStore } from '@stores/rosterStore'
 import { useTrainingStore } from '@stores/trainingStore'
 import * as sfx from '@audio/sfx'
-import { GoldCoinIcon, MicrochipIcon, StarIcon } from './ToyIcons'
+import { MicrochipIcon, StarIcon } from './ToyIcons'
 import '@styles/tutorial.css'
 
 // ── Step config ─────────────────────────────────────
@@ -28,7 +28,7 @@ const SPOTLIGHT_STEPS: Partial<Record<TutorialStep, SpotlightConfig>> = {
   },
   'begin-training': {
     selector: '.training-cta-btn',
-    bubble: 'Spend compute to train their brain!',
+    bubble: 'Spend tokens to train their brain!',
     bubblePosition: 'above',
   },
   'save-training': {
@@ -238,7 +238,7 @@ export function TutorialOverlay() {
   // Play sounds on step transitions
   useEffect(() => {
     if (!active) return
-    if (step === 'welcome-gold' || step === 'welcome-compute') {
+    if (step === 'welcome-tokens') {
       sfx.modalAppear()
     } else if (step === 'complete') {
       sfx.completionFanfare()
@@ -250,35 +250,7 @@ export function TutorialOverlay() {
   if (!active) return null
 
   // ── Modal steps ─────────────────────────────────
-  if (step === 'welcome-gold') {
-    return (
-      <div className="tutorial-overlay blocking">
-        <div className="tutorial-backdrop" />
-        <div className="tutorial-card">
-          <div className="tutorial-icon gold-icon">
-            <GoldCoinIcon size={44} />
-          </div>
-          <div className="tutorial-title">Welcome, Commander</div>
-          <div className="tutorial-body">
-            This is <strong>Gold</strong>. It recruits soldiers
-            and builds defenses for the battlefield.
-          </div>
-          <AnimatedCounter target={500} className="gold-counter" />
-          <button
-            className="tutorial-continue-btn"
-            onPointerDown={() => {
-              useGameStore.setState({ gold: 500 })
-              advanceTo('welcome-compute')
-            }}
-          >
-            Continue
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  if (step === 'welcome-compute') {
+  if (step === 'welcome-tokens') {
     return (
       <div className="tutorial-overlay blocking">
         <div className="tutorial-backdrop" />
@@ -286,16 +258,16 @@ export function TutorialOverlay() {
           <div className="tutorial-icon compute-icon">
             <MicrochipIcon size={44} color="white" />
           </div>
-          <div className="tutorial-title">This is Compute</div>
+          <div className="tutorial-title">These are Tokens</div>
           <div className="tutorial-body">
-            Compute trains your soldiers' <strong>brains</strong>.
-            It's rare. It's powerful. Use it wisely.
+            Tokens train your soldiers' <strong>brains</strong>
+            and build defenses. They're rare. Use them wisely.
           </div>
           <AnimatedCounter target={200} className="compute-counter" />
           <button
             className="tutorial-continue-btn"
             onPointerDown={() => {
-              useGameStore.setState({ compute: 200 })
+              useGameStore.setState({ tokens: 200 })
               advanceTo('recruit')
             }}
           >
@@ -356,7 +328,7 @@ export function TutorialOverlay() {
               completeTutorial()
               // Keep the soldiers the player recruited during the tutorial
               // Give them proper starting resources for campaign
-              useGameStore.setState({ compute: 500 })
+              useGameStore.setState({ tokens: 500 })
               useGameStore.getState().goToWorldSelect()
             }}
           >

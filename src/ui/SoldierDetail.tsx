@@ -37,7 +37,7 @@ function WeaponIcon({ weapon, size = 28 }: { weapon: WeaponType; size?: number }
 }
 
 export function SoldierDetail() {
-  const compute = useGameStore((s) => s.compute)
+  const compute = useGameStore((s) => s.tokens)
   const phase = useGameStore((s) => s.phase)
   const soldiers = useRosterStore((s) => s.soldiers)
   const detailSoldierId = useRosterStore((s) => s.detailSoldierId)
@@ -170,9 +170,9 @@ export function SoldierDetail() {
             <div className="training-cta-sub">
               Watch your soldier learn through neural evolution
             </div>
-            <button className="training-cta-btn" onPointerDown={handleTrain} disabled={compute < (WEAPON_TRAINING[trainingWeapon]?.computeCost ?? WEAPON_UNLOCK_COST[trainingWeapon])}>
+            <button className="training-cta-btn" onPointerDown={handleTrain} disabled={compute < (WEAPON_TRAINING[trainingWeapon]?.tokenCost ?? WEAPON_UNLOCK_COST[trainingWeapon])}>
               <MicrochipIcon size={20} color="white" />
-              Begin Training — {WEAPON_TRAINING[trainingWeapon]?.computeCost ?? WEAPON_UNLOCK_COST[trainingWeapon]} Compute
+              Begin Training — {WEAPON_TRAINING[trainingWeapon]?.tokenCost ?? WEAPON_UNLOCK_COST[trainingWeapon]} Tokens
             </button>
             <button className="training-cta-cancel" onPointerDown={() => setTrainingWeapon(null)}>
               Back

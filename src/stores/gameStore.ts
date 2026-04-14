@@ -12,10 +12,12 @@ interface WorldProgress {
   battles: Record<string, { completed: boolean; bestStars: number }>
 }
 
+/** Max defenses per type per battle */
+const MAX_DEFENSES: Record<string, number> = { wall: 3, sandbag: 2, tower: 1 }
+
 interface GameState {
   phase: GamePhase
-  gold: number
-  compute: number
+  tokens: number
 
   // World/Battle navigation
   currentWorldId: string | null
@@ -50,6 +52,7 @@ interface GameState {
   selectedPlacement: string | null
   placementRotation: number
   placedSoldierIds: string[]
+  placedDefenseCounts: Record<string, number>
 
   // Actions
   loadLevel: (config: LevelConfig) => void
@@ -61,11 +64,9 @@ interface GameState {
   removeProjectile: (id: string) => void
   occupySlot: (slotId: string) => void
   freeSlot: (slotId: string) => void
-  spendGold: (amount: number) => boolean
-  spendCompute: (amount: number) => boolean
-  addGold: (amount: number) => void
-  addCompute: (amount: number) => void
-  claimDailyCompute: () => boolean
+  spendTokens: (amount: number) => boolean
+  addTokens: (amount: number) => void
+  claimDailyTokens: () => boolean
   openStore: () => void
   closeStore: () => void
   setResult: (result: 'victory' | 'defeat', stars: number) => void
@@ -93,8 +94,7 @@ export const useGameStore = create<GameState>()(
   currentWorldId: null,
   currentBattleId: null,
   worldProgress: {},
-  gold: 0,
-  compute: 500,
+  tokens: 500,
 
   lastDailyClaimTime: 0,
   showStore: false,
@@ -115,11 +115,11 @@ export const useGameStore = create<GameState>()(
   selectedPlacement: null,
   placementRotation: 0,
   placedSoldierIds: [],
+  placedDefenseCounts: {},
 
   loadLevel: (config) => set({
     level: config,
     slots: config.placement_slots.map((s) => ({ ...s, occupied: false })),
-    gold: config.budget,
     playerUnits: [],
     enemyUnits: [],
     projectiles: [],
@@ -132,6 +132,7 @@ export const useGameStore = create<GameState>()(
     selectedPlacement: null,
     placementRotation: 0,
     placedSoldierIds: [],
+    placedDefenseCounts: {},
   }),
 
   setPhase: (phase) => set({ phase }),
@@ -173,25 +174,16 @@ export const useGameStore = create<GameState>()(
     ),
   })),
 
-  spendGold: (amount) => {
-    const { gold } = get()
-    if (gold < amount) return false
-    set({ gold: gold - amount })
+  spendTokens: (amount) => {
+    const { tokens } = get()
+    if (tokens < amount) return false
+    set({ tokens: tokens - amount })
     return true
   },
 
-  spendCompute: (amount) => {
-    const { compute } = get()
-    if (compute < amount) return false
-    set({ compute: compute - amount })
-    return true
-  },
+  addTokens: (amount) => set((s) => ({ tokens: s.tokens + amount })),
 
-  addGold: (amount) => set((s) => ({ gold: s.gold + amount })),
-
-  addCompute: (amount) => set((s) => ({ compute: s.compute + amount })),
-
-  claimDailyCompute: () => {
+  claimDailyTokens: () => {
     const now = Date.now()
     const last = get().lastDailyClaimTime
     const DAY_MS = 24 * 60 * 60 * 1000
@@ -200,7 +192,7 @@ export const useGameStore = create<GameState>()(
     // Award 50 per unclaimed day, capped at 3 days (150 max)
     const daysMissed = Math.min(Math.floor(elapsed / DAY_MS), 3)
     const reward = daysMissed * 50
-    set((s) => ({ compute: s.compute + reward, lastDailyClaimTime: now }))
+    set((s) => ({ tokens: s.tokens + reward, lastDailyClaimTime: now }))
     return true
   },
 
@@ -233,9 +225,8 @@ export const useGameStore = create<GameState>()(
 
     const weaponKey = profile.equippedWeapon
     const stats = WEAPON_STATS[weaponKey]
-    const cost = 100
 
-    if (!state.spendGold(cost)) return
+    // Free placement — no gold cost
 
     const unit: GameUnit = {
       id: nextUnitId(),
@@ -264,11 +255,12 @@ export const useGameStore = create<GameState>()(
 
   placeDefense: (type, position) => {
     const state = get()
-    const costs: Record<string, number> = { wall: 50, sandbag: 75, tower: 200 }
-    const cost = costs[type] ?? 0
     const healthMap: Record<string, number> = { wall: 200, sandbag: 150, tower: 300 }
 
-    if (!state.spendGold(cost)) return
+    // Count-based defense limits (no gold cost)
+    const currentCount = state.placedDefenseCounts[type] ?? 0
+    const maxCount = MAX_DEFENSES[type] ?? 0
+    if (currentCount >= maxCount) return
 
     const unit: GameUnit = {
       id: nextUnitId(),
@@ -289,6 +281,10 @@ export const useGameStore = create<GameState>()(
 
     set({
       playerUnits: [...state.playerUnits, unit],
+      placedDefenseCounts: {
+        ...state.placedDefenseCounts,
+        [type]: currentCount + 1,
+      },
       selectedPlacement: null,
     })
   },
@@ -296,13 +292,17 @@ export const useGameStore = create<GameState>()(
   removePlayerUnit: (unitId) => set((s) => {
     const unit = s.playerUnits.find((u) => u.id === unitId)
     if (!unit) return s
-    const newGold = s.gold + 100
+    // Decrement defense count if it's a defense
+    const isDefense = ['wall', 'sandbag', 'tower'].includes(unit.type)
+    const newDefenseCounts = isDefense
+      ? { ...s.placedDefenseCounts, [unit.type]: Math.max(0, (s.placedDefenseCounts[unit.type] ?? 0) - 1) }
+      : s.placedDefenseCounts
     return {
       playerUnits: s.playerUnits.filter((u) => u.id !== unitId),
       placedSoldierIds: unit.profileId
         ? s.placedSoldierIds.filter((sid) => sid !== unit.profileId)
         : s.placedSoldierIds,
-      gold: newGold,
+      placedDefenseCounts: newDefenseCounts,
     }
   }),
 
@@ -339,7 +339,7 @@ export const useGameStore = create<GameState>()(
         })),
       })),
       available_units: ['rifle', 'rocketLauncher', 'grenade', 'machineGun', 'tank'],
-      budget: battle.budget,
+      budget: 0, // no gold budget
       stars: battle.stars,
     }
 
@@ -386,12 +386,11 @@ export const useGameStore = create<GameState>()(
     }),
     {
       name: 'toy-soldiers-game',
-      version: 3,
+      version: 4,
       migrate: (persisted: any, version: number) => {
         if (version < 2) {
           return {
-            gold: persisted?.gold ?? 0,
-            compute: persisted?.compute ?? 500,
+            tokens: persisted?.compute ?? persisted?.tokens ?? 500,
             lastDailyClaimTime: 0,
           }
         }
@@ -401,11 +400,18 @@ export const useGameStore = create<GameState>()(
             lastDailyClaimTime: 0,
           }
         }
+        if (version < 4) {
+          // v3 → v4: Rename compute → tokens, remove gold
+          const state = { ...persisted }
+          state.tokens = state.compute ?? state.tokens ?? 500
+          delete state.compute
+          delete state.gold
+          return state
+        }
         return persisted as any
       },
       partialize: (state) => ({
-        gold: state.gold,
-        compute: state.compute,
+        tokens: state.tokens,
         lastDailyClaimTime: state.lastDailyClaimTime,
         worldProgress: state.worldProgress,
       }),

@@ -11,8 +11,7 @@ import { Canvas, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useSceneStore } from '@stores/sceneStore'
 import { useCampStore } from '@stores/campStore'
-import { SOLDIER_RECRUIT_COST, getRecruitNameOptions } from '@config/roster'
-import { GoldCoinIcon } from './GoldCoinIcon'
+import { getRecruitNameOptions } from '@config/roster'
 import { createFlexSoldier, animateFlexSoldier } from '@three/models/flexSoldier'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
@@ -142,7 +141,6 @@ function CameraShake({ active }: { active: boolean }) {
 export function RecruitSheet() {
   const isOpen = useSceneStore((s) => s.recruitSheetOpen)
   const setRecruitSheetOpen = useSceneStore((s) => s.setRecruitSheetOpen)
-  const gold = useCampStore((s) => s.gold)
   const recruitSoldier = useCampStore((s) => s.recruitSoldier)
   const soldiers = useCampStore((s) => s.soldiers)
 
@@ -170,21 +168,19 @@ export function RecruitSheet() {
     }
   }, [isOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const canAfford = gold >= SOLDIER_RECRUIT_COST
-
   const handleSelectName = useCallback((name: string) => {
     sfx.buttonTap()
     setSelectedName(name)
   }, [])
 
   const handleRecruit = useCallback(() => {
-    if (!canAfford || !selectedName) return
+    if (!selectedName) return
     const success = recruitSoldier(selectedName)
     if (success) {
       sfx.recruitChime()
       setPhase('ceremony')
     }
-  }, [canAfford, selectedName, recruitSoldier])
+  }, [selectedName, recruitSoldier])
 
   const handleLanded = useCallback(() => {
     setHasLanded(true)
@@ -275,36 +271,19 @@ export function RecruitSheet() {
       <div className="game-sheet recruit-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="game-sheet-header">
           <span className="game-sheet-title">RECRUIT SOLDIER</span>
-          <span className="recruit-cost">
-            <GoldCoinIcon size={14} />
-            <span className="recruit-cost-value">{SOLDIER_RECRUIT_COST}</span>
-          </span>
         </div>
 
         <div className="game-sheet-body">
-          <div className="recruit-balance">
-            <GoldCoinIcon size={18} />
-            <span className="recruit-balance-value">{gold}</span>
-            <span className="recruit-balance-label">GOLD</span>
-          </div>
-
           <div className="recruit-squad-count">
             SQUAD: {soldiers.length} SOLDIERS
           </div>
-
-          {!canAfford && (
-            <div className="recruit-insufficient">
-              NOT ENOUGH GOLD
-            </div>
-          )}
 
           <div className="recruit-name-grid">
             {nameOptions.map((name) => (
               <button
                 key={name}
-                className={`recruit-name-card ${canAfford ? '' : 'disabled'} ${selectedName === name ? 'selected' : ''}`}
+                className={`recruit-name-card ${selectedName === name ? 'selected' : ''}`}
                 onClick={() => handleSelectName(name)}
-                disabled={!canAfford}
               >
                 <span className="recruit-name-rank">{name.split(' ')[0]}</span>
                 <span className="recruit-name-call">{name.split(' ').slice(1).join(' ')}</span>
@@ -316,7 +295,7 @@ export function RecruitSheet() {
             <button className="recruit-reroll" onClick={refreshNames}>
               REROLL NAMES
             </button>
-            {selectedName && canAfford && (
+            {selectedName && (
               <button className="recruit-confirm-btn game-btn" onClick={handleRecruit}>
                 RECRUIT {selectedName.split(' ').slice(1).join(' ')}
               </button>

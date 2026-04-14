@@ -1,26 +1,31 @@
 /**
  * trainingConstants — frozen config for camp training system.
  *
- * Sprint Economy. Time-based compute pricing + sim speed options.
- * Compute buys training SECONDS. Sim speed is visual only (free).
+ * Sprint Economy. Time-based token pricing + sim speed options.
+ * Tokens buy training SECONDS. Sim speed is visual only (free).
  */
 
-// ── Time packages: compute buys seconds of training time ──
+// ── Time packages: tokens buy seconds of training time ──
 
 export interface TimePackage {
   id: string
   label: string
-  compute: number      // cost in compute tokens
+  tokens: number       // cost in tokens
   seconds: number      // training duration in real seconds
   description: string
 }
 
 export const TIME_PACKAGES: readonly TimePackage[] = Object.freeze([
-  { id: 'quick',    label: '10s',   compute: 50,  seconds: 10,  description: 'Quick drill' },
-  { id: 'standard', label: '25s',   compute: 100, seconds: 25,  description: 'Standard session' },
-  { id: 'extended', label: '60s',   compute: 200, seconds: 60,  description: 'Deep training' },
-  { id: 'marathon', label: '3 MIN', compute: 500, seconds: 180, description: 'Marathon session' },
+  { id: 'quick',    label: '10s',   tokens: 50,  seconds: 10,  description: 'Quick drill' },
+  { id: 'standard', label: '25s',   tokens: 100, seconds: 25,  description: 'Standard session' },
+  { id: 'extended', label: '60s',   tokens: 200, seconds: 60,  description: 'Deep training' },
+  { id: 'marathon', label: '3 MIN', tokens: 500, seconds: 180, description: 'Marathon session' },
 ])
+
+/** Tutorial-only training package: short + cheap for onboarding */
+export const TUTORIAL_TIME_PACKAGE: TimePackage = Object.freeze({
+  id: 'tutorial', label: '15s', tokens: 30, seconds: 15, description: 'Tutorial training',
+})
 
 // ── Sim speed options — visual only, doesn't affect cost ──
 
@@ -55,7 +60,7 @@ export const COMPUTE_TIERS: readonly ComputeTier[] = Object.freeze([
   { tier: 4, label: 'WHITE HOT', multiplier: 64, color: '#ffffff', costMultiplier: 8,  particleIntensity: 1.0 },
 ])
 
-/** @deprecated — use TIME_PACKAGES[].compute instead */
+/** @deprecated — use TIME_PACKAGES[].tokens instead */
 export const TRAINING_BASE_COST = 50
 
 /** @deprecated — use TIME_PACKAGES[].seconds instead */

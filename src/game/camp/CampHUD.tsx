@@ -1,21 +1,17 @@
 /**
  * CampHUD — the persistent heads-up display overlay.
  *
- * Sprint 3-4. Replaces the old top-right gear + counter.
- * Layout:
- *   - Top center: compute counter (cyan) + gold counter (gold, placeholder)
- *   - Bottom bar: 5 beveled buttons — TRAIN · ATTACK · STORE · ROSTER · SETTINGS
+ * Sprint 3-4 + Redesign. Layout:
+ *   - Top center: token counter (cyan)
+ *   - PVP teaser banner (above bottom nav)
+ *   - Bottom nav: 5 colorful Clash Royale-style tabs with big icons
  *
  * Hidden during fighting/result battle phases.
  */
 import { useCallback, useEffect, useMemo } from 'react'
-import { ComputeCounter } from './ComputeCounter'
-import { GoldCounter } from './GoldCounter'
-import { ExplosionIcon } from './icons/ExplosionIcon'
-import { StorefrontIcon } from './icons/StorefrontIcon'
-import { TrophyIcon } from './icons/TrophyIcon'
-import { ClipboardIcon } from './icons/ClipboardIcon'
-import { GearIcon } from './icons/GearIcon'
+import { TokenCounter } from './TokenCounter'
+import { ShieldIcon, CrossedSwordsNavIcon, ChestIcon, WeaponRackIcon, GearCogIcon } from './icons/NavIcons'
+import { PVPTeaser } from './PVPTeaser'
 import { useSceneStore } from '@stores/sceneStore'
 import { useCampStore } from '@stores/campStore'
 import { CAMP_BATTLES } from '@config/campBattles'
@@ -63,6 +59,32 @@ function computeNextUnlock(
   return null // All unlocked!
 }
 
+// ── Tab config ──
+interface NavTab {
+  id: string
+  label: string
+  colorClass: string
+}
+
+const NAV_TABS: NavTab[] = [
+  { id: 'soldiers', label: 'SOLDIERS', colorClass: 'soldiers' },
+  { id: 'attack', label: 'ATTACK', colorClass: 'attack' },
+  { id: 'store', label: 'STORE', colorClass: 'store' },
+  { id: 'armory', label: 'ARMORY', colorClass: 'armory' },
+  { id: 'settings', label: 'SETTINGS', colorClass: 'settings' },
+]
+
+function NavTabIcon({ id, active, size }: { id: string; active: boolean; size: number }) {
+  switch (id) {
+    case 'soldiers': return <ShieldIcon size={size} active={active} />
+    case 'attack': return <CrossedSwordsNavIcon size={size} active={active} />
+    case 'store': return <ChestIcon size={size} active={active} />
+    case 'armory': return <WeaponRackIcon size={size} active={active} />
+    case 'settings': return <GearCogIcon size={size} active={active} />
+    default: return null
+  }
+}
+
 export function CampHUD() {
   const tickHealing = useCampStore((s) => s.tickHealing)
   const lastDailyClaimDate = useCampStore((s) => s.lastDailyClaimDate)
@@ -101,39 +123,33 @@ export function CampHUD() {
     setArmorySheetOpen(true)
   }, [nextUnlock, setArmoryScrollToItem, setArmorySheetOpen])
 
-  const handleAttack = useCallback(() => {
-    sfx.buttonTap()
-    setBattlePhase('picking')
-  }, [setBattlePhase])
+  // Tab handlers
+  const tabHandlers: Record<string, () => void> = useMemo(() => ({
+    soldiers: () => { sfx.buttonTap(); setRosterSheetOpen(true) },
+    attack: () => { sfx.buttonTap(); setBattlePhase('picking') },
+    store: () => { sfx.buttonTap(); setStoreSheetOpen(true) },
+    armory: () => { sfx.buttonTap(); setArmorySheetOpen(true) },
+    settings: () => { sfx.buttonTap(); setSettingsOpen(true) },
+  }), [setBattlePhase, setStoreSheetOpen, setRosterSheetOpen, setArmorySheetOpen, setSettingsOpen])
 
-  const handleStore = useCallback(() => {
-    sfx.buttonTap()
-    setStoreSheetOpen(true)
-  }, [setStoreSheetOpen])
-
-  const handleRoster = useCallback(() => {
-    sfx.buttonTap()
-    setRosterSheetOpen(true)
-  }, [setRosterSheetOpen])
-
-  const handleArmory = useCallback(() => {
-    sfx.buttonTap()
-    setArmorySheetOpen(true)
-  }, [setArmorySheetOpen])
-
-  const handleSettings = useCallback(() => {
-    sfx.buttonTap()
-    setSettingsOpen(true)
-  }, [setSettingsOpen])
+  // Active states
+  const activeTab = useMemo(() => {
+    if (rosterSheetOpen) return 'soldiers'
+    if (battlePhase === 'picking') return 'attack'
+    if (storeSheetOpen) return 'store'
+    if (armorySheetOpen) return 'armory'
+    if (settingsOpen) return 'settings'
+    return null
+  }, [rosterSheetOpen, battlePhase, storeSheetOpen, armorySheetOpen, settingsOpen])
 
   // Hide HUD during active battle phases
   if (battlePhase === 'fighting' || battlePhase === 'result') return null
 
   return (
     <>
-      {/* Top center — compute counter */}
+      {/* Top center — token counter */}
       <div className="camp-top-bar">
-        <ComputeCounter hasUnclaimedDaily={hasUnclaimedDaily} />
+        <TokenCounter hasUnclaimedDaily={hasUnclaimedDaily} />
       </div>
 
       {/* Progression breadcrumb — teases next unlock */}
@@ -150,32 +166,27 @@ export function CampHUD() {
         </div>
       )}
 
-      {/* Bottom bar — 5 beveled action buttons */}
-      <div className="camp-bottom-bar">
-        <button className={`camp-bottom-btn${rosterSheetOpen ? ' active' : ''}`} onClick={handleRoster}>
-          <span className="camp-bottom-btn-icon"><ClipboardIcon size={22} /></span>
-          <span className="camp-bottom-btn-label">SOLDIERS</span>
-        </button>
+      {/* PVP teaser — aspirational locked banner */}
+      <PVPTeaser />
 
-        <button className={`camp-bottom-btn attack${battlePhase === 'picking' ? ' active' : ''}`} onClick={handleAttack}>
-          <span className="camp-bottom-btn-icon"><ExplosionIcon size={26} /></span>
-          <span className="camp-bottom-btn-label">ATTACK</span>
-        </button>
-
-        <button className={`camp-bottom-btn${storeSheetOpen ? ' active' : ''}`} onClick={handleStore}>
-          <span className="camp-bottom-btn-icon"><StorefrontIcon size={22} /></span>
-          <span className="camp-bottom-btn-label">STORE</span>
-        </button>
-
-        <button className={`camp-bottom-btn${armorySheetOpen ? ' active' : ''}`} onClick={handleArmory}>
-          <span className="camp-bottom-btn-icon"><TrophyIcon size={22} /></span>
-          <span className="camp-bottom-btn-label">ARMORY</span>
-        </button>
-
-        <button className={`camp-bottom-btn${settingsOpen ? ' active' : ''}`} onClick={handleSettings}>
-          <span className="camp-bottom-btn-icon"><GearIcon size={22} /></span>
-          <span className="camp-bottom-btn-label">SETTINGS</span>
-        </button>
+      {/* Bottom nav — 5 colorful Clash Royale-style tabs */}
+      <div className="camp-nav-bar">
+        {NAV_TABS.map((tab) => {
+          const isActive = activeTab === tab.id
+          const isAttack = tab.id === 'attack'
+          return (
+            <button
+              key={tab.id}
+              className={`camp-nav-tab camp-nav-tab--${tab.colorClass}${isActive ? ' active' : ''}${isAttack ? ' camp-nav-tab--center' : ''}`}
+              onClick={tabHandlers[tab.id]}
+            >
+              <div className="camp-nav-tab-icon">
+                <NavTabIcon id={tab.id} active={isActive} size={isAttack ? 36 : 30} />
+              </div>
+              <span className="camp-nav-tab-label">{tab.label}</span>
+            </button>
+          )
+        })}
       </div>
     </>
   )

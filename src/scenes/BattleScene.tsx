@@ -1271,7 +1271,7 @@ export function BattleScene({ orbitingRef }: BattleSceneProps) {
           case 'no_walls':
             return !players.some(p => p.type === 'wall' || p.type === 'sandbag')
           case 'budget_remaining':
-            return store.gold >= (c.threshold ?? 0)
+            return store.tokens >= (c.threshold ?? 0)
           case 'prop_kills':
             return false // future feature
           default:

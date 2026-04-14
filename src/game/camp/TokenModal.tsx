@@ -1,5 +1,5 @@
 /**
- * ComputeModal — "NOT ENOUGH COMPUTE" interstitial.
+ * TokenModal — "NOT ENOUGH TOKENS" interstitial.
  *
  * Sprint 3, Phase 2b. Shows when the player tries to unlock/buy
  * something they can't afford. Displays balance, shortfall,
@@ -10,38 +10,38 @@ import { useCampStore } from '@stores/campStore'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
 
-interface ComputeModalProps {
+interface TokenModalProps {
   /** The amount the player tried to spend */
   needed?: number
 }
 
-export function ComputeModal({ needed }: ComputeModalProps) {
-  const isOpen = useSceneStore((s) => s.computeModalOpen)
-  const setComputeModalOpen = useSceneStore((s) => s.setComputeModalOpen)
+export function TokenModal({ needed }: TokenModalProps) {
+  const isOpen = useSceneStore((s) => s.tokenModalOpen)
+  const setTokenModalOpen = useSceneStore((s) => s.setTokenModalOpen)
   const setStoreSheetOpen = useSceneStore((s) => s.setStoreSheetOpen)
-  const compute = useCampStore((s) => s.compute)
+  const tokens = useCampStore((s) => s.tokens)
 
   if (!isOpen) return null
 
-  const shortfall = needed ? Math.max(0, needed - compute) : 0
+  const shortfall = needed ? Math.max(0, needed - tokens) : 0
 
   const handleGoToStore = () => {
     sfx.buttonTap()
-    setComputeModalOpen(false)
+    setTokenModalOpen(false)
     setStoreSheetOpen(true)
   }
 
   const handleClose = () => {
-    setComputeModalOpen(false)
+    setTokenModalOpen(false)
   }
 
   return (
     <div className="compute-modal-backdrop" onClick={handleClose}>
       <div className="compute-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="compute-modal-title">NOT ENOUGH COMPUTE</div>
+        <div className="compute-modal-title">NOT ENOUGH TOKENS</div>
         <div className="compute-modal-balance">
           <span className="compute-modal-label">BALANCE</span>
-          <span className="compute-modal-value">{compute}</span>
+          <span className="compute-modal-value">{tokens}</span>
         </div>
         {shortfall > 0 && (
           <div className="compute-modal-shortfall">

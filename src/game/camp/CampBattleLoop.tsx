@@ -1033,7 +1033,7 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
       const battleStore = useCampBattleStore.getState()
       battleStore.setResult('victory', stars)
       if (config.weaponReward) battleStore.setWeaponUnlocked(config.weaponReward)
-      useCampStore.getState().completeBattle(config.id, stars, config.reward, config.weaponReward, config.goldReward)
+      useCampStore.getState().completeBattle(config.id, stars, config.reward, config.weaponReward)
 
       // Award XP to each placed soldier
       const kills = battleStore.soldierKills

@@ -1,16 +1,16 @@
 /**
- * ComputeIcon — reusable SVG microchip icon for compute currency.
+ * TokenIcon — reusable SVG microchip icon for token currency.
  *
- * Sprint 6, Phase 1. Extracted from ComputeCounter.tsx so every ⚡ emoji
+ * Sprint 6, Phase 1. Extracted from TokenCounter.tsx so every icon
  * can be replaced with a crisp, scalable SVG chip.
  */
 
-interface ComputeIconProps {
+interface TokenIconProps {
   size?: number
   className?: string
 }
 
-export function ComputeIcon({ size = 16, className }: ComputeIconProps) {
+export function TokenIcon({ size = 16, className }: TokenIconProps) {
   return (
     <svg
       className={className}

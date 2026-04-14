@@ -1,13 +1,12 @@
 /**
  * tutorialSteps.ts — Camp tutorial step definitions.
  *
- * Sprint D (v4). Modeled on /play's proven flow:
- *   - Separate gold & compute modals with icons + animated counters
- *   - Action-modal pattern: button opens real UI, wait step watches for completion
- *   - Bottom-positioned hints that don't cover sheet content
+ * Sprint E (v5). Simplified 8-step onboarding:
+ *   welcome → claim tokens → recruit → wait → train (auto) →
+ *   watch training → unlock-weapons → complete
  *
- * 11 steps: welcome → gold → compute → recruit → wait → train → start →
- *           watching → done → mission → complete
+ * No gold references. Recruiting is free. Training auto-commits
+ * during tutorial (rifle, 15s, 30 tokens).
  */
 
 export interface TutorialStepDef {
@@ -22,7 +21,7 @@ export interface TutorialStepDef {
   /** Hint position — defaults to 'bottom' */
   hintPosition?: 'top' | 'bottom'
   /** Visual variant for the modal card */
-  variant?: 'default' | 'gold' | 'compute'
+  variant?: 'default' | 'tokens'
 }
 
 export const TUTORIAL_STEPS: TutorialStepDef[] = [
@@ -31,115 +30,83 @@ export const TUTORIAL_STEPS: TutorialStepDef[] = [
     id: 'welcome',
     type: 'modal',
     title: 'WELCOME, COMMANDER',
-    body: 'Your mission: recruit soldiers, train their neural network brains, and lead them into battle.\n\nEvery soldier runs a real AI — no scripts, no faking it.',
+    body: 'Your mission: recruit soldiers, train their AI brains, and lead them into battle.',
     buttonText: 'BEGIN',
     advanceOn: 'click',
   },
 
-  // ── Step 1: Explain gold ──
+  // ── Step 1: Claim tokens (daily reward / starter chest) ──
   {
-    id: 'explain-gold',
+    id: 'claim-tokens',
     type: 'modal',
-    variant: 'gold',
-    title: 'THIS IS GOLD',
-    body: 'Gold recruits soldiers for your squad. Each soldier costs 200 gold.',
-    buttonText: 'CONTINUE',
+    variant: 'tokens',
+    title: 'YOUR TOKENS',
+    body: 'Tokens power everything — training, upgrades, unlocks. Claim your daily tokens to get started.',
+    buttonText: 'CLAIM TOKENS',
     advanceOn: 'click',
   },
 
-  // ── Step 2: Explain compute ──
-  {
-    id: 'explain-compute',
-    type: 'modal',
-    variant: 'compute',
-    title: 'THIS IS COMPUTE',
-    body: "Compute trains your soldiers' brains. It powers real neural network evolution. It's rare — use it wisely.",
-    buttonText: 'CONTINUE',
-    advanceOn: 'click',
-  },
-
-  // ── Step 3: Recruit prompt ──
+  // ── Step 2: Recruit prompt ──
   {
     id: 'recruit',
     type: 'modal',
     title: 'RECRUIT YOUR FIRST SOLDIER',
-    body: 'Open your roster and recruit a soldier. Each recruit costs 200 gold.',
+    body: 'Open your roster and pick a soldier to join your squad.',
     buttonText: 'OPEN ROSTER',
     advanceOn: 'click',
     // Side effect: opens RosterSheet (handled in TutorialGuide)
   },
 
-  // ── Step 4: Guide during recruitment ──
+  // ── Step 3: Guide during recruitment ──
   {
     id: 'recruit-wait',
     type: 'hint',
     title: 'RECRUIT A SOLDIER',
-    body: 'Tap "+ RECRUIT NEW SOLDIER" then pick a name.',
+    body: 'Tap "+ SLOT AVAILABLE" to pick a name.',
     advanceOn: 'action',
     hintPosition: 'top',
     // Auto-advances when soldiers.length >= 1
   },
 
-  // ── Step 5: Train prompt ──
+  // ── Step 4: Train intro (auto-commits training on button tap) ──
   {
     id: 'train-intro',
     type: 'modal',
+    variant: 'tokens',
     title: 'TRAIN THEIR BRAIN',
-    body: 'Your soldier starts with an empty neural network. Training uses compute to evolve a real AI brain through genetic algorithms.\n\nThis is the heart of the game.',
-    buttonText: 'OPEN TRAINING',
+    body: "Your soldier starts with an empty neural network. Training costs tokens to evolve a real AI brain.\n\nLet's start a quick 15-second rifle drill.",
+    buttonText: 'START TRAINING — 30 TOKENS',
     advanceOn: 'click',
-    // Side effect: opens TrainingSheet (handled in TutorialGuide)
+    // Side effect: auto-commits training (rifle, 15s, 30 tokens) in TutorialGuide
   },
 
-  // ── Step 6: Guide through training setup ──
+  // ── Step 5: Watching training (during observation) ──
   {
-    id: 'start-training',
+    id: 'training-active',
     type: 'hint',
-    title: 'START TRAINING',
-    body: 'Select your soldier, pick a weapon, and hit START.',
-    advanceOn: 'action',
-    hintPosition: 'top',
-    // Auto-advances when observingSlotIndex !== null
-  },
-
-  // ── Step 7: Watching training (during observation) ──
-  {
-    id: 'watching-training',
-    type: 'hint',
-    title: 'WATCH & LEARN',
-    body: 'Your soldier is evolving a real neural network brain. Watch it learn to aim and fire!',
+    title: 'EVOLVING...',
+    body: 'Your soldier is running hundreds of simulations right now. Each generation, the best brains survive and evolve.',
     advanceOn: 'action',
     hintPosition: 'bottom',
-    // Auto-advances when observingSlotIndex goes back to null (user exits observation)
+    // Auto-advances when observingSlotIndex goes back to null
   },
 
-  // ── Step 8: Training done (back at camp) ──
+  // ── Step 6: Training complete — progression hook ──
   {
-    id: 'training-done',
-    type: 'hint',
-    title: 'TRAINING COMPLETE!',
-    body: 'Your soldier has a brain now! Tap the ATTACK button to start a battle.',
-    advanceOn: 'action',
-    hintPosition: 'top',
-    // Auto-advances when battlePhase === 'picking'
-  },
-
-  // ── Step 9: Mission briefing (intelligence) ──
-  {
-    id: 'mission-briefing',
+    id: 'unlock-weapons',
     type: 'modal',
-    title: 'YOUR MISSION',
-    body: "Your soldiers will raid the enemy base. Place them strategically, then build walls and defenses to protect their advance.\n\nDefenses cost gold — place them wisely. Walls, sandbags, and towers are all destructible.\n\nDestroy the enemy forces to earn stars and rewards!",
-    buttonText: 'UNDERSTOOD',
+    title: 'TRAINING COMPLETE!',
+    body: "Your soldier has a brain now! Win battles to unlock new weapons — machine guns, rockets, grenades — and train your soldiers in each one.",
+    buttonText: 'GOT IT',
     advanceOn: 'click',
   },
 
-  // ── Step 10: Complete ──
+  // ── Step 7: Complete ──
   {
     id: 'complete',
     type: 'modal',
-    title: "YOU'RE READY, COMMANDER",
-    body: "Recruit more soldiers, train different weapons, and rank up through battles.\n\nEvery soldier's brain is unique — trained by real AI, not scripted.\n\nGood luck, Commander.",
+    title: 'GOOD LUCK, COMMANDER',
+    body: "Every soldier's brain is unique — trained by real AI, not scripted.",
     buttonText: "LET'S GO",
     advanceOn: 'click',
   },

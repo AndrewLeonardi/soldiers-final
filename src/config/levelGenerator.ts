@@ -225,7 +225,6 @@ export function generateLevel(level: number): CampBattleConfig {
     themeId: theme.id,
     waves,
     reward: Math.floor(30 + level * 15),
-    goldReward: Math.floor(20 + level * 10),
     maxSoldiers: Math.min(3 + Math.floor(level / 3), 10),
     stars: generateStars(level),
     weaponReward: WEAPON_MILESTONES[level],

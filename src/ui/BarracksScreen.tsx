@@ -2,15 +2,14 @@ import { useState } from 'react'
 import { useGameStore } from '@stores/gameStore'
 import { useRosterStore } from '@stores/rosterStore'
 import { useTutorialStore } from '@stores/tutorialStore'
-import { SOLDIER_RECRUIT_COST, getRecruitNameOptions } from '@config/roster'
+import { getRecruitNameOptions } from '@config/roster'
 import * as sfx from '@audio/sfx'
-import { GoldCoinIcon, MicrochipIcon, BattleIcon } from './ToyIcons'
+import { MicrochipIcon, BattleIcon } from './ToyIcons'
 import '@styles/barracks.css'
 
 export function BarracksScreen() {
   const phase = useGameStore((s) => s.phase)
-  const gold = useGameStore((s) => s.gold)
-  const compute = useGameStore((s) => s.compute)
+  const tokens = useGameStore((s) => s.tokens)
   const setPhase = useGameStore((s) => s.setPhase)
   const openStore = useGameStore((s) => s.openStore)
   const lastClaimTime = useGameStore((s) => s.lastDailyClaimTime)
@@ -57,12 +56,8 @@ export function BarracksScreen() {
         <div className="barracks-title">Barracks</div>
         <div className="barracks-resources">
           <div className="resource-pill">
-            <GoldCoinIcon size={20} />
-            <span className="value">{gold}</span>
-          </div>
-          <div className="resource-pill">
             <MicrochipIcon size={18} color="#4ADE80" />
-            <span className="value">{compute}</span>
+            <span className="value">{tokens}</span>
           </div>
         </div>
       </div>
@@ -106,13 +101,9 @@ export function BarracksScreen() {
             <button
               className="barracks-recruit-btn"
               onPointerDown={handleRecruitTap}
-              disabled={gold < SOLDIER_RECRUIT_COST || isTapSoldierStep}
+              disabled={isTapSoldierStep}
             >
               + Recruit
-              <span className="barracks-recruit-cost">
-                <GoldCoinIcon size={14} />
-                {SOLDIER_RECRUIT_COST}
-              </span>
             </button>
             <button
               className="barracks-store-btn"

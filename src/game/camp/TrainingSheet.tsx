@@ -11,7 +11,7 @@ import { useCampTrainingStore } from '@stores/campTrainingStore'
 import { WeaponCarousel } from './WeaponCarousel'
 import { TIME_PACKAGES, SIM_SPEED_OPTIONS } from './trainingConstants'
 import type { WeaponType } from '@config/types'
-import { ComputeIcon } from './ComputeIcon'
+import { TokenIcon } from './TokenIcon'
 import { LockIcon } from './icons/LockIcon'
 import { RefreshIcon } from './icons/RefreshIcon'
 import * as sfx from '@audio/sfx'
@@ -27,7 +27,7 @@ export function TrainingSheet() {
   const commitToTrain = useCampTrainingStore((s) => s.commitToTrain)
   const isSoldierInTraining = useCampTrainingStore((s) => s.isSoldierInTraining)
   const soldiers = useCampStore((s) => s.soldiers)
-  const compute = useCampStore((s) => s.compute)
+  const tokens = useCampStore((s) => s.tokens)
   const unlockedSlots = useCampStore((s) => s.unlockedSlots)
   const unlockSlot = useCampStore((s) => s.unlockSlot)
 
@@ -72,9 +72,9 @@ export function TrainingSheet() {
   const slotIsEmpty = autoSlotIndex >= 0
 
   const selectedPackage = TIME_PACKAGES.find(p => p.id === selectedPackageId) ?? TIME_PACKAGES[0]!
-  const cost = selectedPackage.compute
+  const cost = selectedPackage.tokens
   const duration = selectedPackage.seconds
-  const canAfford = compute >= cost
+  const canAfford = tokens >= cost
   const selectedSoldier = soldiers.find(s => s.id === selectedSoldierId)
   const soldierBusy = selectedSoldierId ? isSoldierInTraining(selectedSoldierId) : false
   const canStart = selectedSoldierId !== null && canAfford && slotIsEmpty && !soldierBusy
@@ -170,7 +170,7 @@ export function TrainingSheet() {
 
           {hasBrainForWeapon && (
             <div className="training-retrain-notice">
-              <ComputeIcon size={14} /> Re-training will improve existing {selectedWeapon} brain
+              <TokenIcon size={14} /> Re-training will improve existing {selectedWeapon} brain
             </div>
           )}
 
@@ -188,7 +188,7 @@ export function TrainingSheet() {
                 onClick={() => setSelectedPackageId(pkg.id)}
               >
                 <span className="training-tier-multiplier">{pkg.label}</span>
-                <span className="training-tier-label">{pkg.compute} <ComputeIcon size={10} /></span>
+                <span className="training-tier-label">{pkg.tokens} <TokenIcon size={10} /></span>
               </button>
             ))}
           </div>
@@ -216,7 +216,7 @@ export function TrainingSheet() {
             <div className="training-cost-item">
               <span className="training-cost-label">COST</span>
               <span className={`training-cost-value ${!canAfford ? 'insufficient' : ''}`}>
-                {cost} <ComputeIcon size={12} />
+                {cost} <TokenIcon size={12} />
               </span>
             </div>
             <div className="training-cost-item">
@@ -233,7 +233,7 @@ export function TrainingSheet() {
               <span className="training-slot-indicator-text">SLOT {autoSlotIndex + 1} AVAILABLE</span>
             ) : nextLockedSlotCost != null ? (
               <button className="training-unlock-slot-btn game-btn" onClick={handleUnlockSlot}>
-                <LockIcon size={12} /> UNLOCK SLOT ({nextLockedSlotCost} <ComputeIcon size={10} />)
+                <LockIcon size={12} /> UNLOCK SLOT ({nextLockedSlotCost} <TokenIcon size={10} />)
               </button>
             ) : (
               <span className="training-slot-indicator-text">ALL SLOTS BUSY</span>
@@ -249,7 +249,7 @@ export function TrainingSheet() {
             {soldierBusy ? 'SOLDIER IN TRAINING' :
              !selectedSoldierId ? 'SELECT A SOLDIER' :
              !slotIsEmpty ? 'ALL SLOTS BUSY' :
-             !canAfford ? 'NOT ENOUGH COMPUTE' :
+             !canAfford ? 'NOT ENOUGH TOKENS' :
              'START TRAINING'}
           </button>
         </div>

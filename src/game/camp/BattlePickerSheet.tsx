@@ -15,7 +15,7 @@ import { useCampStore } from '@stores/campStore'
 import { generateLevel, getMaxAccessibleLevel } from '@config/levelGenerator'
 import type { CampBattleConfig } from '@config/campBattles'
 import { BattleDiorama } from './BattleDiorama'
-import { ComputeIcon } from './ComputeIcon'
+import { TokenIcon } from './TokenIcon'
 import { LockIcon } from './icons/LockIcon'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
@@ -117,7 +117,7 @@ export function BattlePickerSheet() {
             {totalEnemies} ENEMIES
           </span>
           <span className="level-selector-meta-item">
-            +{levelConfig.reward} <ComputeIcon size={12} />
+            +{levelConfig.reward} <TokenIcon size={12} />
           </span>
         </div>
 

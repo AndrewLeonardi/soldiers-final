@@ -4,7 +4,7 @@
  * Sprint 8. Enhanced from Sprint 4/5:
  *   - Stars bounce in one-at-a-time with sound
  *   - Weapon unlock card slides up with golden glow + sparkles
- *   - Compute reward counter animates from 0 to value
+ *   - Token reward counter animates from 0 to value
  *   - Rarity stripe on weapon card
  *   - Defeat shows RETRY prominently
  */
@@ -62,8 +62,8 @@ function SpinningWeapon({ weapon }: { weapon: WeaponType }) {
   )
 }
 
-/** Animated compute counter that counts up from 0 to target */
-function ComputeCounter({ target }: { target: number }) {
+/** Animated token counter that counts up from 0 to target */
+function TokenCounter({ target }: { target: number }) {
   const [display, setDisplay] = useState(0)
   const startRef = useRef<number | null>(null)
 
@@ -132,7 +132,6 @@ export function ResultOverlay() {
 
   const isVictory = result === 'victory'
   const reward = isVictory && battleConfig ? battleConfig.reward : 0
-  const goldReward = isVictory && battleConfig ? battleConfig.goldReward : 0
   const rarity = weaponUnlocked ? (WEAPON_RARITY[weaponUnlocked] ?? 'common') : 'common'
 
   return (
@@ -206,13 +205,8 @@ export function ResultOverlay() {
             {/* Rewards */}
             <div className="result-rewards">
               <div className="result-reward">
-                +<ComputeCounter target={reward} /> COMPUTE
+                +<TokenCounter target={reward} /> TOKENS
               </div>
-              {goldReward > 0 && (
-                <div className="result-reward gold">
-                  +<ComputeCounter target={goldReward} /> GOLD
-                </div>
-              )}
             </div>
 
             {/* Squad XP */}

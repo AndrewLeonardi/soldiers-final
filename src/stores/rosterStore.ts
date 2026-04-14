@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { WeaponType, SoldierProfile } from '@config/types'
-import { STARTER_ROSTER, SOLDIER_RECRUIT_COST, WEAPON_UNLOCK_COST, randomSoldierName } from '@config/roster'
+import { STARTER_ROSTER, WEAPON_UNLOCK_COST, randomSoldierName } from '@config/roster'
 import { useGameStore } from './gameStore'
 
 interface RosterState {
@@ -44,7 +44,7 @@ export const useRosterStore = create<RosterState>()(
 
   unlockWeapon: (soldierId, weapon) => {
     const cost = WEAPON_UNLOCK_COST[weapon]
-    if (!useGameStore.getState().spendCompute(cost)) return false
+    if (!useGameStore.getState().spendTokens(cost)) return false
     set((s) => ({
       soldiers: s.soldiers.map((sol) => {
         if (sol.id !== soldierId) return sol
@@ -60,8 +60,8 @@ export const useRosterStore = create<RosterState>()(
   },
 
   recruitSoldier: (chosenName) => {
-    const gameStore = useGameStore.getState()
-    if (!gameStore.spendGold(SOLDIER_RECRUIT_COST)) return false
+    // Recruiting is now free (gold removed)
+
     const id = `soldier-${Date.now()}`
     const name = chosenName || randomSoldierName()
     // String.split always returns at least one element for any

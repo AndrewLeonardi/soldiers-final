@@ -1,5 +1,5 @@
 /**
- * ComputeCounter — compute currency pill with daily timer and wallet popup.
+ * TokenCounter — token currency pill with daily timer and wallet popup.
  *
  * Sprint 4 polish. Shows daily countdown/CLAIM directly below the pill.
  * Tapping the timer opens the daily reward popup.
@@ -7,16 +7,16 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useCampStore } from '@stores/campStore'
 import { useSceneStore } from '@stores/sceneStore'
-import { ComputeIcon } from './ComputeIcon'
+import { TokenIcon } from './TokenIcon'
 import { CurrencyPill } from './CurrencyPill'
 import * as sfx from '@audio/sfx'
 
-interface ComputeCounterProps {
+interface TokenCounterProps {
   hasUnclaimedDaily?: boolean
 }
 
-export function ComputeCounter({ hasUnclaimedDaily }: ComputeCounterProps) {
-  const compute = useCampStore((s) => s.compute)
+export function TokenCounter({ hasUnclaimedDaily }: TokenCounterProps) {
+  const tokens = useCampStore((s) => s.tokens)
   const dailyStreak = useCampStore((s) => s.dailyStreak)
   const lastDailyClaimDate = useCampStore((s) => s.lastDailyClaimDate)
   const setStoreSheetOpen = useSceneStore((s) => s.setStoreSheetOpen)
@@ -78,10 +78,10 @@ export function ComputeCounter({ hasUnclaimedDaily }: ComputeCounterProps) {
   }, [lastDailyClaimDate])
 
   return (
-    <div className="compute-counter-wrapper" ref={wrapperRef}>
+    <div className="token-counter-wrapper" ref={wrapperRef}>
       <CurrencyPill
-        icon={<ComputeIcon size={16} className="compute-counter-icon" />}
-        value={compute}
+        icon={<TokenIcon size={16} className="token-counter-icon" />}
+        value={tokens}
         color="#00e5ff"
         onPlusClick={handlePlus}
         onTap={handleTap}
@@ -89,27 +89,27 @@ export function ComputeCounter({ hasUnclaimedDaily }: ComputeCounterProps) {
 
       {/* Daily timer below pill */}
       <div
-        className={`compute-daily-timer ${hasUnclaimedDaily ? 'unclaimed' : ''}`}
+        className={`token-daily-timer ${hasUnclaimedDaily ? 'unclaimed' : ''}`}
         onClick={handleDailyTap}
       >
         {hasUnclaimedDaily ? 'CLAIM!' : countdown}
       </div>
 
       {walletOpen && (
-        <div className="compute-wallet">
-          <div className="compute-wallet-row">
-            <span className="compute-wallet-label">BALANCE</span>
-            <span className="compute-wallet-value"><ComputeIcon size={14} /> {compute}</span>
+        <div className="token-wallet">
+          <div className="token-wallet-row">
+            <span className="token-wallet-label">BALANCE</span>
+            <span className="token-wallet-value"><TokenIcon size={14} /> {tokens}</span>
           </div>
-          <div className="compute-wallet-row">
-            <span className="compute-wallet-label">NEXT DAILY</span>
-            <span className="compute-wallet-value">{countdown}</span>
+          <div className="token-wallet-row">
+            <span className="token-wallet-label">NEXT DAILY</span>
+            <span className="token-wallet-value">{countdown}</span>
           </div>
-          <div className="compute-wallet-row">
-            <span className="compute-wallet-label">STREAK</span>
-            <span className="compute-wallet-value">DAY {dailyStreak} / 7</span>
+          <div className="token-wallet-row">
+            <span className="token-wallet-label">STREAK</span>
+            <span className="token-wallet-value">DAY {dailyStreak} / 7</span>
           </div>
-          <button className="game-btn compute-wallet-buy" onClick={handlePlus}>
+          <button className="game-btn token-wallet-buy" onClick={handlePlus}>
             GET MORE
           </button>
         </div>

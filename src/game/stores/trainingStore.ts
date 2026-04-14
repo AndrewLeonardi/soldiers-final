@@ -3,7 +3,7 @@
  *
  * Owns every piece of state needed for the Phase 3a "zero-to-one
  * spectacle" and nothing more. Scoped deliberately to what 3a ships;
- * 3b adds passive ticks, 3c adds simultaneous trainees and compute
+ * 3b adds passive ticks, 3c adds simultaneous trainees and token
  * costs, 3d adds schema migrations for injury/quirk fields on the
  * roster side. This store is the spine those later phases plug into.
  *
@@ -157,14 +157,14 @@ interface TrainingState {
 
   /**
    * Reconfigure a slot to a new soldier + weapon. If training is currently
-   * running on that slot, it is stopped first. Compute is NOT charged here —
-   * call `deployTraining` to charge compute and start the run atomically.
+   * running on that slot, it is stopped first. Tokens are NOT charged here —
+   * call `deployTraining` to charge tokens and start the run atomically.
    */
   configureSlot: (slotId: string, soldierId: string, weapon: WeaponType) => void
 
   /**
-   * Charge compute, find the first free slot, configure it, and start
-   * training. Returns false if the player doesn't have enough compute,
+   * Charge tokens, find the first free slot, configure it, and start
+   * training. Returns false if the player doesn't have enough tokens,
    * no slots are free, or the config is invalid.
    * This is the single action the "Deploy" button calls.
    */
@@ -280,19 +280,19 @@ export const useTrainingStore = create<TrainingState>()(
           (id) => !slots[id] || slots[id]!.phase === 'idle',
         )
         if (!targetSlotId) return false
-        // Charge compute. This IS the business model.
-        if (!useGameStore.getState().spendCompute(config.computeCost)) return false
+        // Charge tokens. This IS the business model.
+        if (!useGameStore.getState().spendTokens(config.tokenCost)) return false
         get().configureSlot(targetSlotId, soldierId, weapon)
         const started = get().startTraining(targetSlotId)
         if (!started) {
-          useGameStore.getState().addCompute(config.computeCost)
+          useGameStore.getState().addTokens(config.tokenCost)
           return false
         }
         track('training_deployed', {
           slotId: targetSlotId,
           soldierId,
           weapon,
-          computeCost: config.computeCost,
+          tokenCost: config.tokenCost,
         })
         return true
       },

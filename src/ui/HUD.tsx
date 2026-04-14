@@ -1,5 +1,5 @@
 import { useGameStore } from '@stores/gameStore'
-import { GoldCoinIcon, MicrochipIcon } from './ToyIcons'
+import { MicrochipIcon } from './ToyIcons'
 import '@styles/game-ui.css'
 
 function formatTime(seconds: number): string {
@@ -9,8 +9,7 @@ function formatTime(seconds: number): string {
 }
 
 export function HUD() {
-  const gold = useGameStore((s) => s.gold)
-  const compute = useGameStore((s) => s.compute)
+  const tokens = useGameStore((s) => s.tokens)
   const phase = useGameStore((s) => s.phase)
   const battleHUD = useGameStore((s) => s.battleHUD)
 
@@ -27,13 +26,9 @@ export function HUD() {
   return (
     <div className="hud safe-top safe-left safe-right">
       <div className="hud-resource-group">
-        <div className="hud-resource">
-          <GoldCoinIcon size={20} />
-          <span className="hud-resource-value">{gold}</span>
-        </div>
         <div className="hud-resource hud-resource-compute">
           <MicrochipIcon size={18} color="#4ADE80" />
-          <span className="hud-resource-value">{compute}</span>
+          <span className="hud-resource-value">{tokens}</span>
         </div>
       </div>
 

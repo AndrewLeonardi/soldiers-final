@@ -1,18 +1,20 @@
 /**
- * RosterSheet — 2-column card grid with 3D soldier models.
+ * RosterSheet — 2×3 slot-based grid with 3D soldier models.
  *
- * Sprint 4 polish: removed sort/filter buttons, auto-sorts by most trained.
- * Each card shows a rotating 3D soldier, rank-colored border, name, weapon,
- * XP bar, status indicator. Tap card to open full-screen SoldierSheet detail.
+ * Always shows 6 slots: filled soldiers, empty unlocked slots, locked slots.
+ * Each filled card shows a rotating 3D soldier, rank-colored border, name, weapon,
+ * XP bar, status indicator. Tap card to open SoldierSheet detail.
+ * Empty slots open RecruitSheet. Locked slots show level requirement.
  */
 import { useCallback, useMemo, useRef } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { useCampStore } from '@stores/campStore'
+import { useCampStore, getMaxSoldierSlots, SLOT_MILESTONES } from '@stores/campStore'
 import { useSceneStore } from '@stores/sceneStore'
 import { RankBadge } from './RankBadge'
 import { getRank, getNextRank } from '@config/ranks'
 import { createFlexSoldier, animateFlexSoldier } from '@three/models/flexSoldier'
+import { LockIcon } from '@ui/ToyIcons'
 import type { SoldierRecord } from '@stores/campStore'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
@@ -25,6 +27,8 @@ const WEAPON_LABELS: Record<string, string> = {
   tank: 'TANK',
 }
 
+const TOTAL_SLOTS = 6
+
 /** Default sort: most trained brains (desc), then XP (desc) */
 function sortByMostTrained(soldiers: SoldierRecord[]): SoldierRecord[] {
   return [...soldiers].sort((a, b) => {
@@ -33,6 +37,21 @@ function sortByMostTrained(soldiers: SoldierRecord[]): SoldierRecord[] {
     if (bBrains !== aBrains) return bBrains - aBrains
     return (b.xp ?? 0) - (a.xp ?? 0)
   })
+}
+
+/** Find the level that unlocks a given slot index (0-based) */
+function getLevelForSlot(slotIndex: number): number | null {
+  // Slots 0-1 are always unlocked (base = 2 slots)
+  if (slotIndex < 2) return null
+  // Walk milestones to find which level unlocks this slot count
+  const sortedMilestones = Object.entries(SLOT_MILESTONES)
+    .map(([lvl, count]) => ({ level: Number(lvl), count }))
+    .sort((a, b) => a.level - b.level)
+  for (const { level, count } of sortedMilestones) {
+    if (slotIndex < count) return level
+  }
+  // Fallback: highest milestone level
+  return sortedMilestones[sortedMilestones.length - 1]?.level ?? null
 }
 
 /** 3D soldier model for card preview */
@@ -149,14 +168,44 @@ function SoldierCard({
   )
 }
 
+/** Empty unlocked slot — big "+" to recruit */
+function EmptySlotCard({ index, onTap }: { index: number; onTap: () => void }) {
+  return (
+    <div
+      className="roster-soldier-card roster-empty-slot"
+      style={{ animationDelay: `${index * 0.06}s` }}
+      onClick={() => { sfx.buttonTap(); onTap() }}
+    >
+      <div className="roster-empty-slot-plus">+</div>
+      <div className="roster-empty-slot-label">SLOT AVAILABLE</div>
+    </div>
+  )
+}
+
+/** Locked slot — grayed out with lock + level requirement */
+function LockedSlotCard({ index, requiredLevel }: { index: number; requiredLevel: number }) {
+  return (
+    <div
+      className="roster-soldier-card roster-locked-slot"
+      style={{ animationDelay: `${index * 0.06}s` }}
+    >
+      <div className="roster-locked-slot-icon">
+        <LockIcon size={28} color="rgba(180,180,180,0.5)" />
+      </div>
+      <div className="roster-locked-slot-level">LEVEL {requiredLevel}</div>
+    </div>
+  )
+}
+
 export function RosterSheet() {
   const isOpen = useSceneStore((s) => s.rosterSheetOpen)
   const setRosterSheetOpen = useSceneStore((s) => s.setRosterSheetOpen)
   const setRecruitSheetOpen = useSceneStore((s) => s.setRecruitSheetOpen)
   const setSoldierSheetId = useSceneStore((s) => s.setSoldierSheetId)
   const soldiers = useCampStore((s) => s.soldiers)
-  const gold = useCampStore((s) => s.gold)
+  const battlesCompleted = useCampStore((s) => s.battlesCompleted)
 
+  const maxSlots = useMemo(() => getMaxSoldierSlots(battlesCompleted), [battlesCompleted])
   const displaySoldiers = useMemo(() => sortByMostTrained(soldiers), [soldiers])
 
   const handleClose = useCallback(() => {
@@ -175,43 +224,60 @@ export function RosterSheet() {
 
   if (!isOpen) return null
 
+  // Build the 6-slot array: filled, empty unlocked, locked
+  const slotElements: React.ReactNode[] = []
+
+  // 1. Filled slots
+  displaySoldiers.forEach((sol, i) => {
+    slotElements.push(
+      <SoldierCard
+        key={sol.id}
+        soldier={sol}
+        index={i}
+        onTap={() => handleTapSoldier(sol.id)}
+      />
+    )
+  })
+
+  // 2. Empty unlocked slots
+  const emptyUnlocked = maxSlots - soldiers.length
+  for (let i = 0; i < emptyUnlocked; i++) {
+    const slotIdx = soldiers.length + i
+    slotElements.push(
+      <EmptySlotCard
+        key={`empty-${slotIdx}`}
+        index={slotIdx}
+        onTap={handleRecruit}
+      />
+    )
+  }
+
+  // 3. Locked slots
+  const lockedCount = TOTAL_SLOTS - maxSlots
+  for (let i = 0; i < lockedCount; i++) {
+    const slotIdx = maxSlots + i
+    const requiredLevel = getLevelForSlot(slotIdx) ?? 10
+    slotElements.push(
+      <LockedSlotCard
+        key={`locked-${slotIdx}`}
+        index={slotIdx}
+        requiredLevel={requiredLevel}
+      />
+    )
+  }
+
   return (
     <div className="game-sheet-backdrop" onClick={handleClose}>
       <div className="game-sheet roster-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="game-sheet-header">
           <span className="game-sheet-title">SOLDIERS</span>
-          <span className="roster-count">{soldiers.length} SOLDIERS</span>
+          <span className="roster-count">SQUAD: {soldiers.length}/{maxSlots}</span>
         </div>
 
         <div className="game-sheet-body">
-          {/* Recruit button */}
-          <button
-            className={`roster-recruit-btn ${gold < 200 ? 'disabled' : ''}`}
-            onClick={handleRecruit}
-            disabled={gold < 200}
-          >
-            + RECRUIT NEW SOLDIER
-          </button>
-
-          {/* Sort indicator */}
-          <div className="roster-sort-bar">
-            <span className="roster-sort-label">MOST TRAINED FIRST</span>
+          <div className="roster-slot-grid">
+            {slotElements}
           </div>
-
-          {soldiers.length === 0 ? (
-            <div className="store-empty">No soldiers recruited yet</div>
-          ) : (
-            <div className="roster-card-grid">
-              {displaySoldiers.map((sol, i) => (
-                <SoldierCard
-                  key={sol.id}
-                  soldier={sol}
-                  index={i}
-                  onTap={() => handleTapSoldier(sol.id)}
-                />
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </div>

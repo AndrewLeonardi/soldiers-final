@@ -119,7 +119,7 @@
 }
 
 /* ── Compute counter icon (legacy class for glow animation) ── */
-.compute-counter-icon {
+.token-counter-icon {
   width: 16px;
   height: 16px;
   color: #00e5ff;
@@ -132,16 +132,6 @@
   50% { filter: drop-shadow(0 0 8px rgba(0,229,255,0.7)); }
 }
 
-/* ── Gold counter icon glow ── */
-.gold-counter-icon {
-  filter: drop-shadow(0 0 3px rgba(255,215,0,0.4));
-  animation: goldGlow 3s ease-in-out infinite;
-}
-
-@keyframes goldGlow {
-  0%, 100% { filter: drop-shadow(0 0 3px rgba(255,215,0,0.4)); }
-  50% { filter: drop-shadow(0 0 8px rgba(255,215,0,0.7)); }
-}
 
 /* ── Bottom sheet pattern ── */
 .game-sheet-backdrop {
@@ -267,152 +257,182 @@
   pointer-events: auto;
 }
 
-/* ── Bottom bar — 5 chunky game buttons ── */
-.camp-bottom-bar {
+/* ══════════════════════════════════════════════════════════════
+   Bottom Nav Bar — Clash Royale-style colorful tabs
+   ══════════════════════════════════════════════════════════════ */
+.camp-nav-bar {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
   display: flex;
-  justify-content: space-around;
+  justify-content: center;
   align-items: flex-end;
-  padding: 8px 8px;
-  padding-bottom: max(10px, env(safe-area-inset-bottom));
-  background: linear-gradient(180deg, #2a3d28 0%, #1e3020 50%, #142418 100%);
-  border-top: 3px solid #5a8a4a;
+  gap: 6px;
+  padding: 6px 10px;
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, #1a2418 0%, #111a10 50%, #0a120a 100%);
+  border-top: 2px solid rgba(212, 170, 64, 0.35);
   z-index: 10;
   pointer-events: auto;
-  /* Decorative top highlight */
   box-shadow:
-    0 -6px 30px rgba(0, 0, 0, 0.7),
-    inset 0 2px 0 rgba(255, 255, 255, 0.1);
+    0 -8px 30px rgba(0, 0, 0, 0.8),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
-/* Brass rivet strip decoration */
-.camp-bottom-bar::before {
+/* Brass accent strip */
+.camp-nav-bar::before {
   content: '';
   position: absolute;
   top: -1px;
   left: 0;
   right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, transparent 5%, rgba(212, 170, 64, 0.5) 20%, rgba(212, 170, 64, 0.3) 50%, rgba(212, 170, 64, 0.5) 80%, transparent 95%);
+  height: 2px;
+  background: linear-gradient(90deg, transparent 5%, rgba(212, 170, 64, 0.6) 25%, rgba(212, 170, 64, 0.4) 50%, rgba(212, 170, 64, 0.6) 75%, transparent 95%);
 }
 
-.camp-bottom-btn {
+/* ── Individual tab ── */
+.camp-nav-tab {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 12px 8px 10px;
-  border: 2px solid #5a7a4a;
-  border-bottom: 5px solid #1a3a12;
+  gap: 3px;
+  padding: 8px 6px 6px;
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 4px solid rgba(0, 0, 0, 0.4);
   border-radius: 12px;
-  background: linear-gradient(180deg, #4a6a38 0%, #3a5a2a 50%, #2a4a22 100%);
+  background: linear-gradient(180deg, #2a2a22 0%, #1e1e18 100%);
   cursor: pointer;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
-  transition: transform 0.03s ease, transform 0.6s cubic-bezier(.3, .7, .4, 1);
+  transition: transform 0.08s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(0, 0, 0, 0.3),
-    inset 0 2px 0 rgba(255, 255, 255, 0.2),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+    0 3px 10px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
   flex: 1;
-  max-width: 72px;
+  max-width: 68px;
   min-width: 0;
   position: relative;
 }
 
-.camp-bottom-btn:active {
-  transform: scale(0.92) translateY(3px);
+.camp-nav-tab:active {
+  transform: scale(0.92) translateY(2px);
   border-bottom-width: 2px;
-  transition: transform 0.03s ease;
-  box-shadow:
-    0 1px 4px rgba(0, 0, 0, 0.4),
-    inset 0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: transform 0.04s ease;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
-.camp-bottom-btn.active {
-  transform: translateY(-4px);
-  background: linear-gradient(180deg, #5a9a45 0%, #4a8a38 50%, #3a7a2a 100%);
-  border-color: #8aba70;
-  box-shadow:
-    0 6px 20px rgba(74, 138, 40, 0.5),
-    0 0 20px rgba(100, 200, 80, 0.15),
-    inset 0 2px 0 rgba(255, 255, 255, 0.25);
-}
-
-.camp-bottom-btn.dimmed {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-/* ATTACK button — big red CTA, pops above bar */
-.camp-bottom-btn.attack {
-  background: linear-gradient(180deg, #ff6655 0%, #ee3333 40%, #cc2222 100%);
-  border-color: #ff9988;
-  border-bottom: 6px solid #8a1111;
-  transform: translateY(-10px);
-  min-width: 76px;
-  padding: 14px 10px 10px;
-  box-shadow:
-    0 8px 25px rgba(204, 34, 34, 0.6),
-    0 0 30px rgba(255, 80, 80, 0.15),
-    0 0 0 1px rgba(0, 0, 0, 0.3),
-    inset 0 2px 0 rgba(255, 255, 255, 0.3),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.2);
-  animation: attackPulse 2.5s ease-in-out infinite;
-}
-
-@keyframes attackPulse {
-  0%, 100% { box-shadow: 0 8px 25px rgba(204, 34, 34, 0.6), 0 0 30px rgba(255, 80, 80, 0.15), 0 0 0 1px rgba(0,0,0,0.3), inset 0 2px 0 rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.2); }
-  50% { box-shadow: 0 8px 35px rgba(204, 34, 34, 0.8), 0 0 50px rgba(255, 80, 80, 0.25), 0 0 0 1px rgba(0,0,0,0.3), inset 0 2px 0 rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.2); }
-}
-
-.camp-bottom-btn.attack:active {
-  transform: scale(0.93) translateY(-4px);
-  border-bottom-width: 2px;
-  animation: none;
-}
-
-.camp-bottom-btn.attack .camp-bottom-btn-icon {
-  color: #fff;
-  height: 30px;
-  filter: drop-shadow(0 0 6px rgba(255, 200, 100, 0.5));
-}
-
-.camp-bottom-btn.attack .camp-bottom-btn-label {
-  color: rgba(255, 255, 255, 0.95);
-  font-size: 11px;
-}
-
-.camp-bottom-btn-icon {
+/* ── Tab icon container ── */
+.camp-nav-tab-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 26px;
-  color: #a0cc80;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+  width: 36px;
+  height: 36px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+  transition: filter 0.2s ease;
 }
 
-.camp-bottom-btn.active .camp-bottom-btn-icon {
-  color: #c0ff90;
-  filter: drop-shadow(0 0 6px rgba(100, 200, 80, 0.5));
-}
-
-.camp-bottom-btn-label {
+/* ── Tab label ── */
+.camp-nav-tab-label {
   font-family: 'Black Ops One', cursive;
-  font-size: 10px;
-  color: #8aaa70;
-  letter-spacing: 1.5px;
+  font-size: 8px;
+  color: #777766;
+  letter-spacing: 1px;
   text-transform: uppercase;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  transition: color 0.2s ease;
 }
 
-.camp-bottom-btn.active .camp-bottom-btn-label {
-  color: #c0ff90;
+/* ══ Per-tab color themes ══ */
+
+/* SOLDIERS — olive green */
+.camp-nav-tab--soldiers {
+  --tab-accent: #4a7a3a;
+  --tab-glow: rgba(74, 122, 58, 0.5);
 }
+.camp-nav-tab--soldiers.active {
+  border-color: #6aaa55;
+  background: linear-gradient(180deg, rgba(74, 122, 58, 0.25) 0%, #1e1e18 100%);
+  box-shadow: 0 4px 16px var(--tab-glow), 0 0 20px rgba(74, 122, 58, 0.15), inset 0 1px 0 rgba(255,255,255,0.15);
+}
+.camp-nav-tab--soldiers.active .camp-nav-tab-label { color: #8acc70; }
+
+/* ATTACK — red/orange, center elevated */
+.camp-nav-tab--attack {
+  --tab-accent: #ee3333;
+  --tab-glow: rgba(238, 51, 51, 0.5);
+}
+
+/* Center elevated tab */
+.camp-nav-tab--center {
+  transform: translateY(-8px);
+  max-width: 76px;
+  padding: 10px 8px 6px;
+  background: linear-gradient(180deg, #3a2020 0%, #2a1818 100%);
+  border-color: rgba(238, 80, 80, 0.25);
+  border-bottom: 5px solid rgba(120, 20, 20, 0.6);
+  animation: navAttackPulse 2.5s ease-in-out infinite;
+}
+.camp-nav-tab--center .camp-nav-tab-icon {
+  width: 42px;
+  height: 42px;
+}
+.camp-nav-tab--center .camp-nav-tab-label {
+  color: #cc8877;
+  font-size: 9px;
+}
+.camp-nav-tab--center:active {
+  transform: scale(0.93) translateY(-2px);
+  animation: none;
+}
+.camp-nav-tab--attack.active {
+  border-color: #ff6655;
+  background: linear-gradient(180deg, rgba(238, 51, 51, 0.2) 0%, #2a1818 100%);
+  box-shadow: 0 6px 20px var(--tab-glow), 0 0 30px rgba(238, 51, 51, 0.2), inset 0 1px 0 rgba(255,255,255,0.15);
+}
+.camp-nav-tab--attack.active .camp-nav-tab-label { color: #ff9988; }
+
+@keyframes navAttackPulse {
+  0%, 100% { box-shadow: 0 4px 16px rgba(238, 51, 51, 0.3), inset 0 1px 0 rgba(255,255,255,0.08); }
+  50% { box-shadow: 0 6px 24px rgba(238, 51, 51, 0.5), 0 0 30px rgba(238, 51, 51, 0.12), inset 0 1px 0 rgba(255,255,255,0.08); }
+}
+
+/* STORE — purple/gold */
+.camp-nav-tab--store {
+  --tab-accent: #7b4bb3;
+  --tab-glow: rgba(123, 75, 179, 0.5);
+}
+.camp-nav-tab--store.active {
+  border-color: #9b6bd3;
+  background: linear-gradient(180deg, rgba(123, 75, 179, 0.2) 0%, #1e1e18 100%);
+  box-shadow: 0 4px 16px var(--tab-glow), 0 0 20px rgba(123, 75, 179, 0.15), inset 0 1px 0 rgba(255,255,255,0.15);
+}
+.camp-nav-tab--store.active .camp-nav-tab-label { color: #bb8bf3; }
+
+/* ARMORY — steel blue */
+.camp-nav-tab--armory {
+  --tab-accent: #3a6a9a;
+  --tab-glow: rgba(58, 106, 154, 0.5);
+}
+.camp-nav-tab--armory.active {
+  border-color: #5a8aba;
+  background: linear-gradient(180deg, rgba(58, 106, 154, 0.2) 0%, #1e1e18 100%);
+  box-shadow: 0 4px 16px var(--tab-glow), 0 0 20px rgba(58, 106, 154, 0.15), inset 0 1px 0 rgba(255,255,255,0.15);
+}
+.camp-nav-tab--armory.active .camp-nav-tab-label { color: #7aaade; }
+
+/* SETTINGS — warm gray */
+.camp-nav-tab--settings {
+  --tab-accent: #6a6a5a;
+  --tab-glow: rgba(106, 106, 90, 0.4);
+}
+.camp-nav-tab--settings.active {
+  border-color: #8a8a7a;
+  background: linear-gradient(180deg, rgba(106, 106, 90, 0.2) 0%, #1e1e18 100%);
+  box-shadow: 0 4px 12px var(--tab-glow), inset 0 1px 0 rgba(255,255,255,0.12);
+}
+.camp-nav-tab--settings.active .camp-nav-tab-label { color: #aaaaaa; }
 
 /* ── Dev indicator ── */
 /* ── Training sheet ── */
@@ -999,7 +1019,7 @@
 }
 
 /* ── Compute modal ── */
-.compute-modal-backdrop {
+.token-modal-backdrop {
   position: fixed;
   inset: 0;
   z-index: 200;
@@ -1010,7 +1030,7 @@
   animation: fadeIn 0.15s ease-out;
 }
 
-.compute-modal {
+.token-modal {
   width: 280px;
   padding: 24px;
   background: linear-gradient(180deg, #2a3a2a 0%, #1a2a1a 100%);
@@ -1026,7 +1046,7 @@
   gap: 12px;
 }
 
-.compute-modal-title {
+.token-modal-title {
   font-family: 'Black Ops One', cursive;
   font-size: 14px;
   color: #ff4444;
@@ -1035,8 +1055,8 @@
   text-align: center;
 }
 
-.compute-modal-balance,
-.compute-modal-shortfall {
+.token-modal-balance,
+.token-modal-shortfall {
   display: flex;
   justify-content: space-between;
   width: 100%;
@@ -1045,30 +1065,30 @@
   background: rgba(0, 0, 0, 0.3);
 }
 
-.compute-modal-label {
+.token-modal-label {
   font-family: 'Black Ops One', cursive;
   font-size: 10px;
   color: rgba(255, 255, 255, 0.4);
   letter-spacing: 2px;
 }
 
-.compute-modal-value {
+.token-modal-value {
   font-family: 'Black Ops One', cursive;
   font-size: 14px;
   color: #00e5ff;
   letter-spacing: 1px;
 }
 
-.compute-modal-value.shortfall {
+.token-modal-value.shortfall {
   color: #ff4444;
 }
 
-.compute-modal-cta {
+.token-modal-cta {
   width: 100%;
   margin-top: 4px;
 }
 
-.compute-modal-dismiss {
+.token-modal-dismiss {
   border: none;
   background: none;
   font-family: 'Black Ops One', cursive;
@@ -1079,7 +1099,7 @@
   padding: 4px 8px;
 }
 
-.compute-modal-dismiss:hover {
+.token-modal-dismiss:hover {
   color: rgba(255, 255, 255, 0.5);
 }
 
@@ -1577,6 +1597,94 @@
 @keyframes statusPulse {
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
+}
+
+/* ── Roster Slot Grid ── */
+.roster-slot-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+/* ── Empty Slot Card ── */
+.roster-empty-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 180px;
+  border: 3px dashed rgba(140, 160, 100, 0.5) !important;
+  border-left: 3px dashed rgba(140, 160, 100, 0.5) !important;
+  background: linear-gradient(180deg,
+    rgba(60, 70, 45, 0.6) 0%,
+    rgba(40, 50, 30, 0.8) 100%
+  );
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.roster-empty-slot:active {
+  transform: scale(0.94) translateY(2px);
+  border-color: rgba(180, 210, 140, 0.7) !important;
+  box-shadow:
+    0 2px 8px rgba(100, 180, 60, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+.roster-empty-slot-plus {
+  font-size: 42px;
+  font-weight: 900;
+  color: rgba(180, 200, 140, 0.7);
+  text-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(120, 180, 60, 0.15);
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.roster-empty-slot-label {
+  font-family: 'Black Ops One', cursive;
+  font-size: 9px;
+  letter-spacing: 2.5px;
+  color: rgba(180, 200, 140, 0.55);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  text-transform: uppercase;
+}
+
+/* ── Locked Slot Card ── */
+.roster-locked-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 180px;
+  border: 2px solid rgba(80, 80, 80, 0.4) !important;
+  border-left: 2px solid rgba(80, 80, 80, 0.4) !important;
+  border-bottom: 4px solid rgba(30, 30, 30, 0.6) !important;
+  background: linear-gradient(180deg,
+    rgba(35, 35, 40, 0.9) 0%,
+    rgba(22, 22, 28, 0.95) 100%
+  );
+  cursor: not-allowed;
+  filter: grayscale(0.6);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.3);
+}
+.roster-locked-slot-icon {
+  opacity: 0.5;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+}
+.roster-locked-slot-level {
+  font-family: 'Black Ops One', cursive;
+  font-size: 10px;
+  letter-spacing: 2.5px;
+  color: rgba(160, 160, 170, 0.45);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  text-transform: uppercase;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -3783,18 +3891,7 @@
   text-align: center;
 }
 
-/* ── Gold variant ── */
-.tutorial-card-gold {
-  border-color: #d4a820;
-  box-shadow:
-    0 20px 60px rgba(0, 0, 0, 0.8),
-    0 0 60px rgba(255, 215, 0, 0.25),
-    0 0 120px rgba(255, 215, 0, 0.1),
-    inset 0 2px 0 rgba(255, 255, 255, 0.12),
-    inset 0 -3px 6px rgba(0, 0, 0, 0.3);
-}
-
-/* ── Compute variant (green themed) ── */
+/* ── Tokens variant (green themed) ── */
 .tutorial-card-compute {
   border-color: #3daa5a;
   box-shadow:
@@ -3804,7 +3901,7 @@
     inset 0 2px 0 rgba(255, 255, 255, 0.12),
     inset 0 -3px 6px rgba(0, 0, 0, 0.3);
   animation: tutorial-card-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
-             tutorial-compute-glow 2s ease-in-out 0.5s infinite;
+             tutorial-token-glow 2s ease-in-out 0.5s infinite;
 }
 
 /* ── Icon circles ── */
@@ -3816,14 +3913,6 @@
   height: 80px;
   border-radius: 50%;
   animation: tutorial-icon-bounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;
-}
-
-.tutorial-icon-gold {
-  background: radial-gradient(circle at 40% 35%, #FFE066, #C8960C);
-  box-shadow:
-    0 6px 20px rgba(255, 215, 0, 0.5),
-    0 0 40px rgba(255, 215, 0, 0.3),
-    inset 0 -4px 8px rgba(0, 0, 0, 0.2);
 }
 
 .tutorial-icon-compute {
@@ -3845,13 +3934,6 @@
     0 2px 8px rgba(0, 0, 0, 0.6),
     0 0 20px rgba(255, 215, 64, 0.25);
   line-height: 1.2;
-}
-
-.tutorial-title-gold {
-  color: #ffd740;
-  text-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.6),
-    0 0 20px rgba(255, 215, 0, 0.4);
 }
 
 .tutorial-title-compute {
@@ -3878,11 +3960,6 @@
   margin-bottom: 0;
 }
 
-.tutorial-strong-gold {
-  color: #ffd740;
-  font-weight: 700;
-}
-
 .tutorial-strong-compute {
   color: #4ADE80;
   font-weight: 700;
@@ -3896,12 +3973,15 @@
   animation: tutorial-counter-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
-.tutorial-counter-gold {
-  color: #ffd740;
-  text-shadow: 0 2px 12px rgba(255, 215, 0, 0.6);
+.tutorial-counter-tokens {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
-.tutorial-counter-compute {
+.tutorial-counter-compute,
+.tutorial-counter-tokens {
   color: #4ADE80;
   text-shadow: 0 2px 12px rgba(74, 222, 128, 0.6);
 }
@@ -3973,10 +4053,15 @@
 }
 
 .tutorial-hint-top {
-  top: 56px;
-  transform: translateX(-50%);
-  animation: tutorial-hint-float 2s ease-in-out infinite,
-             tutorial-hint-top-enter 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  top: 0;
+  left: 0;
+  right: 0;
+  transform: none;
+  width: 100%;
+  max-width: 100%;
+  border-radius: 0 0 16px 16px;
+  padding: 10px 20px;
+  animation: tutorial-hint-top-enter 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
 .tutorial-hint-title {
@@ -4021,7 +4106,7 @@
   100% { transform: scale(1); opacity: 1; }
 }
 
-@keyframes tutorial-compute-glow {
+@keyframes tutorial-token-glow {
   0%, 100% {
     box-shadow:
       0 20px 60px rgba(0, 0, 0, 0.8),
@@ -4056,35 +4141,6 @@
 }
 
 /* ── Completion celebration ── */
-/* ── Mission briefing modal ── */
-.tutorial-card-mission {
-  border-color: #c0392b;
-  box-shadow:
-    0 20px 60px rgba(0, 0, 0, 0.8),
-    0 0 60px rgba(192, 57, 43, 0.3),
-    0 0 120px rgba(192, 57, 43, 0.1),
-    inset 0 2px 0 rgba(255, 255, 255, 0.15),
-    inset 0 -3px 6px rgba(0, 0, 0, 0.3);
-}
-.tutorial-icon-mission {
-  background: radial-gradient(circle, rgba(192,57,43,0.3) 0%, transparent 70%);
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 8px;
-}
-.tutorial-title-mission {
-  color: #e74c3c;
-}
-.tutorial-btn-mission {
-  background: linear-gradient(180deg, #e85d4a 0%, #c0392b 100%);
-  border-color: #a93226;
-  border-bottom-color: #8e2b22;
-}
-
 .tutorial-card-complete {
   border-color: #d4a820;
   box-shadow:
@@ -4533,7 +4589,7 @@
 }
 
 /* Daily timer below compute pill */
-.compute-daily-timer {
+.token-daily-timer {
   font-family: 'Black Ops One', cursive;
   font-size: 8px;
   letter-spacing: 1.5px;
@@ -4544,11 +4600,11 @@
   transition: color 0.15s;
 }
 
-.compute-daily-timer:active {
+.token-daily-timer:active {
   transform: scale(0.95);
 }
 
-.compute-daily-timer.unclaimed {
+.token-daily-timer.unclaimed {
   color: #ff4444;
   animation: badgePulse 1.5s ease infinite;
   text-shadow: 0 0 6px rgba(255, 68, 68, 0.4);
@@ -4558,12 +4614,11 @@
    SPRINT ECONOMY — Compute / Gold Wallet Popups
    ═══════════════════════════════════════════════════════════════ */
 
-.compute-counter-wrapper,
-.gold-counter-wrapper {
+.token-counter-wrapper {
   position: relative;
 }
 
-.compute-wallet,
+.token-wallet,
 .gold-wallet {
   position: absolute;
   top: calc(100% + 8px);
@@ -4579,7 +4634,7 @@
   z-index: 200;
 }
 
-.compute-wallet {
+.token-wallet {
   background: linear-gradient(180deg, #1a2a3a 0%, #0f1f2f 100%);
   border: 2px solid rgba(0, 229, 255, 0.25);
 }
@@ -4589,20 +4644,20 @@
   border: 2px solid rgba(255, 215, 0, 0.25);
 }
 
-.compute-wallet-row {
+.token-wallet-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.compute-wallet-label {
+.token-wallet-label {
   font-size: 10px;
   font-weight: 700;
   color: #7a8a7a;
   letter-spacing: 1px;
 }
 
-.compute-wallet-value {
+.token-wallet-value {
   font-size: 13px;
   font-weight: 800;
   color: #e0f0e0;
@@ -4611,7 +4666,7 @@
   gap: 4px;
 }
 
-.compute-wallet-buy {
+.token-wallet-buy {
   font-size: 12px;
   padding: 8px 16px;
   letter-spacing: 1px;
@@ -5274,4 +5329,242 @@
   font-size: 10px;
   color: rgba(255, 255, 255, 0.45);
   letter-spacing: 0.5px;
+}
+
+/* ══════════════════════════════════════════════════════════
+   PVP Teaser Banner
+   ══════════════════════════════════════════════════════════ */
+
+.pvp-teaser {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  margin: 8px 0;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #1a2a3a 0%, #0f1a28 100%);
+  border: 2px solid rgba(255, 217, 102, 0.25);
+  border-bottom: 4px solid rgba(0, 0, 0, 0.4);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.pvp-teaser--unlocked {
+  border-color: rgba(255, 217, 102, 0.5);
+  background: linear-gradient(180deg, #2a2a1a 0%, #1a1a0f 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 4px 16px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(255, 217, 102, 0.1);
+}
+
+.pvp-teaser-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 217, 102, 0.6);
+}
+
+.pvp-teaser-lock-glow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: pvpLockPulse 2s ease-in-out infinite;
+}
+
+@keyframes pvpLockPulse {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(255, 217, 102, 0.2)); }
+  50%      { filter: drop-shadow(0 0 10px rgba(255, 217, 102, 0.5)); }
+}
+
+.pvp-teaser-center {
+  flex: 1;
+  min-width: 0;
+}
+
+.pvp-teaser-title {
+  font-family: 'Black Ops One', cursive;
+  font-size: 16px;
+  letter-spacing: 2px;
+  color: #ffd966;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6), 0 0 12px rgba(255, 217, 102, 0.2);
+}
+
+.pvp-teaser--unlocked .pvp-teaser-title {
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6), 0 0 20px rgba(255, 217, 102, 0.35);
+}
+
+.pvp-teaser-subtitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: rgba(255, 255, 255, 0.45);
+  margin-top: 2px;
+}
+
+.pvp-teaser--unlocked .pvp-teaser-subtitle {
+  color: rgba(255, 217, 102, 0.7);
+}
+
+.pvp-teaser-bar {
+  margin-top: 6px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.pvp-teaser-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #ffd966 0%, #ffaa00 100%);
+  transition: width 0.6s cubic-bezier(.3, .7, .4, 1);
+}
+
+.pvp-teaser-level {
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.pvp-teaser-level-count {
+  font-family: 'Black Ops One', cursive;
+  font-size: 14px;
+  color: #ffd966;
+  letter-spacing: 1px;
+}
+
+.pvp-teaser-level-sep {
+  color: rgba(255, 255, 255, 0.25);
+  margin: 0 1px;
+}
+
+.pvp-teaser-level-ready {
+  font-family: 'Black Ops One', cursive;
+  font-size: 11px;
+  color: #4caf50;
+  letter-spacing: 1.5px;
+}
+
+/* ══════════════════════════════════════════════════════════
+   Slot Unlock Popup
+   ══════════════════════════════════════════════════════════ */
+
+.slot-unlock-popup {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
+  animation: slotUnlockFadeIn 0.3s ease;
+}
+
+@keyframes slotUnlockFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.slot-unlock-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 28px 32px 24px;
+  max-width: 320px;
+  width: 90%;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #2a2a1a 0%, #1a1a0f 100%);
+  border: 2px solid rgba(255, 217, 102, 0.4);
+  border-bottom: 5px solid rgba(184, 148, 42, 0.6);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.1),
+    0 8px 32px rgba(0, 0, 0, 0.7),
+    0 0 40px rgba(255, 217, 102, 0.12);
+  animation: slotUnlockCardIn 0.5s cubic-bezier(.3, 1.4, .4, 1);
+}
+
+@keyframes slotUnlockCardIn {
+  from { transform: scale(0.6); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+.slot-unlock-accent {
+  width: 60px;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, #ffd966, transparent);
+}
+
+.slot-unlock-title {
+  font-family: 'Black Ops One', cursive;
+  font-size: 22px;
+  letter-spacing: 2px;
+  color: #ffd966;
+  text-align: center;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 20px rgba(255, 217, 102, 0.3);
+}
+
+.slot-unlock-subtitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+}
+
+.slot-unlock-grid {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding: 8px 0;
+}
+
+.slot-unlock-slot {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 3px solid rgba(0, 0, 0, 0.3);
+}
+
+.slot-unlock-slot--filled {
+  background: linear-gradient(180deg, #3a5a2a 0%, #2a4a1a 100%);
+  border-color: #5a8a42;
+  color: #a0d880;
+}
+
+.slot-unlock-slot--empty {
+  background: linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 100%);
+  border-color: rgba(255, 217, 102, 0.35);
+  color: rgba(255, 217, 102, 0.5);
+  animation: slotUnlockSlotGlow 1.5s ease-in-out infinite;
+}
+
+@keyframes slotUnlockSlotGlow {
+  0%, 100% { box-shadow: 0 0 8px rgba(255, 217, 102, 0.1); }
+  50%      { box-shadow: 0 0 16px rgba(255, 217, 102, 0.3); }
+}
+
+.slot-unlock-btn {
+  margin-top: 4px;
+  min-width: 160px;
+  padding: 14px 32px;
+  font-size: 16px;
+  background: linear-gradient(180deg, #e8b830 0%, #c8982a 50%, #a87820 100%);
+  border-color: #e8c040;
+  border-bottom-color: #7a5a10;
+  color: #2a1a00;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
 }

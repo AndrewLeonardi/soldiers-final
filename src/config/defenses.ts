@@ -13,6 +13,7 @@ export interface DefenseDef {
   type: DefenseType
   label: string
   cost: number
+  maxCount: number
   icon: string
   /** Collision half-extents for battle loop wall avoidance + hit detection */
   halfExtents: { halfW: number; halfD: number }
@@ -23,6 +24,7 @@ export const DEFENSE_REGISTRY: DefenseDef[] = [
     type: 'wall',
     label: 'WALL',
     cost: 50,
+    maxCount: 3,
     icon: '\u2588\u2588',
     halfExtents: { halfW: 1.2, halfD: 0.35 },
   },
@@ -30,6 +32,7 @@ export const DEFENSE_REGISTRY: DefenseDef[] = [
     type: 'sandbag',
     label: 'BAGS',
     cost: 75,
+    maxCount: 2,
     icon: '\u25AC\u25AC',
     halfExtents: { halfW: 0.9, halfD: 0.35 },
   },
@@ -37,6 +40,7 @@ export const DEFENSE_REGISTRY: DefenseDef[] = [
     type: 'tower',
     label: 'TOWER',
     cost: 200,
+    maxCount: 1,
     icon: '\u2AFF',
     halfExtents: { halfW: 0.45, halfD: 0.45 },
   },
@@ -59,5 +63,6 @@ export const DEFENSE_OPTIONS = DEFENSE_REGISTRY.map(d => ({
   type: d.type,
   label: d.label,
   cost: d.cost,
+  maxCount: d.maxCount,
   icon: d.icon,
 }))

@@ -2,7 +2,7 @@
  * Training Store — bridges the pure ML engine to React UI.
  *
  * Manages the full training lifecycle:
- * 1. Start training (spend compute, init GA population)
+ * 1. Start training (spend tokens, init GA population)
  * 2. Tick loop (run sim, evaluate fitness, evolve)
  * 3. Graduation (save brain weights, unlock weapon)
  */
@@ -83,7 +83,7 @@ export const useTrainingStore = create<TrainingState>()(
     const config = WEAPON_TRAINING[weapon]
     if (!config) return false
 
-    const spent = useGameStore.getState().spendCompute(config.computeCost)
+    const spent = useGameStore.getState().spendTokens(config.tokenCost)
     if (!spent) return false
 
     const soldier = useRosterStore.getState().soldiers.find(s => s.id === soldierId)
