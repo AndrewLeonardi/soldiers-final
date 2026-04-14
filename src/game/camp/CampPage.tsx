@@ -20,7 +20,6 @@ import { CampScene } from './CampScene'
 import { BootScreen } from './BootScreen'
 import { CampHUD } from './CampHUD'
 import { SettingsSheet } from './SettingsSheet'
-import { TrainingSheet } from './TrainingSheet'
 import { MilestoneCallout } from './MilestoneCallout'
 import { StoreSheet } from './StoreSheet'
 import { RosterSheet } from './RosterSheet'
@@ -61,7 +60,6 @@ export default function CampPage() {
   const showDailyPopup = autoShowDaily || dailyRewardOpen
 
   const handleBootDone = useCallback(() => setBooted(true), [])
-  const setTrainingSheetOpen = useSceneStore((s) => s.setTrainingSheetOpen)
   const setStoreSheetOpen = useSceneStore((s) => s.setStoreSheetOpen)
   const setRosterSheetOpen = useSceneStore((s) => s.setRosterSheetOpen)
   const setMedicalSheetOpen = useSceneStore((s) => s.setMedicalSheetOpen)
@@ -79,18 +77,17 @@ export default function CampPage() {
     }
   }, [booted, tutorialCompleted])
 
-  // Dev shortcuts: T=train, S=store, R=roster, M=medical
+  // Dev shortcuts: S=store, R=soldiers, M=medical
   useEffect(() => {
     if (!import.meta.env.DEV) return
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 't' || e.key === 'T') setTrainingSheetOpen(true)
       if (e.key === 's' || e.key === 'S') setStoreSheetOpen(true)
       if (e.key === 'r' || e.key === 'R') setRosterSheetOpen(true)
       if (e.key === 'm' || e.key === 'M') setMedicalSheetOpen(true)
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [setTrainingSheetOpen, setStoreSheetOpen, setRosterSheetOpen, setMedicalSheetOpen])
+  }, [setStoreSheetOpen, setRosterSheetOpen, setMedicalSheetOpen])
 
   return (
     <div style={{ width: '100%', height: '100svh', position: 'relative', background: '#111' }}>
@@ -123,7 +120,6 @@ export default function CampPage() {
       {/* HUD + sheets — hidden during observation and firing range */}
       {!isObserving && !isFiringRange && <CampHUD />}
       {!isObserving && !isFiringRange && <SettingsSheet />}
-      {!isObserving && !isFiringRange && <TrainingSheet />}
       {!isObserving && !isFiringRange && <StoreSheet />}
       {!isObserving && !isFiringRange && <RosterSheet />}
       {!isObserving && !isFiringRange && <MilestoneCallout />}

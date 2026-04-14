@@ -30,12 +30,12 @@ const DRAG_THRESHOLD = 6
 export function TrainingCampBuilding() {
   const slots = useCampTrainingStore((s) => s.slots)
   const trainingPhase = useCampTrainingStore((s) => s.trainingPhase)
-  const setTrainingSheetOpen = useSceneStore((s) => s.setTrainingSheetOpen)
+  const setRosterSheetOpen = useSceneStore((s) => s.setRosterSheetOpen)
   const setObservingSlotIndex = useSceneStore((s) => s.setObservingSlotIndex)
   const battlePhase = useSceneStore((s) => s.battlePhase)
   const tutorialActive = useSceneStore((s) => s.tutorialActive)
   const anySheetOpen = useSceneStore((s) =>
-    s.trainingSheetOpen || s.storeSheetOpen || s.rosterSheetOpen ||
+    s.storeSheetOpen || s.rosterSheetOpen ||
     s.soldierSheetId !== null || s.medicalSheetOpen || s.dailyRewardOpen ||
     s.recruitSheetOpen || s.armorySheetOpen || s.computeModalOpen
   )
@@ -66,7 +66,7 @@ export function TrainingCampBuilding() {
     pointerDownPos.current = null
     if (dist < DRAG_THRESHOLD) {
       if (isIdle) {
-        setTrainingSheetOpen(true)
+        setRosterSheetOpen(true)
       } else {
         // If any slot is running, re-enter observation for the first running slot
         const runningIdx = slots.findIndex(s => s.trainingPhase === 'running')
@@ -76,7 +76,7 @@ export function TrainingCampBuilding() {
         }
       }
     }
-  }, [isIdle, setTrainingSheetOpen, setObservingSlotIndex, slots])
+  }, [isIdle, setRosterSheetOpen, setObservingSlotIndex, slots])
 
   return (
     <group position={[centerX, 0, centerZ]}>

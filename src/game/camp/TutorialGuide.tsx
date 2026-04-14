@@ -282,7 +282,6 @@ export function TutorialGuide() {
 
   const setRecruitSheetOpen = useSceneStore((s) => s.setRecruitSheetOpen)
   const setRosterSheetOpen = useSceneStore((s) => s.setRosterSheetOpen)
-  const setTrainingSheetOpen = useSceneStore((s) => s.setTrainingSheetOpen)
 
   const step = TUTORIAL_STEPS[tutorialStep]
 
@@ -299,9 +298,8 @@ export function TutorialGuide() {
       setRosterSheetOpen(true)
     }
     if (currentStep?.id === 'train-intro') {
-      setRosterSheetOpen(false)
       setRecruitSheetOpen(false)
-      setTrainingSheetOpen(true)
+      setRosterSheetOpen(true)
     }
 
     if (nextIdx >= TUTORIAL_STEPS.length) {
@@ -313,7 +311,7 @@ export function TutorialGuide() {
     } else {
       setTutorialStep(nextIdx)
     }
-  }, [tutorialStep, setTutorialStep, completeTutorial, endTutorial, setRecruitSheetOpen, setRosterSheetOpen, setTrainingSheetOpen])
+  }, [tutorialStep, setTutorialStep, completeTutorial, endTutorial, setRecruitSheetOpen, setRosterSheetOpen])
 
   // Close recruit/roster sheets when moving to training step
   useEffect(() => {
@@ -323,12 +321,12 @@ export function TutorialGuide() {
     }
   }, [step?.id, setRecruitSheetOpen, setRosterSheetOpen])
 
-  // Close training sheet when training is done (so ATTACK button is visible)
+  // Close roster sheet when training is done (so ATTACK button is visible)
   useEffect(() => {
     if (step?.id === 'training-done') {
-      setTrainingSheetOpen(false)
+      setRosterSheetOpen(false)
     }
-  }, [step?.id, setTrainingSheetOpen])
+  }, [step?.id, setRosterSheetOpen])
 
   if (!step) return null
   if (step.type === 'wait') return null

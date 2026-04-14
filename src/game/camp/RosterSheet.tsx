@@ -179,7 +179,7 @@ export function RosterSheet() {
     <div className="game-sheet-backdrop" onClick={handleClose}>
       <div className="game-sheet roster-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="game-sheet-header">
-          <span className="game-sheet-title">ROSTER</span>
+          <span className="game-sheet-title">SOLDIERS</span>
           <span className="roster-count">{soldiers.length} SOLDIERS</span>
         </div>
 

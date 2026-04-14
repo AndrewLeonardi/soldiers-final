@@ -11,7 +11,6 @@
 import { useCallback, useEffect, useMemo } from 'react'
 import { ComputeCounter } from './ComputeCounter'
 import { GoldCounter } from './GoldCounter'
-import { CrossedSwordsIcon } from './icons/CrossedSwordsIcon'
 import { ExplosionIcon } from './icons/ExplosionIcon'
 import { StorefrontIcon } from './icons/StorefrontIcon'
 import { TrophyIcon } from './icons/TrophyIcon'
@@ -78,12 +77,10 @@ export function CampHUD() {
 
   const battlePhase = useSceneStore((s) => s.battlePhase)
   const setBattlePhase = useSceneStore((s) => s.setBattlePhase)
-  const setTrainingSheetOpen = useSceneStore((s) => s.setTrainingSheetOpen)
   const setStoreSheetOpen = useSceneStore((s) => s.setStoreSheetOpen)
   const setRosterSheetOpen = useSceneStore((s) => s.setRosterSheetOpen)
   const setSettingsOpen = useSceneStore((s) => s.setSettingsOpen)
   const setArmorySheetOpen = useSceneStore((s) => s.setArmorySheetOpen)
-  const trainingSheetOpen = useSceneStore((s) => s.trainingSheetOpen)
   const storeSheetOpen = useSceneStore((s) => s.storeSheetOpen)
   const rosterSheetOpen = useSceneStore((s) => s.rosterSheetOpen)
   const settingsOpen = useSceneStore((s) => s.settingsOpen)
@@ -103,11 +100,6 @@ export function CampHUD() {
     setArmoryScrollToItem(nextUnlock.id)
     setArmorySheetOpen(true)
   }, [nextUnlock, setArmoryScrollToItem, setArmorySheetOpen])
-
-  const handleTrain = useCallback(() => {
-    sfx.buttonTap()
-    setTrainingSheetOpen(true)
-  }, [setTrainingSheetOpen])
 
   const handleAttack = useCallback(() => {
     sfx.buttonTap()
@@ -158,11 +150,11 @@ export function CampHUD() {
         </div>
       )}
 
-      {/* Bottom bar — 6 beveled action buttons */}
+      {/* Bottom bar — 5 beveled action buttons */}
       <div className="camp-bottom-bar">
-        <button className={`camp-bottom-btn${trainingSheetOpen ? ' active' : ''}`} onClick={handleTrain}>
-          <span className="camp-bottom-btn-icon"><CrossedSwordsIcon size={22} /></span>
-          <span className="camp-bottom-btn-label">TRAIN</span>
+        <button className={`camp-bottom-btn${rosterSheetOpen ? ' active' : ''}`} onClick={handleRoster}>
+          <span className="camp-bottom-btn-icon"><ClipboardIcon size={22} /></span>
+          <span className="camp-bottom-btn-label">SOLDIERS</span>
         </button>
 
         <button className={`camp-bottom-btn attack${battlePhase === 'picking' ? ' active' : ''}`} onClick={handleAttack}>
@@ -178,11 +170,6 @@ export function CampHUD() {
         <button className={`camp-bottom-btn${armorySheetOpen ? ' active' : ''}`} onClick={handleArmory}>
           <span className="camp-bottom-btn-icon"><TrophyIcon size={22} /></span>
           <span className="camp-bottom-btn-label">ARMORY</span>
-        </button>
-
-        <button className={`camp-bottom-btn${rosterSheetOpen ? ' active' : ''}`} onClick={handleRoster}>
-          <span className="camp-bottom-btn-icon"><ClipboardIcon size={22} /></span>
-          <span className="camp-bottom-btn-label">ROSTER</span>
         </button>
 
         <button className={`camp-bottom-btn${settingsOpen ? ' active' : ''}`} onClick={handleSettings}>

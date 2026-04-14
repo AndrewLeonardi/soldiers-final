@@ -53,7 +53,7 @@ export function MedicalTentBuilding() {
   const soldiers = useCampStore((s) => s.soldiers)
   const setMedicalSheetOpen = useSceneStore((s) => s.setMedicalSheetOpen)
   const anySheetOpen = useSceneStore((s) =>
-    s.trainingSheetOpen || s.storeSheetOpen || s.rosterSheetOpen ||
+    s.storeSheetOpen || s.rosterSheetOpen ||
     s.soldierSheetId !== null || s.medicalSheetOpen || s.dailyRewardOpen ||
     s.recruitSheetOpen || s.armorySheetOpen || s.computeModalOpen
   )
