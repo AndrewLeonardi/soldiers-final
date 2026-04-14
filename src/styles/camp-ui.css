@@ -2309,6 +2309,68 @@
 .cm-briefing-unlock {
   color: #aa66cc;
 }
+/* Weapon showcase on briefing card */
+.cm-weapon-showcase {
+  width: 100%;
+  border: 2px solid #8e44ad;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.4);
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  box-shadow: 0 0 20px rgba(142,68,173,0.2), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+.cm-weapon-canvas {
+  width: 80px;
+  height: 60px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(0,0,0,0.3);
+}
+.cm-weapon-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cm-weapon-new {
+  font-family: 'Black Ops One', cursive;
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: #ffd740;
+  text-shadow: 0 0 8px rgba(255,215,64,0.5);
+  animation: cm-new-pulse 1.5s ease-in-out infinite;
+}
+@keyframes cm-new-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.cm-weapon-name {
+  font-family: 'Black Ops One', cursive;
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+.cm-weapon-rarity {
+  font-family: 'Black Ops One', cursive;
+  font-size: 8px;
+  letter-spacing: 1px;
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 4px;
+  width: fit-content;
+}
+
+/* PVP teaser on campaign map */
+.cm-pvp-container {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  right: 16px;
+  z-index: 2;
+}
+
 .cm-deploy-btn {
   width: 100%;
   padding: 16px 0;

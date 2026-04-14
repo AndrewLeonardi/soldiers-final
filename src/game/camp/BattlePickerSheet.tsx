@@ -1,17 +1,21 @@
 /**
  * BattlePickerSheet — Campaign map level selector.
  *
- * Sprint B (UI redesign). Angry Birds-style winding path map with battle nodes.
- * Each node shows stars, weapon reward, lock state. Tapping opens a briefing
- * card with DEPLOY button.
+ * Sprint B+ (weapon unlock emphasis + PVP visibility).
+ * SVG campaign map with winding path, battle nodes, briefing card
+ * with 3D spinning weapon preview.
  */
-import { useCallback, useState, useMemo } from 'react'
+import { useCallback, useState, useMemo, useRef } from 'react'
+import { Canvas, useFrame } from '@react-three/fiber'
+import * as THREE from 'three'
 import { useSceneStore } from '@stores/sceneStore'
 import { useCampBattleStore } from '@stores/campBattleStore'
 import { useCampStore } from '@stores/campStore'
 import { generateLevel, getMaxAccessibleLevel } from '@config/levelGenerator'
+import { createDisplayWeapon } from '@three/models/weaponMeshes'
 import { TokenIcon } from './TokenIcon'
-import { LockIcon } from './icons/LockIcon'
+import type { WeaponType } from '@config/types'
+import { PVPTeaser } from './PVPTeaser'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
 
@@ -20,6 +24,27 @@ const WEAPON_LABELS: Record<string, string> = {
   grenade: 'GRENADES',
   machineGun: 'MACHINE GUN',
   tank: 'TANK',
+}
+
+const RARITY_COLORS: Record<string, string> = {
+  machineGun: '#27ae60',
+  rocketLauncher: '#2980b9',
+  grenade: '#8e44ad',
+  tank: '#f39c12',
+}
+
+/** Spinning 3D weapon model for briefing card */
+function SpinningWeapon({ weapon }: { weapon: string }) {
+  const groupRef = useRef<THREE.Group>(null!)
+  const weaponObj = useMemo(() => createDisplayWeapon(weapon as WeaponType), [weapon])
+  useFrame((_, dt) => {
+    if (groupRef.current) groupRef.current.rotation.y += dt * 1.5
+  })
+  return (
+    <group ref={groupRef}>
+      <primitive object={weaponObj} />
+    </group>
+  )
 }
 
 export function BattlePickerSheet() {
@@ -36,7 +61,6 @@ export function BattlePickerSheet() {
 
   const [selectedLevel, setSelectedLevel] = useState<number | null>(null)
 
-  // Generate all accessible level configs
   const levels = useMemo(() => {
     return Array.from({ length: Math.max(maxLevel, 3) }, (_, i) => ({
       level: i + 1,
@@ -73,7 +97,6 @@ export function BattlePickerSheet() {
     y: 80 + i * 120,
   }))
 
-  // SVG path through nodes
   const pathD = nodePositions.reduce((d, pos, i) => {
     if (i === 0) return `M ${pos.x} ${pos.y}`
     const prev = nodePositions[i - 1]!
@@ -81,9 +104,12 @@ export function BattlePickerSheet() {
     return `${d} C ${prev.x + cpX} ${prev.y - 40}, ${pos.x - cpX} ${pos.y + 40}, ${pos.x} ${pos.y}`
   }, '')
 
+  const weaponReward = selectedConfig?.weaponReward
+  const isWeaponNew = weaponReward ? !unlockedWeapons.includes(weaponReward) : false
+  const rarityColor = weaponReward ? (RARITY_COLORS[weaponReward] ?? '#888') : '#888'
+
   return (
     <div className="cm-overlay">
-      {/* Background layers */}
       <div className="cm-bg-layer cm-bg-dark" />
 
       {/* Top bar */}
@@ -93,15 +119,13 @@ export function BattlePickerSheet() {
         <span className="cm-level-count">{Object.keys(battlesCompleted ?? {}).length} CLEARED</span>
       </div>
 
-      {/* Map container */}
+      {/* Map */}
       <div className="cm-scroll-container">
         <svg className="cm-map" viewBox="0 0 400 550" preserveAspectRatio="xMidYMid meet">
-          {/* Dirt path */}
           <path d={pathD} fill="none" stroke="#5a4a28" strokeWidth="28" strokeLinecap="round" opacity="0.4" />
           <path d={pathD} fill="none" stroke="#7a6a40" strokeWidth="18" strokeLinecap="round" opacity="0.6" />
           <path d={pathD} fill="none" stroke="#9a8a58" strokeWidth="8" strokeLinecap="round" strokeDasharray="4 6" opacity="0.5" />
 
-          {/* Battle nodes */}
           {levels.map(({ level, config }, i) => {
             const pos = nodePositions[i]!
             const completed = battlesCompleted?.[config.id]
@@ -117,63 +141,44 @@ export function BattlePickerSheet() {
                 onClick={() => handleNodeTap(level)}
                 style={{ cursor: isLocked ? 'default' : 'pointer' }}
               >
-                {/* Glow rings for current level */}
                 {isCurrent && (
                   <>
                     <circle cx={pos.x} cy={pos.y} r="28" fill="none" stroke="#d4aa40" strokeWidth="2" opacity="0.3" className="cm-glow-outer" />
                     <circle cx={pos.x} cy={pos.y} r="24" fill="none" stroke="#d4aa40" strokeWidth="1.5" opacity="0.5" className="cm-glow-inner" />
                   </>
                 )}
-
-                {/* Selection ring */}
                 {isSelected && (
                   <circle cx={pos.x} cy={pos.y} r="26" fill="none" stroke="#ffd740" strokeWidth="3" className="cm-select-ring" />
                 )}
-
-                {/* Node circle */}
                 <circle
                   cx={pos.x} cy={pos.y} r="20"
                   fill={isLocked ? '#1a1a1a' : completed ? '#2a5a2a' : '#3a6a3a'}
                   stroke={isLocked ? '#444' : completed ? '#66cc66' : '#8aaa8a'}
                   strokeWidth="3"
                 />
-                {/* Inner highlight for depth */}
-                <circle
-                  cx={pos.x} cy={pos.y - 2} r="16"
-                  fill="none"
-                  stroke={isLocked ? 'transparent' : 'rgba(255,255,255,0.12)'}
-                  strokeWidth="1"
-                />
+                <circle cx={pos.x} cy={pos.y - 2} r="16" fill="none" stroke={isLocked ? 'transparent' : 'rgba(255,255,255,0.12)'} strokeWidth="1" />
 
-                {/* Node content */}
                 {isLocked ? (
-                  <text x={pos.x} y={pos.y + 1} textAnchor="middle" dominantBaseline="middle" fill="#555" fontSize="12" fontFamily="'Black Ops One'">
-                    🔒
-                  </text>
+                  <text x={pos.x} y={pos.y + 1} textAnchor="middle" dominantBaseline="middle" fill="#555" fontSize="12">🔒</text>
                 ) : (
-                  <text x={pos.x} y={pos.y + 1} textAnchor="middle" dominantBaseline="middle" fill="#fff" fontSize="14" fontWeight="800" fontFamily="'Black Ops One'">
-                    {level}
-                  </text>
+                  <text x={pos.x} y={pos.y + 1} textAnchor="middle" dominantBaseline="middle" fill="#fff" fontSize="14" fontWeight="800" fontFamily="'Black Ops One'">{level}</text>
                 )}
 
-                {/* Stars below node */}
                 {completed && (
                   <text x={pos.x} y={pos.y + 32} textAnchor="middle" fill="#ffd740" fontSize="10">
                     {'★'.repeat(stars)}{'☆'.repeat(3 - stars)}
                   </text>
                 )}
 
-                {/* Name plate */}
                 {!isLocked && (
                   <text x={pos.x} y={pos.y - 28} textAnchor="middle" fill="#c0d0a0" fontSize="8" fontFamily="'Black Ops One'" letterSpacing="0.5">
                     {config.name.toUpperCase()}
                   </text>
                 )}
 
-                {/* Weapon reward indicator */}
                 {config.weaponReward && !isLocked && (
                   <g>
-                    <circle cx={pos.x + 18} cy={pos.y - 14} r="8" fill="#8e44ad" stroke="#aa66cc" strokeWidth="1.5" />
+                    <circle cx={pos.x + 18} cy={pos.y - 14} r="8" fill={RARITY_COLORS[config.weaponReward] ?? '#8e44ad'} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" />
                     <text x={pos.x + 18} y={pos.y - 13} textAnchor="middle" dominantBaseline="middle" fill="#fff" fontSize="6" fontWeight="800">
                       {config.weaponReward === 'machineGun' ? 'MG' : config.weaponReward === 'rocketLauncher' ? 'RL' : config.weaponReward === 'grenade' ? 'GR' : '?'}
                     </text>
@@ -183,7 +188,6 @@ export function BattlePickerSheet() {
             )
           })}
 
-          {/* Decorative elements */}
           <text x="60" y="60" fill="#5a6a4a" fontSize="18" opacity="0.3">🌿</text>
           <text x="340" y="160" fill="#5a6a4a" fontSize="16" opacity="0.3">🪨</text>
           <text x="80" y="280" fill="#5a6a4a" fontSize="14" opacity="0.25">⛺</text>
@@ -191,20 +195,45 @@ export function BattlePickerSheet() {
         </svg>
       </div>
 
-      {/* Briefing card — slides up when a node is selected */}
+      {/* PVP teaser — always visible at bottom of map */}
+      {!selectedLevel && (
+        <div className="cm-pvp-container">
+          <PVPTeaser />
+        </div>
+      )}
+
+      {/* Briefing card with 3D weapon */}
       {selectedConfig && selectedLevel && (
         <div className="cm-briefing">
           <div className="cm-briefing-card">
+            {/* 3D Weapon reward — hero element */}
+            {weaponReward && (
+              <div className="cm-weapon-showcase" style={{ borderColor: rarityColor }}>
+                <div className="cm-weapon-canvas">
+                  <Canvas camera={{ position: [0, 0.1, 1.2], fov: 35 }} gl={{ alpha: true, antialias: true }} style={{ width: '100%', height: '100%' }}>
+                    <ambientLight intensity={0.6} />
+                    <directionalLight position={[2, 3, 4]} intensity={0.8} />
+                    <directionalLight position={[-2, 1, -1]} intensity={0.3} color={0x88aaff} />
+                    <SpinningWeapon weapon={weaponReward} />
+                  </Canvas>
+                </div>
+                <div className="cm-weapon-info">
+                  {isWeaponNew && <span className="cm-weapon-new">NEW</span>}
+                  <span className="cm-weapon-name" style={{ color: rarityColor }}>
+                    {WEAPON_LABELS[weaponReward] ?? weaponReward}
+                  </span>
+                  <span className="cm-weapon-rarity" style={{ background: rarityColor }}>
+                    {isWeaponNew ? 'UNLOCK ON VICTORY' : 'UNLOCKED'}
+                  </span>
+                </div>
+              </div>
+            )}
+
             <div className="cm-briefing-name">{selectedConfig.name}</div>
             <div className="cm-briefing-desc">{selectedConfig.description}</div>
             <div className="cm-briefing-meta">
               <span>{selectedConfig.enemySoldiers?.length ?? 0} ENEMIES</span>
               <span>+{selectedConfig.reward} <TokenIcon size={10} /></span>
-              {selectedConfig.weaponReward && (
-                <span className="cm-briefing-unlock">
-                  {unlockedWeapons.includes(selectedConfig.weaponReward) ? '✓' : '🔓'} {WEAPON_LABELS[selectedConfig.weaponReward] ?? selectedConfig.weaponReward}
-                </span>
-              )}
             </div>
             <button className="cm-deploy-btn" onClick={handleDeploy}>
               DEPLOY
