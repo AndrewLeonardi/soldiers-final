@@ -240,7 +240,7 @@ export function ResultOverlay() {
         {!isVictory && (
           <div className="result-defeat-section">
             <div className="result-defeat-msg">Your squad was eliminated before reaching the Intel.</div>
-            <div className="result-defeat-hint">TRAIN HARDER AND TRY AGAIN</div>
+            <div className="result-defeat-hint">TRAIN YOUR SQUAD AND TRY AGAIN</div>
           </div>
         )}
 

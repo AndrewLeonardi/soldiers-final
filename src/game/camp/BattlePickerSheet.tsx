@@ -1,20 +1,15 @@
 /**
- * BattlePickerSheet — full-screen level selector with rotating 3D diorama.
+ * BattlePickerSheet — Campaign map level selector.
  *
- * Sprint 8. Replaces the flat bottom-sheet battle list with a swipeable
- * level selector. One level fills the screen at a time with a rotating
- * 3D island diorama showing the enemy base and themed environment.
- *
- * Swipe left/right or use arrow buttons to browse levels.
- * Shows level info, stars, rewards, and weapon unlock below the diorama.
+ * Sprint B (UI redesign). Angry Birds-style winding path map with battle nodes.
+ * Each node shows stars, weapon reward, lock state. Tapping opens a briefing
+ * card with DEPLOY button.
  */
 import { useCallback, useState, useMemo } from 'react'
 import { useSceneStore } from '@stores/sceneStore'
 import { useCampBattleStore } from '@stores/campBattleStore'
 import { useCampStore } from '@stores/campStore'
 import { generateLevel, getMaxAccessibleLevel } from '@config/levelGenerator'
-import type { CampBattleConfig } from '@config/campBattles'
-import { BattleDiorama } from './BattleDiorama'
 import { TokenIcon } from './TokenIcon'
 import { LockIcon } from './icons/LockIcon'
 import * as sfx from '@audio/sfx'
@@ -25,13 +20,6 @@ const WEAPON_LABELS: Record<string, string> = {
   grenade: 'GRENADES',
   machineGun: 'MACHINE GUN',
   tank: 'TANK',
-}
-
-const WEAPON_ICONS: Record<string, string> = {
-  rocketLauncher: 'RL',
-  grenade: 'GR',
-  machineGun: 'MG',
-  tank: 'TK',
 }
 
 export function BattlePickerSheet() {
@@ -46,146 +34,177 @@ export function BattlePickerSheet() {
     [battlesCompleted],
   )
 
-  const [currentLevel, setCurrentLevel] = useState(1)
+  const [selectedLevel, setSelectedLevel] = useState<number | null>(null)
 
-  // Generate the current level config
-  const levelConfig = useMemo(() => generateLevel(currentLevel), [currentLevel])
-  const completed = battlesCompleted?.[levelConfig.id]
-  const isLocked = currentLevel > maxLevel
-  const totalEnemies = levelConfig.enemySoldiers
-    ? levelConfig.enemySoldiers.length
-    : (levelConfig.waves ?? []).reduce(
-        (sum, w) => sum + w.enemies.reduce((s, e) => s + e.count, 0), 0,
-      )
+  // Generate all accessible level configs
+  const levels = useMemo(() => {
+    return Array.from({ length: Math.max(maxLevel, 3) }, (_, i) => ({
+      level: i + 1,
+      config: generateLevel(i + 1),
+    }))
+  }, [maxLevel])
+
+  const selectedConfig = selectedLevel != null ? levels.find(l => l.level === selectedLevel)?.config : null
+
+  const handleNodeTap = useCallback((level: number) => {
+    sfx.buttonTap()
+    if (level > maxLevel) return
+    setSelectedLevel(level === selectedLevel ? null : level)
+  }, [maxLevel, selectedLevel])
 
   const handleDeploy = useCallback(() => {
-    if (isLocked) return
-    sfx.buttonTap()
-    initBattle(levelConfig)
+    if (!selectedConfig || !selectedLevel || selectedLevel > maxLevel) return
+    sfx.deployHorn()
+    initBattle(selectedConfig)
     setBattlePhase('placing')
-  }, [isLocked, levelConfig, initBattle, setBattlePhase])
+  }, [selectedConfig, selectedLevel, maxLevel, initBattle, setBattlePhase])
 
   const handleClose = useCallback(() => {
     sfx.buttonTap()
+    setSelectedLevel(null)
     setBattlePhase('idle')
   }, [setBattlePhase])
 
-  const handlePrev = useCallback(() => {
-    sfx.buttonTap()
-    setCurrentLevel((l) => Math.max(1, l - 1))
-  }, [])
-
-  const handleNext = useCallback(() => {
-    sfx.buttonTap()
-    setCurrentLevel((l) => Math.min(maxLevel, l + 1))
-  }, [maxLevel])
-
   if (battlePhase !== 'picking') return null
 
-  const themeId = levelConfig.themeId ?? 'garden'
+  // Node positions: winding path from bottom to top
+  const nodePositions = levels.map((_, i) => ({
+    x: 200 + (i % 2 === 0 ? -55 : 55) + Math.sin(i * 0.7) * 15,
+    y: 520 - i * 100,
+  }))
+
+  // SVG path through nodes
+  const pathD = nodePositions.reduce((d, pos, i) => {
+    if (i === 0) return `M ${pos.x} ${pos.y}`
+    const prev = nodePositions[i - 1]!
+    const cpX = 45
+    return `${d} C ${prev.x + cpX} ${prev.y - 40}, ${pos.x - cpX} ${pos.y + 40}, ${pos.x} ${pos.y}`
+  }, '')
 
   return (
-    <div className="level-selector">
+    <div className="cm-overlay">
+      {/* Background layers */}
+      <div className="cm-bg-layer cm-bg-dark" />
+
       {/* Top bar */}
-      <div className="level-selector-top">
-        <button className="level-selector-back" onClick={handleClose}>
-          ← BACK
-        </button>
-        <span className="level-selector-number">LEVEL {currentLevel}</span>
+      <div className="cm-top-bar">
+        <button className="cm-back-btn" onClick={handleClose}>← BACK</button>
+        <span className="cm-title">CAMPAIGN</span>
+        <span className="cm-level-count">{Object.keys(battlesCompleted ?? {}).length} CLEARED</span>
       </div>
 
-      {/* Diorama viewport */}
-      <div className="level-selector-diorama">
-        {isLocked ? (
-          <div className="level-selector-locked-preview">
-            <span className="level-selector-lock-icon"><LockIcon size={32} /></span>
-          </div>
-        ) : (
-          <BattleDiorama themeId={themeId} level={currentLevel} />
-        )}
-      </div>
+      {/* Map container */}
+      <div className="cm-scroll-container">
+        <svg className="cm-map" viewBox="0 0 400 650" preserveAspectRatio="xMidYMid meet">
+          {/* Dirt path */}
+          <path d={pathD} fill="none" stroke="#4a3a20" strokeWidth="28" strokeLinecap="round" opacity="0.3" />
+          <path d={pathD} fill="none" stroke="#6a5a38" strokeWidth="18" strokeLinecap="round" opacity="0.5" />
+          <path d={pathD} fill="none" stroke="#8a7a50" strokeWidth="8" strokeLinecap="round" strokeDasharray="4 6" opacity="0.4" />
 
-      {/* Level info */}
-      <div className="level-selector-info">
-        <div className="level-selector-name">{levelConfig.name}</div>
-        <div className="level-selector-desc">{levelConfig.description}</div>
+          {/* Battle nodes */}
+          {levels.map(({ level, config }, i) => {
+            const pos = nodePositions[i]!
+            const completed = battlesCompleted?.[config.id]
+            const isLocked = level > maxLevel
+            const isCurrent = level === maxLevel && !completed
+            const isSelected = selectedLevel === level
+            const stars = completed?.stars ?? 0
 
-        {/* Meta row: waves, enemies, reward */}
-        <div className="level-selector-meta">
-          {levelConfig.intelPosition ? (
-            <span className="level-selector-meta-item">CAPTURE INTEL</span>
-          ) : (
-            <span className="level-selector-meta-item">
-              {levelConfig.waves?.length ?? 0} WAVE{(levelConfig.waves?.length ?? 0) > 1 ? 'S' : ''}
-            </span>
-          )}
-          <span className="level-selector-meta-item">
-            {totalEnemies} {totalEnemies === 1 ? 'ENEMY' : 'ENEMIES'}
-          </span>
-          <span className="level-selector-meta-item">
-            +{levelConfig.reward} <TokenIcon size={12} />
-          </span>
-        </div>
-
-        {/* Stars */}
-        {completed && (
-          <div className="level-selector-stars">
-            {'★'.repeat(completed.stars)}{'☆'.repeat(3 - completed.stars)}
-          </div>
-        )}
-
-        {/* Weapon reward */}
-        {levelConfig.weaponReward && (
-          <div className={`level-selector-weapon ${unlockedWeapons.includes(levelConfig.weaponReward) ? 'earned' : ''}`}>
-            {unlockedWeapons.includes(levelConfig.weaponReward)
-              ? `✓ ${WEAPON_ICONS[levelConfig.weaponReward] ?? ''} ${WEAPON_LABELS[levelConfig.weaponReward] ?? levelConfig.weaponReward}`
-              : `UNLOCKS: ${WEAPON_ICONS[levelConfig.weaponReward] ?? ''} ${WEAPON_LABELS[levelConfig.weaponReward] ?? levelConfig.weaponReward}`
-            }
-          </div>
-        )}
-      </div>
-
-      {/* Navigation arrows + dots */}
-      <div className="level-selector-nav">
-        <button
-          className="level-selector-arrow"
-          onClick={handlePrev}
-          disabled={currentLevel <= 1}
-        >
-          ◀
-        </button>
-
-        <div className="level-selector-dots">
-          {Array.from({ length: Math.min(maxLevel, 10) }, (_, i) => {
-            const lvl = i + 1
             return (
-              <button
-                key={lvl}
-                className={`level-selector-dot ${lvl === currentLevel ? 'active' : ''} ${(battlesCompleted?.[`camp-${lvl}`]) ? 'completed' : ''}`}
-                onClick={() => { sfx.buttonTap(); setCurrentLevel(lvl) }}
-              />
+              <g
+                key={level}
+                className={`cm-node ${isLocked ? 'locked' : ''} ${isCurrent ? 'current' : ''} ${isSelected ? 'selected' : ''}`}
+                onClick={() => handleNodeTap(level)}
+                style={{ cursor: isLocked ? 'default' : 'pointer' }}
+              >
+                {/* Glow rings for current level */}
+                {isCurrent && (
+                  <>
+                    <circle cx={pos.x} cy={pos.y} r="28" fill="none" stroke="#d4aa40" strokeWidth="2" opacity="0.3" className="cm-glow-outer" />
+                    <circle cx={pos.x} cy={pos.y} r="24" fill="none" stroke="#d4aa40" strokeWidth="1.5" opacity="0.5" className="cm-glow-inner" />
+                  </>
+                )}
+
+                {/* Selection ring */}
+                {isSelected && (
+                  <circle cx={pos.x} cy={pos.y} r="26" fill="none" stroke="#ffd740" strokeWidth="3" className="cm-select-ring" />
+                )}
+
+                {/* Node circle */}
+                <circle
+                  cx={pos.x} cy={pos.y} r="20"
+                  fill={isLocked ? '#2a2a2a' : completed ? '#2a4a2a' : '#3a5a3a'}
+                  stroke={isLocked ? '#444' : completed ? '#4caf50' : '#6a8a6a'}
+                  strokeWidth="3"
+                />
+
+                {/* Node content */}
+                {isLocked ? (
+                  <text x={pos.x} y={pos.y + 1} textAnchor="middle" dominantBaseline="middle" fill="#555" fontSize="12" fontFamily="'Black Ops One'">
+                    🔒
+                  </text>
+                ) : (
+                  <text x={pos.x} y={pos.y + 1} textAnchor="middle" dominantBaseline="middle" fill="#fff" fontSize="14" fontWeight="800" fontFamily="'Black Ops One'">
+                    {level}
+                  </text>
+                )}
+
+                {/* Stars below node */}
+                {completed && (
+                  <text x={pos.x} y={pos.y + 32} textAnchor="middle" fill="#ffd740" fontSize="10">
+                    {'★'.repeat(stars)}{'☆'.repeat(3 - stars)}
+                  </text>
+                )}
+
+                {/* Name plate */}
+                {!isLocked && (
+                  <text x={pos.x} y={pos.y - 28} textAnchor="middle" fill="#c0d0a0" fontSize="8" fontFamily="'Black Ops One'" letterSpacing="0.5">
+                    {config.name.toUpperCase()}
+                  </text>
+                )}
+
+                {/* Weapon reward indicator */}
+                {config.weaponReward && !isLocked && (
+                  <g>
+                    <circle cx={pos.x + 18} cy={pos.y - 14} r="8" fill="#8e44ad" stroke="#aa66cc" strokeWidth="1.5" />
+                    <text x={pos.x + 18} y={pos.y - 13} textAnchor="middle" dominantBaseline="middle" fill="#fff" fontSize="6" fontWeight="800">
+                      {config.weaponReward === 'machineGun' ? 'MG' : config.weaponReward === 'rocketLauncher' ? 'RL' : config.weaponReward === 'grenade' ? 'GR' : '?'}
+                    </text>
+                  </g>
+                )}
+              </g>
             )
           })}
-          {maxLevel > 10 && <span className="level-selector-dot-more">…</span>}
-        </div>
 
-        <button
-          className="level-selector-arrow"
-          onClick={handleNext}
-          disabled={currentLevel >= maxLevel}
-        >
-          ▶
-        </button>
+          {/* Decorative elements */}
+          <text x="60" y="560" fill="#5a6a4a" fontSize="18" opacity="0.3">🌿</text>
+          <text x="340" y="480" fill="#5a6a4a" fontSize="16" opacity="0.3">🪨</text>
+          <text x="80" y="380" fill="#5a6a4a" fontSize="14" opacity="0.25">⛺</text>
+          <text x="320" y="300" fill="#5a6a4a" fontSize="16" opacity="0.3">🏴</text>
+        </svg>
       </div>
 
-      {/* Deploy button */}
-      <button
-        className={`level-selector-deploy ${isLocked ? 'locked' : ''}`}
-        onClick={handleDeploy}
-        disabled={isLocked}
-      >
-        {isLocked ? <><LockIcon size={14} /> LOCKED</> : 'DEPLOY'}
-      </button>
+      {/* Briefing card — slides up when a node is selected */}
+      {selectedConfig && selectedLevel && (
+        <div className="cm-briefing">
+          <div className="cm-briefing-card">
+            <div className="cm-briefing-name">{selectedConfig.name}</div>
+            <div className="cm-briefing-desc">{selectedConfig.description}</div>
+            <div className="cm-briefing-meta">
+              <span>{selectedConfig.enemySoldiers?.length ?? 0} ENEMIES</span>
+              <span>+{selectedConfig.reward} <TokenIcon size={10} /></span>
+              {selectedConfig.weaponReward && (
+                <span className="cm-briefing-unlock">
+                  {unlockedWeapons.includes(selectedConfig.weaponReward) ? '✓' : '🔓'} {WEAPON_LABELS[selectedConfig.weaponReward] ?? selectedConfig.weaponReward}
+                </span>
+              )}
+            </div>
+            <button className="cm-deploy-btn" onClick={handleDeploy}>
+              DEPLOY
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
