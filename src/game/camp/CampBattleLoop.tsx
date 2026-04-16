@@ -59,6 +59,12 @@ let _uid = 0  // unit ID counter
 const DROP_GRAVITY = -20
 const DROP_HEIGHT_PLAYER = 4
 const FALL_DEATH_Y = -10
+const TOWER_PLATFORM_Y = 1.89  // top of tower platform (matches Defenses.tsx)
+
+/** Get the ground Y for a unit (elevated = on tower platform) */
+function getGroundY(unit: { elevated?: boolean }): number {
+  return unit.elevated ? TOWER_PLATFORM_Y : 0
+}
 
 /** Check if an XZ position is over the table surface */
 function isOverTable(x: number, z: number): boolean {
@@ -139,7 +145,7 @@ function createEnemyFromPlacement(
   const stats = ENEMY_STATS[placement.type]
   const weaponStats = WEAPON_STATS[placement.weapon]
   const range = placement.elevated ? weaponStats.range * 1.3 : weaponStats.range
-  const y = placement.elevated ? 1.5 : 0
+  const y = placement.elevated ? TOWER_PLATFORM_Y : 0
 
   return {
     id: `enemy-${++_uid}`,
@@ -347,7 +353,7 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
       }
 
       // In-air drop
-      const groundY = unit.elevated ? 1.5 : 0
+      const groundY = getGroundY(unit)
       if (unit.position[1] > groundY) {
         unit.velocity[1] += DROP_GRAVITY * dt
         unit.position[1] += unit.velocity[1] * dt
@@ -365,7 +371,7 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
     // ──────────────────────────────────────────────
     for (const player of players) {
       if (player.status === 'dead') continue
-      if (player.position[1] > 0) continue // still falling
+      if (player.position[1] > getGroundY(player) + 0.05) continue // still falling
 
       player.stateAge += dt
 
@@ -404,7 +410,7 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
 
       for (const enemy of enemies) {
         if (enemy.status === 'dead') continue
-        if (enemy.position[1] > 0.5) continue
+        if (enemy.position[1] > getGroundY(enemy) + 0.5) continue
         livingEnemies.push(enemy)
         _tB.set(enemy.position[0], 0, enemy.position[2])
         const dist = _tA.distanceTo(_tB)
@@ -700,7 +706,7 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
     // ──────────────────────────────────────────────
     for (const enemy of enemies) {
       if (enemy.status === 'dead') continue
-      if (enemy.position[1] > 0) continue // still falling (shouldn't happen for pre-placed)
+      if (enemy.position[1] > getGroundY(enemy) + 0.05) continue // still falling
 
       enemy.stateAge += dt
 
@@ -720,7 +726,7 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
 
       for (const player of players) {
         if (player.status === 'dead') continue
-        if (player.position[1] > 0.5) continue
+        if (player.position[1] > getGroundY(player) + 0.5) continue
         _tB.set(player.position[0], 0, player.position[2])
         const dist = _tA.distanceTo(_tB)
         if (dist < nearestDist) { nearestDist = dist; nearestPlayer = player }

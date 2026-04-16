@@ -135,7 +135,8 @@ export function PlacementMarkers({ wallBlocksRef }: PlacementMarkersProps) {
 
       {/* ── Player placed soldiers ── */}
       {placedSoldiers.map((sol) => {
-        const groundPos: [number, number, number] = [sol.position[0], 0, sol.position[2]]
+        const y = sol.elevated ? 1.89 : 0
+        const groundPos: [number, number, number] = [sol.position[0], y, sol.position[2]]
         const verbColor = VERB_COLORS[sol.actionVerb] ?? '#4caf50'
         return (
           <group key={sol.soldierId}>
@@ -151,7 +152,7 @@ export function PlacementMarkers({ wallBlocksRef }: PlacementMarkersProps) {
             />
             {/* Name + verb tag */}
             <Html
-              position={[groundPos[0], 1.8, groundPos[2]]}
+              position={[groundPos[0], groundPos[1] + 1.8, groundPos[2]]}
               center
               zIndexRange={[5, 0]}
               style={{
