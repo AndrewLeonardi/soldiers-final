@@ -4897,6 +4897,7 @@
 }
 
 .daily-reward-card {
+  position: relative;
   background: linear-gradient(160deg, #1e3548 0%, #162a3c 40%, #102030 100%);
   border: 2px solid rgba(0, 229, 255, 0.4);
   border-radius: 20px;
@@ -4909,6 +4910,33 @@
     0 0 40px rgba(0, 229, 255, 0.2),
     0 20px 60px rgba(0, 0, 0, 0.7),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Close X in the top-right corner — tap-friendly size on mobile. */
+.daily-reward-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: 'Black Ops One', cursive;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  border-radius: 16px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.daily-reward-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+}
+.daily-reward-close:active {
+  background: rgba(255, 255, 255, 0.15);
+  transform: scale(0.92);
 }
 
 .daily-reward-title {
@@ -6764,3 +6792,17 @@
   white-space: nowrap;
 }
 .cookie-banner-btn:hover { background: rgba(212, 170, 64, 0.1); }
+
+/* Welcome popup — shares daily-reward-* styles; just one subnote style. */
+.welcome-reward-subnote {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(220, 235, 245, 0.75);
+  margin: 14px 0 18px;
+  padding: 0 8px;
+}
+.welcome-reward-subnote strong {
+  color: #00e5ff;
+  font-weight: normal;
+}

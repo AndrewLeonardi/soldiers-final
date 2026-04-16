@@ -53,9 +53,6 @@ export const TRAINING_ELITE_COUNT = 5
 /** Tournament selection k */
 export const TRAINING_TOURNAMENT_K = 3
 
-/** Fitness threshold for early graduation ("breakthrough") */
-export const BREAKTHROUGH_THRESHOLD = 0.75
-
 /** Sim duration per individual evaluation (seconds of sim time) */
 export const TRAINING_SIM_DURATION = 8
 

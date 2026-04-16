@@ -35,8 +35,9 @@ export function DailyRewardPopup({ onClose }: DailyRewardPopupProps) {
   }, [claimDaily, onClose])
 
   return (
-    <div className="daily-reward-backdrop">
-      <div className="daily-reward-card">
+    <div className="daily-reward-backdrop" onClick={onClose}>
+      <div className="daily-reward-card" onClick={(e) => e.stopPropagation()}>
+        <button className="daily-reward-close" onClick={onClose} aria-label="Close">×</button>
         <h2 className="daily-reward-title">DAILY REWARD</h2>
         <p className="daily-reward-streak">A FULL DAY OF TRAINING ON THE HOUSE</p>
 

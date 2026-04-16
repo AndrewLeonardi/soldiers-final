@@ -92,6 +92,10 @@ interface CampState {
   // Store flags (local-only UI memory, not server-synced)
   starterPackShown: boolean
 
+  // Welcome reward popup shown to truly new players on first boot.
+  // v15. Grandfathered true for any profile with prior progress.
+  welcomeShown: boolean
+
   // Roster
   soldiers: SoldierRecord[]
 
@@ -148,6 +152,7 @@ interface CampState {
 
   // Actions — store flags
   setStarterPackShown: () => void
+  setWelcomeShown: () => void
 
   // Actions — tutorial
   completeTutorial: () => void
@@ -175,6 +180,7 @@ export const useCampStore = create<CampState>()(
 
       // Store flags
       starterPackShown: false,
+      welcomeShown: false,
 
       // Roster
       soldiers: [],
@@ -407,6 +413,7 @@ export const useCampStore = create<CampState>()(
 
       // ── Store flags (not server-synced — local-only UI memory) ──
       setStarterPackShown: () => set({ starterPackShown: true }),
+      setWelcomeShown: () => set({ welcomeShown: true }),
 
       // ── Tutorial ──
       completeTutorial: () => {
@@ -416,7 +423,7 @@ export const useCampStore = create<CampState>()(
     }),
     {
       name: 'toy-soldiers-camp',
-      version: 14,
+      version: 15,
       migrate: (persistedState: any, version: number) => {
         if (version < 2) {
           const state = persistedState as any
@@ -555,6 +562,18 @@ export const useCampStore = create<CampState>()(
               return { ...s, weaponManualsPurchased: merged }
             })
           }
+        }
+        if (version < 15) {
+          // v14 → v15: Add welcomeShown flag. Grandfather existing players
+          // so only truly new profiles see the welcome popup — anyone with
+          // prior progress has already seen the old onboarding.
+          const state = persistedState as any
+          const hasPriorProgress = (state.tokens ?? 0) !== 200
+            || (state.tutorialCompleted === true)
+            || (state.lastDailyClaimMs ?? 0) > 0
+            || (Array.isArray(state.soldiers) && state.soldiers.length > 0)
+            || (state.battlesCompleted && Object.keys(state.battlesCompleted).length > 0)
+          state.welcomeShown = hasPriorProgress
         }
         return persistedState as CampState
       },

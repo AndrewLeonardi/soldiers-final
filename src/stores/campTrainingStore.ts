@@ -25,7 +25,6 @@ import {
   TRAINING_POP_SIZE,
   TRAINING_ELITE_COUNT,
   TRAINING_SIM_DURATION,
-  BREAKTHROUGH_THRESHOLD,
 } from '@game/camp/trainingConstants'
 import { WEAPON_MANUAL_COST } from '@config/roster'
 import type { WeaponType } from '@config/types'
@@ -44,7 +43,7 @@ export type TrainingPhase =
   | 'selecting'       // Training sheet is open, picking soldier/weapon/tier
   | 'ceremony-start'  // Brief start ceremony (<2s)
   | 'running'         // GA is running, spectacle is live
-  | 'graduated'       // Timer done or breakthrough, awaiting ceremony
+  | 'graduated'       // Timer done — awaiting ceremony. Never fires early.
   | 'ceremony-end'    // Graduation ceremony (<2s)
 
 export type MilestoneType = 'FIRST_HIT' | 'FIRST_KILL' | 'STREAK_10'
@@ -487,19 +486,10 @@ export const useCampTrainingStore = create<CampTrainingState>()((set, get) => {
             }
             simStates = newSimStates
 
-            if (bestFitness >= BREAKTHROUGH_THRESHOLD && generation >= 3) {
-              return {
-                ...slot,
-                trainingPhase: 'graduated' as const,
-                timerElapsed: newElapsed,
-                tokenBurned: newTokenBurned,
-                generation, population, fitnesses, bestFitness, bestWeights,
-                fitnessHistory, simStates, totalHits, totalKills, bestStreak,
-                milestones, activeMilestone,
-                ghostSnapshots: slot.ghostSnapshots,
-                tickCounter: slot.tickCounter + 1,
-              }
-            }
+            // No early graduation — 1 token = 1 second means the full
+            // purchased duration must elapse. The GA keeps iterating
+            // generations the whole time; fitness keeps climbing past 1.0.
+            // Player gets exactly what they bought.
           }
         }
 

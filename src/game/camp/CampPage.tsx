@@ -41,6 +41,7 @@ import { ArmorySheet } from './ArmorySheet'
 import { UpgradeNudge } from './UpgradeNudge'
 import { AgeGateModal } from './AgeGate'
 import { CookieBanner } from './CookieBanner'
+import { WelcomeRewardPopup } from './WelcomeRewardPopup'
 import { AudioBed } from '@audio/AudioBed'
 import { resumeOnInteraction, ensureContext } from '@audio/context'
 import { useSceneStore } from '@stores/sceneStore'
@@ -64,10 +65,13 @@ export default function CampPage() {
   const tutorialCompleted = useCampStore((s) => s.tutorialCompleted)
   const tutorialActive = useSceneStore((s) => s.tutorialActive)
   const canClaimDaily = useCampStore((s) => s.canClaimDaily)
+  const welcomeShown = useCampStore((s) => s.welcomeShown)
   const dailyRewardOpen = useSceneStore((s) => s.dailyRewardOpen)
   const setDailyRewardOpen = useSceneStore((s) => s.setDailyRewardOpen)
+  const [welcomeDismissed, setWelcomeDismissed] = useState(false)
+  const showWelcome = booted && !welcomeShown && !welcomeDismissed
 
-  const autoShowDaily = booted && canClaimDaily() && !dailyPopupDismissed && !isObserving && !isFiringRange && tutorialCompleted && !tutorialActive
+  const autoShowDaily = booted && welcomeShown && canClaimDaily() && !dailyPopupDismissed && !isObserving && !isFiringRange && tutorialCompleted && !tutorialActive
   const showDailyPopup = autoShowDaily || dailyRewardOpen
 
   const handleBootDone = useCallback(() => setBooted(true), [])
@@ -128,12 +132,13 @@ export default function CampPage() {
     resumeOnInteraction()
   }, [])
 
-  // Auto-start tutorial for new players after boot
+  // Auto-start tutorial for new players after boot. Waits for the welcome
+  // popup to be dismissed so we don't stack modals on first boot.
   useEffect(() => {
-    if (booted && !tutorialCompleted) {
+    if (booted && welcomeShown && !tutorialCompleted) {
       useSceneStore.getState().startTutorial()
     }
-  }, [booted, tutorialCompleted])
+  }, [booted, welcomeShown, tutorialCompleted])
 
   // Dev shortcuts: S=store, R=soldiers, M=medical
   useEffect(() => {
@@ -169,7 +174,10 @@ export default function CampPage() {
         </Canvas>
       )}
 
-      {/* Daily reward popup — auto-shows after boot or manually from token counter */}
+      {/* Welcome popup — first boot only. Blocks tutorial + daily until dismissed. */}
+      {showWelcome && <WelcomeRewardPopup onClose={() => setWelcomeDismissed(true)} />}
+
+      {/* Daily reward popup — auto-shows after boot (post-welcome, post-tutorial) or manually from token counter */}
       {showDailyPopup && <DailyRewardPopup onClose={() => { setDailyPopupDismissed(true); setDailyRewardOpen(false) }} />}
 
       {/* Observation mode overlays */}
