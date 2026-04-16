@@ -10,7 +10,7 @@
 import { useState, useCallback } from 'react'
 import { useCampStore } from '@stores/campStore'
 import { DAILY_GRANT } from '@config/store'
-import { TokenIcon } from './TokenIcon'
+import { TokenChip } from './TokenChip'
 import { track } from '@analytics/events'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
@@ -39,15 +39,14 @@ export function DailyRewardPopup({ onClose }: DailyRewardPopupProps) {
       <div className="daily-reward-card" onClick={(e) => e.stopPropagation()}>
         <button className="daily-reward-close" onClick={onClose} aria-label="Close">×</button>
         <h2 className="daily-reward-title">DAILY REWARD</h2>
-        <p className="daily-reward-streak">A FULL DAY OF TRAINING ON THE HOUSE</p>
+        <p className="daily-reward-streak">YOUR DAILY TOKEN DROP</p>
 
         {/* Single hero tile */}
         <div className="daily-reward-hero">
           <div className={`daily-reward-day current${claimed ? ' just-claimed' : ''}`}>
             <span className="daily-reward-day-amount daily-reward-day-amount--hero">
-              <TokenIcon size={28} /> {DAILY_GRANT}
+              <TokenChip size={40} glow /> {DAILY_GRANT}
             </span>
-            <span className="daily-reward-day-sub">= {DAILY_GRANT} SECONDS</span>
           </div>
         </div>
 
@@ -59,7 +58,7 @@ export function DailyRewardPopup({ onClose }: DailyRewardPopupProps) {
         ) : (
           <div className="daily-reward-collected">
             <span className="daily-reward-collected-amount">
-              +{claimedAmount} <TokenIcon size={16} />
+              +{claimedAmount} <TokenChip size={16} />
             </span>
             {/* Particle burst */}
             <div className="daily-reward-particles">

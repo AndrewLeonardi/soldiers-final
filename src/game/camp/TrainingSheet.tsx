@@ -12,7 +12,7 @@ import { WeaponCarousel } from './WeaponCarousel'
 import { TIME_PACKAGES, SIM_SPEED_OPTIONS } from './trainingConstants'
 import type { WeaponType } from '@config/types'
 import { WEAPON_MANUAL_COST, WEAPON_DISPLAY } from '@config/roster'
-import { TokenIcon } from './TokenIcon'
+import { TokenChip } from './TokenChip'
 import { LockIcon } from './icons/LockIcon'
 import { RefreshIcon } from './icons/RefreshIcon'
 import * as sfx from '@audio/sfx'
@@ -174,7 +174,7 @@ export function TrainingSheet() {
 
           {hasBrainForWeapon && (
             <div className="training-retrain-notice">
-              <TokenIcon size={14} /> Re-training will improve existing {selectedWeapon} brain
+              <TokenChip size={14} /> Re-training will improve existing {selectedWeapon} brain
             </div>
           )}
 
@@ -186,7 +186,7 @@ export function TrainingSheet() {
                 {' '}must learn {WEAPON_DISPLAY[selectedWeapon].name}
               </span>
               <span className="training-manual-fee">
-                +{manualFee} <TokenIcon size={12} />
+                +{manualFee} <TokenChip size={12} />
               </span>
             </div>
           )}
@@ -205,7 +205,7 @@ export function TrainingSheet() {
                 onClick={() => setSelectedPackageId(pkg.id)}
               >
                 <span className="training-tier-multiplier">{pkg.label}</span>
-                <span className="training-tier-label">{pkg.tokens} <TokenIcon size={10} /></span>
+                <span className="training-tier-label">{pkg.tokens} <TokenChip size={10} /></span>
               </button>
             ))}
           </div>
@@ -233,7 +233,7 @@ export function TrainingSheet() {
             <div className="training-cost-item">
               <span className="training-cost-label">{manualFee > 0 ? 'TOTAL' : 'COST'}</span>
               <span className={`training-cost-value ${!canAfford ? 'insufficient' : ''}`}>
-                {totalCost} <TokenIcon size={12} />
+                {totalCost} <TokenChip size={12} />
               </span>
             </div>
             <div className="training-cost-item">
@@ -255,7 +255,7 @@ export function TrainingSheet() {
               <span className="training-slot-indicator-text">SLOT {autoSlotIndex + 1} AVAILABLE</span>
             ) : nextLockedSlotCost != null ? (
               <button className="training-unlock-slot-btn game-btn" onClick={handleUnlockSlot}>
-                <LockIcon size={12} /> UNLOCK SLOT ({nextLockedSlotCost} <TokenIcon size={10} />)
+                <LockIcon size={12} /> UNLOCK SLOT ({nextLockedSlotCost} <TokenChip size={10} />)
               </button>
             ) : (
               <span className="training-slot-indicator-text">ALL SLOTS BUSY</span>

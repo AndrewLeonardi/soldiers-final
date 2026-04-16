@@ -581,3 +581,28 @@ The shipping sprint. The app is now end-to-end production-ready: anonymous Supab
 **Architectural invariant preserved:** No wall, ever. A visitor who lands on `/camp` with zero env vars set plays identically to one landing with the full stack wired — the only difference is where progress is saved.
 
 **Next:** Launch operations — provision Supabase + Stripe per the setup doc, deploy, watch telemetry funnel, tune pack prices based on observed Day-10 wall behavior.
+
+## 2026-04-16 — Token Design Unification Sprint landed
+
+One chip to rule them all. Swept every token surface — HUD counter, Token Store, Daily Reward, Welcome popup, training UI — onto a single canonical `TokenChip` SVG with gradient bevel + teal glow. Stack-based pack visuals (Spark 1, Charge 2, Surge 3, Arsenal 5, War Chest 8) replaced the old scattered `ChipPile`. Stripped "= N SECONDS" conversion copy from every currency surface (Daily, Welcome, wallet tooltip); kept only on the training START button where it's actual duration.
+
+**Delivered:**
+- **`src/game/camp/TokenChip.tsx`** — the new canonical icon. SVG with linear + radial gradients (top bevel, bottom shadow), teal chip motif glowing from center, eight radiating pins, `count` prop produces a stacked variant via overlapping chips with y-offset, `glow` prop adds outer cyan aura + drop shadow for hero moments. Per-instance ids so gradients don't collide when multiple chips render on the same page.
+- **Token Store rename** — header now "TOKEN STORE". Balance pill uses new chip. Featured Arsenal tile shows 5-chip glow stack; grid tiles use stacks matching pack size. `TokenPack.chipCount` renamed to `stackCount` (1/2/3/5/8 — replacing the old 1/3/5/7/9 pile counts).
+- **TokenCounter HUD redesign** — value bumped to 28px, daily strip collapsed into an inline pill on the right edge of the hero card (gold pulse when claimable, quiet countdown otherwise). Wallet tooltip slimmed to BALANCE + NEXT DAILY + GET MORE — "RATE: 1 TOKEN = 1 SECOND" line removed.
+- **DailyRewardPopup** — subtitle changed from "A FULL DAY OF TRAINING ON THE HOUSE" to "YOUR DAILY TOKEN DROP". "= 150 SECONDS" sub-line removed. 40px glowing chip replaces old icon.
+- **WelcomeRewardPopup** — "= 200 SECONDS" sub-line removed. 48px glowing chip replaces old icon.
+- **Training UI chip pass** — TrainingSheet + SoldierSheet every TokenIcon → TokenChip. Kept the START button's `/ 30s` duration suffix (actual time, not currency rate). "LEARN WEAPON" preamble copy unchanged; fee pill uses new chip.
+- **Tutorial cleanup** — deleted steps 0 ('welcome' / "WELCOME, COMMANDER") and 1 ('claim-tokens' / "YOUR TOKENS"). Both were redundant with WelcomeRewardPopup. Tutorial now starts at "RECRUIT YOUR FIRST SOLDIER". Removed the `claim-tokens` → `claimDaily()` side-effect and the SFX branch in TutorialGuide.
+- **Orphan deletion** — removed `TokenModal.tsx` (zero callsites), removed `tokenModalOpen` / `setTokenModalOpen` from `sceneStore.ts`, removed the `<TokenModal />` mount from `CampPage`, removed `tokenModalOpen` from MedicalTentBuilding's sheet-open predicate. Removed `src/game/camp/TokenIcon.tsx`.
+- **CSS cleanup** — retired `.chip-pile`, `.chip-pile--large`, `.chip-pile-item` (replaced by TokenChip's built-in stacking). Retired `.token-daily-strip*` and replaced with `.token-daily-inline*`. Bumped `.token-hero-value` font-size 22 → 28. Tightened `.store-tile-chips` / `.store-featured-chips` wrappers.
+
+**Verified end-to-end (preview):**
+- Fresh install: WELCOME popup with new 48px glowing chip → LET'S GO → tutorial starts directly at "RECRUIT YOUR FIRST SOLDIER" (no WELCOME COMMANDER, no YOUR TOKENS beats).
+- HUD: hero chip with cyan glow, "200 TOKENS", inline "+150" gold daily pill (pulsing when claimable), green plus.
+- Token Store: "TOKEN STORE" header, Arsenal 5-chip stack, grid Spark 1 / Charge 2 / Surge 3 / War Chest 8, all chips render as dark-navy 3D reading.
+- Daily Reward: "YOUR DAILY TOKEN DROP" subtitle, zero SECONDS line, close X works.
+- Wallet tooltip: BALANCE + NEXT DAILY + GET MORE. RATE line removed.
+- `grep TokenIcon src/` returns one comment reference (historical, in TokenChip's JSDoc). `grep TokenModal src/` returns zero.
+
+**No schema change, no store migration.** Config change only: `TokenPack.chipCount` → `TokenPack.stackCount` (internal, not persisted).

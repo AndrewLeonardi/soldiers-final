@@ -1,12 +1,13 @@
 /**
  * tutorialSteps.ts — Camp tutorial step definitions.
  *
- * Sprint E (v5). Simplified 8-step onboarding:
- *   welcome → claim tokens → recruit → wait → train (auto) →
- *   watch training → unlock-weapons → complete
+ * Token-design sprint: trimmed to 6 steps. The old 'welcome' and
+ * 'claim-tokens' steps are covered by `WelcomeRewardPopup` on first
+ * boot and the `DailyRewardPopup` that auto-shows once the tutorial
+ * completes, so the tutorial now starts at RECRUIT.
  *
- * No gold references. Recruiting is free. Training auto-commits
- * during tutorial (rifle, 15s, 30 tokens).
+ * No gold references. Recruiting is free. Training auto-commits during
+ * tutorial (rifle, 15s, 15 tokens — updated to the v14 1:1 Quick package).
  */
 
 export interface TutorialStepDef {
@@ -25,28 +26,10 @@ export interface TutorialStepDef {
 }
 
 export const TUTORIAL_STEPS: TutorialStepDef[] = [
-  // ── Step 0: Welcome ──
-  {
-    id: 'welcome',
-    type: 'modal',
-    title: 'WELCOME, COMMANDER',
-    body: 'Your mission: recruit soldiers, train their AI brains, and lead them into battle.',
-    buttonText: 'BEGIN',
-    advanceOn: 'click',
-  },
-
-  // ── Step 1: Claim tokens (daily reward / starter chest) ──
-  {
-    id: 'claim-tokens',
-    type: 'modal',
-    variant: 'tokens',
-    title: 'YOUR TOKENS',
-    body: 'Tokens power everything — training, upgrades, unlocks. Claim your daily tokens to get started.',
-    buttonText: 'CLAIM TOKENS',
-    advanceOn: 'click',
-  },
-
-  // ── Step 2: Recruit prompt ──
+  // ── Step 0: Recruit prompt ──
+  // (The old 'welcome' and 'claim-tokens' steps are handled by
+  //  WelcomeRewardPopup + DailyRewardPopup — see tutorial cleanup
+  //  in the token-design sprint.)
   {
     id: 'recruit',
     type: 'modal',

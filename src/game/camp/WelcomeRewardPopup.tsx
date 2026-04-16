@@ -12,7 +12,7 @@
 import { useCallback } from 'react'
 import { useCampStore } from '@stores/campStore'
 import { DAILY_GRANT } from '@config/store'
-import { TokenIcon } from './TokenIcon'
+import { TokenChip } from './TokenChip'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
 
@@ -46,9 +46,8 @@ export function WelcomeRewardPopup({ onClose }: Props) {
         <div className="daily-reward-hero">
           <div className="daily-reward-day current">
             <span className="daily-reward-day-amount daily-reward-day-amount--hero">
-              <TokenIcon size={28} /> {starterTokens}
+              <TokenChip size={48} glow /> {starterTokens}
             </span>
-            <span className="daily-reward-day-sub">= {starterTokens} SECONDS</span>
           </div>
         </div>
 

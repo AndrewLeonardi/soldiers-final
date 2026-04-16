@@ -23,7 +23,6 @@ import { SettingsSheet } from './SettingsSheet'
 import { MilestoneCallout } from './MilestoneCallout'
 import { StoreSheet } from './StoreSheet'
 import { RosterSheet } from './RosterSheet'
-import { TokenModal } from './TokenModal'
 import { BattlePickerSheet } from './BattlePickerSheet'
 import { PlacementOverlay } from './PlacementOverlay'
 import { BattleHUD } from './BattleHUD'
@@ -201,7 +200,6 @@ export default function CampPage() {
       {!isObserving && !isFiringRange && <SoldierSheet />}
       {!isObserving && !isFiringRange && <MedicalSheet />}
       {!isObserving && !isFiringRange && <RecruitSheet />}
-      {!isObserving && !isFiringRange && <TokenModal />}
       {!isObserving && !isFiringRange && <ArmorySheet />}
       {!isObserving && !isFiringRange && <UpgradeNudge />}
 

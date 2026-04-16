@@ -11,7 +11,7 @@ import { Canvas, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { LockIcon } from './icons/LockIcon'
 import { CrossedSwordsIcon } from './icons/CrossedSwordsIcon'
-import { TokenIcon } from './TokenIcon'
+import { TokenChip } from './TokenChip'
 import { useSceneStore } from '@stores/sceneStore'
 import { useCampStore } from '@stores/campStore'
 import { createDisplayWeapon } from '@three/models/weaponMeshes'
@@ -192,7 +192,7 @@ function ArmoryCard({
       {/* Cost badge for defenses */}
       {item.cost != null && (
         <div className="armory-card-cost">
-          <TokenIcon size={12} /> {item.cost}
+          <TokenChip size={12} /> {item.cost}
         </div>
       )}
     </div>
@@ -267,7 +267,7 @@ function ArmoryDetail({
         {/* Defense cost */}
         {item.cost != null && (
           <div className="armory-detail-cost">
-            <TokenIcon size={12} /> {item.cost} TOKENS
+            <TokenChip size={12} /> {item.cost} TOKENS
           </div>
         )}
 

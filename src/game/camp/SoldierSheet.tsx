@@ -19,7 +19,7 @@ import { TIME_PACKAGES, SIM_SPEED_OPTIONS } from './trainingConstants'
 import { WEAPON_MANUAL_COST, WEAPON_DISPLAY } from '@config/roster'
 import type { WeaponType } from '@config/types'
 import { MedicIcon } from './icons/MedicIcon'
-import { TokenIcon } from './TokenIcon'
+import { TokenChip } from './TokenChip'
 import { LockIcon } from './icons/LockIcon'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
@@ -345,7 +345,7 @@ export function SoldierSheet() {
 
             {hasBrainForWeapon && (
               <div className="training-retrain-notice">
-                <TokenIcon size={14} /> Re-training will improve existing {selectedWeapon} brain
+                <TokenChip size={14} /> Re-training will improve existing {selectedWeapon} brain
               </div>
             )}
 
@@ -356,7 +356,7 @@ export function SoldierSheet() {
                   Must learn {WEAPON_DISPLAY[selectedWeapon].name}
                 </span>
                 <span className="training-manual-fee">
-                  +{manualFee} <TokenIcon size={12} />
+                  +{manualFee} <TokenChip size={12} />
                 </span>
               </div>
             )}
@@ -375,7 +375,7 @@ export function SoldierSheet() {
                   onClick={() => setSelectedPackageId(pkg.id)}
                 >
                   <span className="training-tier-multiplier">{pkg.label}</span>
-                  <span className="training-tier-label">{pkg.tokens} <TokenIcon size={10} /></span>
+                  <span className="training-tier-label">{pkg.tokens} <TokenChip size={10} /></span>
                 </button>
               ))}
             </div>
@@ -401,7 +401,7 @@ export function SoldierSheet() {
             {/* START button — big and prominent with cost inline */}
             {!slotIsEmpty && nextLockedSlotCost != null ? (
               <button className="game-btn training-unlock-slot-btn" onClick={handleUnlockSlot}>
-                <LockIcon size={12} /> UNLOCK SLOT ({nextLockedSlotCost} <TokenIcon size={10} />)
+                <LockIcon size={12} /> UNLOCK SLOT ({nextLockedSlotCost} <TokenChip size={10} />)
               </button>
             ) : (
               <button
@@ -413,8 +413,8 @@ export function SoldierSheet() {
                  !slotIsEmpty ? 'ALL SLOTS BUSY' :
                  !canAfford ? 'NOT ENOUGH TOKENS' :
                  manualFee > 0
-                   ? <>LEARN + START — {totalCost} <TokenIcon size={14} /></>
-                   : <>START — {trainingCost} <TokenIcon size={14} /> / {duration}s</>}
+                   ? <>LEARN + START — {totalCost} <TokenChip size={14} /></>
+                   : <>START — {trainingCost} <TokenChip size={14} /> / {duration}s</>}
               </button>
             )}
           </div>

@@ -5226,18 +5226,19 @@
 }
 .token-hero-value {
   font-family: 'Black Ops One', cursive;
-  font-size: 22px;
+  font-size: 28px;
   color: #ffeaa0;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7), 0 0 8px rgba(255, 215, 90, 0.35);
   font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 .token-hero-label {
   font-family: 'Black Ops One', cursive;
   font-size: 9px;
   letter-spacing: 2px;
   color: rgba(255, 215, 90, 0.7);
-  margin-top: 3px;
+  margin-top: 4px;
 }
 
 .token-hero-plus {
@@ -5281,43 +5282,42 @@
   }
 }
 
-/* Daily strip below hero */
-.token-daily-strip {
+/* Inline daily pill — sits inside the hero, right of the value.
+   Collapsed countdown state is quiet; claim state is the gold pulse. */
+.token-daily-inline {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 12px;
+  justify-content: center;
+  padding: 4px 9px;
+  min-width: 48px;
   border-radius: 10px;
-  background: rgba(8, 18, 28, 0.7);
-  border: 1px solid rgba(0, 229, 255, 0.2);
+  background: rgba(8, 18, 28, 0.6);
+  border: 1px solid rgba(0, 229, 255, 0.25);
   font-family: 'Black Ops One', cursive;
-  font-size: 9px;
-  letter-spacing: 1.5px;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: rgba(220, 240, 255, 0.7);
   cursor: pointer;
-  transition: transform 0.08s ease;
+  transition: transform 0.08s ease, background 0.15s ease, border-color 0.15s ease;
+  margin-left: 4px;
+  margin-right: 2px;
+  white-space: nowrap;
 }
-.token-daily-strip:active { transform: scale(0.95); }
+.token-daily-inline:active { transform: scale(0.93); }
+.token-daily-inline:hover { background: rgba(14, 30, 44, 0.85); }
 
-.token-daily-strip-label {
-  color: rgba(255, 215, 90, 0.7);
-}
-.token-daily-strip-value {
-  color: rgba(220, 240, 255, 0.85);
-}
-
-.token-daily-strip--unclaimed {
-  background: linear-gradient(180deg, #2a1a08 0%, #1a1004 100%);
-  border-color: rgba(255, 170, 50, 0.7);
-  animation: tokenDailyClaimPulse 1.4s ease-in-out infinite;
-}
-.token-daily-strip--unclaimed .token-daily-strip-label,
-.token-daily-strip--unclaimed .token-daily-strip-value {
+.token-daily-inline--claim {
+  background: linear-gradient(180deg, #3a2608 0%, #241404 100%);
+  border-color: rgba(255, 170, 50, 0.8);
   color: #ffd070;
+  font-size: 11px;
+  letter-spacing: 1.2px;
   text-shadow: 0 0 6px rgba(255, 170, 50, 0.5);
+  animation: tokenDailyClaimPulse 1.4s ease-in-out infinite;
 }
 @keyframes tokenDailyClaimPulse {
   0%, 100% { box-shadow: 0 0 6px rgba(255, 170, 50, 0.3); }
-  50%      { box-shadow: 0 0 14px rgba(255, 170, 50, 0.8); }
+  50%      { box-shadow: 0 0 16px rgba(255, 170, 50, 0.85); }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -5984,27 +5984,23 @@
   margin: 4px 0 12px;
 }
 
-/* ── Chip pile visual ── */
-.chip-pile {
+/* ── Token chip stack wrappers for store tiles ── */
+/* Sizing containers for the TokenChip stacks used on store tiles.
+   Chips provide their own depth; these just center + bound. */
+.store-tile-chips {
   position: relative;
   width: 100%;
-  height: 60px;
+  height: 72px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.chip-pile--large {
-  height: 80px;
-}
-.chip-pile-item {
-  position: absolute;
-  display: block;
-  line-height: 0;
-  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.55));
-  color: #00e5ff;
-}
-.chip-pile-item svg {
-  display: block;
+.store-featured-chips {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
 }
 
 /* ── Featured hero card ── */

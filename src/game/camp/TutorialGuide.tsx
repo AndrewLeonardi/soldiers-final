@@ -20,7 +20,7 @@ import { TUTORIAL_STEPS } from '@config/tutorialSteps'
 import type { TutorialStepDef } from '@config/tutorialSteps'
 import { StarIcon } from './icons/StarIcon'
 import { track } from '@analytics/events'
-import { TokenIcon } from './TokenIcon'
+import { TokenChip } from './TokenChip'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
 
@@ -60,9 +60,7 @@ function useStepSounds(step: TutorialStepDef | undefined) {
     if (!step) return
     if (step.type === 'wait') return
 
-    if (step.id === 'claim-tokens') {
-      sfx.modalAppear()
-    } else if (step.id === 'complete') {
+    if (step.id === 'complete') {
       sfx.completionFanfare()
     } else if (step.id === 'recruit-wait') {
       sfx.recruitChime()
@@ -108,7 +106,7 @@ function AnimatedCounter({ target }: { target: number }) {
 
   return (
     <div className="tutorial-counter tutorial-counter-tokens">
-      <TokenIcon size={20} /> {value}
+      <TokenChip size={20} /> {value}
     </div>
   )
 }
@@ -239,7 +237,6 @@ export function TutorialGuide() {
   const setTutorialStep = useSceneStore((s) => s.setTutorialStep)
   const endTutorial = useSceneStore((s) => s.endTutorial)
   const completeTutorial = useCampStore((s) => s.completeTutorial)
-  const claimDaily = useCampStore((s) => s.claimDaily)
 
   const setRecruitSheetOpen = useSceneStore((s) => s.setRecruitSheetOpen)
   const setRosterSheetOpen = useSceneStore((s) => s.setRosterSheetOpen)
@@ -257,11 +254,6 @@ export function TutorialGuide() {
     const nextIdx = tutorialStep + 1
 
     // Side effects based on which step we're leaving
-    if (currentStep?.id === 'claim-tokens') {
-      // Claim daily reward so player sees their token balance grow
-      claimDaily()
-    }
-
     if (currentStep?.id === 'recruit') {
       setRosterSheetOpen(true)
     }
@@ -289,7 +281,7 @@ export function TutorialGuide() {
     } else {
       setTutorialStep(nextIdx)
     }
-  }, [tutorialStep, setTutorialStep, completeTutorial, endTutorial, setRecruitSheetOpen, setRosterSheetOpen, claimDaily, commitToTrain, setObservingSlotIndex])
+  }, [tutorialStep, setTutorialStep, completeTutorial, endTutorial, setRecruitSheetOpen, setRosterSheetOpen, commitToTrain, setObservingSlotIndex])
 
   // Close recruit/roster sheets when moving to training step
   useEffect(() => {

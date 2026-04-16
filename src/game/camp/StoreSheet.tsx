@@ -1,61 +1,23 @@
 /**
- * StoreSheet — mobile game-shop redesign.
+ * StoreSheet — the Token Store. Featured hero pack + 2-column grid.
  *
- * Layout: featured legendary hero pack on top + 2-column grid of remaining
- * packs below. Each tile shows a pile of token chips sized by pack value,
- * a tier-colored accent stripe, the token amount, "TOKENS" label, pack
- * name, and a green pill price button.
+ * Token-design sprint: header renamed "TOKEN STORE", old scattered
+ * `ChipPile` replaced by `TokenChip` stacks sized by pack.stackCount
+ * (Spark=1, Charge=2, Surge=3, Arsenal=5, War Chest=8). No seconds
+ * copy anywhere — conversion messaging lives only on the training side.
  */
 import { useCallback, useEffect } from 'react'
 import { useCampStore } from '@stores/campStore'
 import { useSceneStore } from '@stores/sceneStore'
 import { TOKEN_PACKS } from '@config/store'
 import type { TokenPack } from '@config/store'
-import { TokenIcon } from './TokenIcon'
+import { TokenChip } from './TokenChip'
 import { purchasePack, grantStarterPack } from '@api/purchase'
 import { ensureAgeConfirmed } from './AgeGate'
 import { isSupabaseEnabled } from '@api/user'
 import { track } from '@analytics/events'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
-
-/** Stacked pile of token chips, sized by pack value. */
-function ChipPile({ count, large }: { count: number; large?: boolean }) {
-  // Cap visual chips so the pile doesn't get absurd
-  const visible = Math.min(count, 9)
-  const baseSize = large ? 36 : 26
-  return (
-    <div className={`chip-pile${large ? ' chip-pile--large' : ''}`}>
-      {Array.from({ length: visible }).map((_, i) => {
-        // Spread chips across the pile area with deterministic offsets
-        const angle = (i * 47) % 360
-        const rad = (angle * Math.PI) / 180
-        const radius = (i % 3) * (large ? 9 : 7)
-        const tx = Math.cos(rad) * radius
-        const ty = Math.sin(rad) * radius * 0.55
-        const rot = ((i * 23) % 60) - 30
-        return (
-          <span
-            key={i}
-            className="chip-pile-item"
-            style={{
-              top: '50%',
-              left: '50%',
-              width: baseSize,
-              height: baseSize,
-              marginLeft: -baseSize / 2 + tx,
-              marginTop: -baseSize / 2 + ty,
-              transform: `rotate(${rot}deg)`,
-              zIndex: i,
-            }}
-          >
-            <TokenIcon size={baseSize} />
-          </span>
-        )
-      })}
-    </div>
-  )
-}
 
 export function StoreSheet() {
   const isOpen = useSceneStore((s) => s.storeSheetOpen)
@@ -64,7 +26,6 @@ export function StoreSheet() {
   const soldiers = useCampStore((s) => s.soldiers)
   const starterPackShown = useCampStore((s) => s.starterPackShown)
 
-  // Fire store_opened once per open. When isOpen flips true, log it.
   useEffect(() => {
     if (!isOpen) return
     track('store_opened', {})
@@ -77,19 +38,13 @@ export function StoreSheet() {
     setStoreSheetOpen(false)
   }, [setStoreSheetOpen])
 
-  // Route through the purchase seam. Sprint 1: grants tokens locally.
-  // Sprint 3: opens Stripe Checkout (after age gate).
   const handleBuyPack = useCallback(async (packId: string) => {
     sfx.recruitChime()
     const pack = TOKEN_PACKS.find(p => p.id === packId)
-
-    // Age gate fires only when Stripe is actually going to run (prod mode).
-    // Offline dev mode skips it so development isn't interrupted.
     if (isSupabaseEnabled()) {
       const ok = await ensureAgeConfirmed()
       if (!ok) return
     }
-
     if (pack) {
       track('pack_clicked', { packId: pack.id, price: pack.price, tokens: pack.tokens })
     }
@@ -113,9 +68,9 @@ export function StoreSheet() {
     <div className="game-sheet-backdrop" onClick={handleClose}>
       <div className="game-sheet store-sheet store-redesign" onClick={(e) => e.stopPropagation()}>
         <div className="game-sheet-header">
-          <span className="game-sheet-title">STORE</span>
+          <span className="game-sheet-title">TOKEN STORE</span>
           <div className="store-balances">
-            <span className="store-bal-pill compute"><TokenIcon size={12} /> {tokens}</span>
+            <span className="store-bal-pill compute"><TokenChip size={16} /> {tokens.toLocaleString()}</span>
           </div>
         </div>
 
@@ -130,7 +85,7 @@ export function StoreSheet() {
               <div className="store-starter-desc">
                 {trainedCount} soldiers trained — here's a boost!
               </div>
-              <div className="store-starter-value"><TokenIcon size={14} /> 500</div>
+              <div className="store-starter-value"><TokenChip size={16} /> 500</div>
               <button className="game-btn store-claim-btn">CLAIM NOW</button>
             </div>
           )}
@@ -143,7 +98,7 @@ export function StoreSheet() {
             >
               <span className="store-featured-ribbon">BEST VALUE</span>
               <div className="store-featured-chips">
-                <ChipPile count={featuredPack.chipCount} large />
+                <TokenChip size={60} count={featuredPack.stackCount} glow />
               </div>
               <div className="store-featured-info">
                 <div className="store-featured-amount">{featuredPack.tokens.toLocaleString()}</div>
@@ -167,7 +122,7 @@ export function StoreSheet() {
                 <span className="store-tile-tier-stripe" />
                 {pack.id === 'charge' && <span className="store-tile-popular">POPULAR</span>}
                 <div className="store-tile-chips">
-                  <ChipPile count={pack.chipCount} />
+                  <TokenChip size={pack.stackCount >= 5 ? 42 : 52} count={pack.stackCount} />
                 </div>
                 <div className="store-tile-amount">{pack.tokens.toLocaleString()}</div>
                 <div className="store-tile-label">TOKENS</div>

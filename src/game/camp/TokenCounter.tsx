@@ -1,15 +1,20 @@
 /**
- * TokenCounter — token currency hero with flat-daily strip and wallet popup.
+ * TokenCounter — token currency hero + inline daily pill + wallet popup.
  *
- * v14 (Production Sprint 2): streak retired. The daily strip shows a fixed
- * +N reward (DAILY_GRANT) and a Nh Nm countdown. Wallet popup shows balance
- * and next-daily info only.
+ * Token-design sprint: swap to new TokenChip, promote the value typography,
+ * collapse the daily strip into an inline pill next to the value. Wallet
+ * tooltip drops the "RATE: 1 TOKEN = 1 SECOND" line (currency conversion
+ * copy belongs on the training-commit side only).
+ *
+ * The Sprint 2 visual honesty (1 Hz counter burn during training) is
+ * preserved: the displayed value includes `unburned` tokens for any
+ * running training slot, so the counter ticks down in sync with the ring.
  */
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useCampStore } from '@stores/campStore'
 import { useSceneStore } from '@stores/sceneStore'
 import { useCampTrainingStore } from '@stores/campTrainingStore'
-import { TokenIcon } from './TokenIcon'
+import { TokenChip } from './TokenChip'
 import { DAILY_GRANT } from '@config/store'
 import * as sfx from '@audio/sfx'
 
@@ -24,11 +29,7 @@ export function TokenCounter({ hasUnclaimedDaily }: TokenCounterProps) {
   const setStoreSheetOpen = useSceneStore((s) => s.setStoreSheetOpen)
   const setDailyRewardOpen = useSceneStore((s) => s.setDailyRewardOpen)
 
-  // Visual honesty (Sprint 2.5): during active training runs, the counter
-  // displays the actual balance PLUS the unburned portion of committed
-  // tokens — so it ticks down 1/sec in sync with the training timer.
-  // The real balance dropped at commit time; this overlay is cosmetic proof
-  // of the 1 token = 1 second rate. See production-plan.md Subsystem 2.5.
+  // Sprint 2 visual honesty — see TokenChip + training-tick comment.
   const slots = useCampTrainingStore((s) => s.slots)
   let visualBurnPending = 0
   for (const slot of slots) {
@@ -49,17 +50,19 @@ export function TokenCounter({ hasUnclaimedDaily }: TokenCounterProps) {
     setWalletOpen(prev => !prev)
   }, [])
 
-  const handlePlus = useCallback(() => {
+  const handlePlus = useCallback((e?: React.MouseEvent) => {
+    e?.stopPropagation()
     setStoreSheetOpen(true)
     setWalletOpen(false)
   }, [setStoreSheetOpen])
 
-  const handleDailyTap = useCallback(() => {
+  const handleDailyTap = useCallback((e?: React.MouseEvent) => {
+    e?.stopPropagation()
     sfx.buttonTap()
     setDailyRewardOpen(true)
   }, [setDailyRewardOpen])
 
-  // Click-outside to dismiss
+  // Click-outside dismisses wallet
   useEffect(() => {
     if (!walletOpen) return
     const handler = (e: MouseEvent) => {
@@ -71,9 +74,7 @@ export function TokenCounter({ hasUnclaimedDaily }: TokenCounterProps) {
     return () => document.removeEventListener('pointerdown', handler)
   }, [walletOpen])
 
-  // Tween token value when it changes. When training is burning tokens
-  // visually, we skip the easing and follow the displayTokens directly
-  // (the taxi-meter drop should feel immediate and linear, not easy-out).
+  // Value tween — follows displayTokens, linear during burn, eased otherwise.
   useEffect(() => {
     if (isBurning) {
       setDisplayValue(displayTokens)
@@ -96,7 +97,7 @@ export function TokenCounter({ hasUnclaimedDaily }: TokenCounterProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [displayTokens, isBurning])
 
-  // Countdown timer (polls msUntilNextDaily every minute)
+  // Countdown timer for the non-claimable state
   useEffect(() => {
     const update = () => {
       const remaining = msUntilNextDaily()
@@ -120,45 +121,44 @@ export function TokenCounter({ hasUnclaimedDaily }: TokenCounterProps) {
         onClick={handleTap}
       >
         <div className="token-hero-icon-wrap">
-          <TokenIcon size={26} />
+          <TokenChip size={32} glow />
         </div>
         <div className="token-hero-body">
-          <div className="token-hero-value">{displayValue}</div>
+          <div className="token-hero-value">{displayValue.toLocaleString()}</div>
           <div className="token-hero-label">{isBurning ? 'TRAINING' : 'TOKENS'}</div>
         </div>
+
+        {/* Daily pill — inline with the value row. Replaces the
+            old stacked strip. Shows as a claim pill when available,
+            collapses to a quiet countdown otherwise. */}
+        <button
+          className={`token-daily-inline${hasUnclaimedDaily ? ' token-daily-inline--claim' : ''}`}
+          onClick={handleDailyTap}
+          aria-label={hasUnclaimedDaily ? 'Claim daily reward' : 'Next daily countdown'}
+        >
+          {hasUnclaimedDaily
+            ? <>+{DAILY_GRANT}</>
+            : <>{countdown}</>}
+        </button>
+
         <button
           className="token-hero-plus"
-          onClick={(e) => { e.stopPropagation(); handlePlus() }}
+          onClick={handlePlus}
           aria-label="Get more tokens"
         >
           +
         </button>
       </div>
 
-      {/* Daily strip below hero — flat grant, no streak */}
-      <div
-        className={`token-daily-strip${hasUnclaimedDaily ? ' token-daily-strip--unclaimed' : ''}`}
-        onClick={handleDailyTap}
-      >
-        <span className="token-daily-strip-label">DAILY</span>
-        <span className="token-daily-strip-value">
-          {hasUnclaimedDaily ? `CLAIM +${DAILY_GRANT}` : `+${DAILY_GRANT} in ${countdown}`}
-        </span>
-      </div>
-
       {walletOpen && (
         <div className="token-wallet">
           <div className="token-wallet-row">
             <span className="token-wallet-label">BALANCE</span>
-            <span className="token-wallet-value"><TokenIcon size={14} /> {tokens}</span>
+            <span className="token-wallet-value"><TokenChip size={16} /> {tokens.toLocaleString()}</span>
           </div>
           <div className="token-wallet-row">
             <span className="token-wallet-label">NEXT DAILY</span>
             <span className="token-wallet-value">+{DAILY_GRANT} in {countdown}</span>
-          </div>
-          <div className="token-wallet-row">
-            <span className="token-wallet-label">RATE</span>
-            <span className="token-wallet-value">1 TOKEN = 1 SECOND</span>
           </div>
           <button className="game-btn token-wallet-buy" onClick={handlePlus}>
             GET MORE

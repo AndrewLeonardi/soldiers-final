@@ -17,16 +17,17 @@ export interface TokenPack {
   price: string
   description: string
   tier: TokenPackTier
-  chipCount: number      // visual chip pile size on the tile
+  /** Size of the TokenChip stack rendered on the pack tile (1/2/3/5/8). */
+  stackCount: number
   featured?: boolean
 }
 
 export const TOKEN_PACKS: TokenPack[] = [
-  { id: 'spark',    name: 'Spark',     tokens: 100,  price: '$0.99',  description: 'Train one basic weapon',    tier: 'common',    chipCount: 1 },
-  { id: 'charge',   name: 'Charge',    tokens: 300,  price: '$2.99',  description: 'Skip two days of grinding', tier: 'rare',      chipCount: 3 },
-  { id: 'surge',    name: 'Surge',     tokens: 600,  price: '$4.99',  description: 'Train a full soldier',      tier: 'epic',      chipCount: 5 },
-  { id: 'arsenal',  name: 'Arsenal',   tokens: 1500, price: '$9.99',  description: 'Arm your entire squad',     tier: 'legendary', chipCount: 7, featured: true },
-  { id: 'warchest', name: 'War Chest', tokens: 5000, price: '$24.99', description: 'Train your entire army',    tier: 'mythic',    chipCount: 9 },
+  { id: 'spark',    name: 'Spark',     tokens: 100,  price: '$0.99',  description: 'Train one basic weapon',    tier: 'common',    stackCount: 1 },
+  { id: 'charge',   name: 'Charge',    tokens: 300,  price: '$2.99',  description: 'Skip two days of grinding', tier: 'rare',      stackCount: 2 },
+  { id: 'surge',    name: 'Surge',     tokens: 600,  price: '$4.99',  description: 'Train a full soldier',      tier: 'epic',      stackCount: 3 },
+  { id: 'arsenal',  name: 'Arsenal',   tokens: 1500, price: '$9.99',  description: 'Arm your entire squad',     tier: 'legendary', stackCount: 5, featured: true },
+  { id: 'warchest', name: 'War Chest', tokens: 5000, price: '$24.99', description: 'Train your entire army',    tier: 'mythic',    stackCount: 8 },
 ]
 
 // ── Daily grant (v14 — flat, no streak) ──

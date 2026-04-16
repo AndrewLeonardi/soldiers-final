@@ -13,7 +13,7 @@ import { useCampBattleStore } from '@stores/campBattleStore'
 import { useCampStore } from '@stores/campStore'
 import { generateLevel, getMaxAccessibleLevel } from '@config/levelGenerator'
 import { createDisplayWeapon } from '@three/models/weaponMeshes'
-import { TokenIcon } from './TokenIcon'
+import { TokenChip } from './TokenChip'
 import { LockIcon } from './icons/LockIcon'
 import type { WeaponType } from '@config/types'
 import * as sfx from '@audio/sfx'
@@ -224,7 +224,7 @@ export function BattlePickerSheet() {
             <div className="cm-briefing-desc">{selectedConfig.description}</div>
             <div className="cm-briefing-meta">
               <span>{selectedConfig.enemySoldiers?.length ?? 0} ENEMIES</span>
-              <span>+{selectedConfig.reward} <TokenIcon size={10} /></span>
+              <span>+{selectedConfig.reward} <TokenChip size={10} /></span>
             </div>
             <button className="cm-deploy-btn" onClick={handleDeploy}>DEPLOY</button>
           </div>
