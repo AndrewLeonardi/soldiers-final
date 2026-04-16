@@ -1,21 +1,19 @@
 /**
  * TokenChip — the canonical token currency icon.
  *
- * Production token-design sprint. Replaces the flat `TokenIcon` with a
- * 3D-feeling SVG chip: dark navy body, top bevel highlight, bottom
- * shadow, teal chip motif glowing from the center. Scales cleanly from
- * inline (12px) to hero (48-60px).
+ * Redesigned as an isometric-style stacked slab to match the dark-navy
+ * chip reference: a foreshortened top face with the circuit motif, plus
+ * a visible front bevel band showing physical thickness, plus an inset
+ * right-edge highlight for volume. Stacks are TRUE chip towers —
+ * additional chips sit beneath the top one, only their thickness band
+ * peeks out, reading as a real stack of slabs.
  *
  * Props:
  *   - `size`  — bounding width in pixels (default 24)
- *   - `count` — stack size (1 / 2 / 3 / 5 / 8). Back chips offset down-right
- *               with reduced opacity. Default 1.
- *   - `glow`  — adds an outer cyan aura + drop shadow for hero moments
- *               (Welcome, Daily, HUD). Default false.
- *   - `className` — passes through for custom styling.
- *
- * The SVG uses a unique per-instance id suffix so gradients + filters
- * don't collide when multiple chips render on the same page.
+ *   - `count` — stack size (1 / 2 / 3 / 5 / 8). Each back chip adds an
+ *               extra "band" of visible thickness below the top chip.
+ *   - `glow`  — adds an outer cyan aura + drop shadow for hero moments.
+ *   - `className` — passes through.
  */
 
 import { useId } from 'react'
@@ -27,90 +25,148 @@ interface Props {
   className?: string
 }
 
-// Logical chip body is 40x40 in SVG units. The outer viewBox stretches
-// to accommodate the stack offset (6px down, 3px right per back chip).
-const CHIP_UNITS = 40
-const STACK_OFFSET_Y = 6
-const STACK_OFFSET_X = 3
+// ── SVG-unit geometry ───────────────────────────────────────────────────
+// All sizes are in logical SVG units; the outer <svg> scales to `size`.
+const CHIP_W = 44           // logical chip width
+const TOP_H = 30            // foreshortened top face (wider than tall → reads isometric)
+const RIM_H = 6             // thickness band visible below the top face
+const CHIP_H = TOP_H + RIM_H  // 36 per chip slab
+const STACK_STEP = RIM_H + 1  // vertical distance each back chip adds to the tower
 
 export function TokenChip({ size = 24, count = 1, glow = false, className }: Props) {
-  const uid = useId().replace(/:/g, '') // useId returns values like ":r0:"; strip colons for safe SVG ids
+  const uid = useId().replace(/:/g, '')
   const stack = Math.max(1, Math.min(9, Math.floor(count)))
-  // Reserve extra SVG space for the stack, plus glow padding if needed.
+
   const glowPad = glow ? 6 : 0
-  const vbW = CHIP_UNITS + STACK_OFFSET_X * (stack - 1) + glowPad * 2
-  const vbH = CHIP_UNITS + STACK_OFFSET_Y * (stack - 1) + glowPad * 2
+  // Viewport: chip width + glow margins, chip height + (stack-1) bands + margins.
+  const vbW = CHIP_W + glowPad * 2
+  const vbH = CHIP_H + (stack - 1) * STACK_STEP + glowPad * 2
 
-  // Height scales proportionally so the top-front chip stays crisp.
-  const renderedW = size + (size / CHIP_UNITS) * (STACK_OFFSET_X * (stack - 1) + glowPad * 2)
-  const renderedH = size + (size / CHIP_UNITS) * (STACK_OFFSET_Y * (stack - 1) + glowPad * 2)
+  const renderedW = size
+  const renderedH = (size / CHIP_W) * vbH
 
-  const bodyGradId = `chipBody-${uid}`
-  const bevelGradId = `chipBevel-${uid}`
-  const shadowGradId = `chipShadow-${uid}`
+  const topGradId = `chipTop-${uid}`
+  const rimGradId = `chipRim-${uid}`
+  const topBevelId = `chipBevel-${uid}`
   const coreGlowId = `chipCoreGlow-${uid}`
+  const rightBevelId = `chipRightBevel-${uid}`
   const auraId = `chipAura-${uid}`
   const dropShadowId = `chipDrop-${uid}`
 
-  // Render each chip layer from BACK to FRONT.
-  const chips = []
+  // Render BACK-to-FRONT. The front chip (index 0) sits highest visually
+  // (lowest y), with the thickness band at its base; back chips contribute
+  // only their thickness band peeking below the one in front.
+  const layers = []
   for (let i = stack - 1; i >= 0; i--) {
-    const dx = glowPad + STACK_OFFSET_X * i
-    const dy = glowPad + STACK_OFFSET_Y * i
-    const opacity = i === 0 ? 1 : 0.9 - (stack - 1 - i) * 0.05
-    chips.push(
-      <g key={i} transform={`translate(${dx} ${dy})`} opacity={opacity}>
-        {/* Chip body */}
-        <rect x="0" y="0" width={CHIP_UNITS} height={CHIP_UNITS} rx="5" ry="5"
-              fill={`url(#${bodyGradId})`} stroke="rgba(90,180,225,0.55)" strokeWidth="1.2" />
-        {/* Top bevel highlight */}
-        <rect x="0" y="0" width={CHIP_UNITS} height={CHIP_UNITS} rx="5" ry="5"
-              fill={`url(#${bevelGradId})`} pointerEvents="none" />
-        {/* Bottom shadow */}
-        <rect x="0" y="0" width={CHIP_UNITS} height={CHIP_UNITS} rx="5" ry="5"
-              fill={`url(#${shadowGradId})`} pointerEvents="none" />
+    // Each chip's BASE sits at this y. Front chip's base = top of viewport + glowPad.
+    // Back chips sit further DOWN (higher y) so their bands show underneath.
+    const chipY = glowPad + i * STACK_STEP
+    const isFront = i === 0
 
-        {/* Only the FRONT chip shows the full circuit motif; back chips
-            show a dimmed version so the stack still reads as chips. */}
-        {i === 0 ? (
-          <>
-            {/* Teal inner glow behind the core */}
-            <rect x="8" y="8" width="24" height="24" rx="3" ry="3"
-                  fill={`url(#${coreGlowId})`} />
-            {/* Core square */}
-            <rect x="13" y="13" width="14" height="14" rx="1.5" ry="1.5"
-                  fill="#0d1a28" stroke="#5ecfe0" strokeWidth="1" />
-            {/* Inner dot cluster (4-point motif) */}
-            <circle cx="20" cy="20" r="1.4" fill="#5ecfe0" />
-            <circle cx="17" cy="17" r="0.7" fill="#5ecfe0" opacity="0.7" />
-            <circle cx="23" cy="17" r="0.7" fill="#5ecfe0" opacity="0.7" />
-            <circle cx="17" cy="23" r="0.7" fill="#5ecfe0" opacity="0.7" />
-            <circle cx="23" cy="23" r="0.7" fill="#5ecfe0" opacity="0.7" />
-            {/* Radiating pin segments (8 — N/E/S/W + diagonals) */}
-            <g stroke="#5ecfe0" strokeWidth="1.4" strokeLinecap="round" opacity="0.85">
-              <line x1="20" y1="7"  x2="20" y2="12" />
-              <line x1="20" y1="28" x2="20" y2="33" />
-              <line x1="7"  y1="20" x2="12" y2="20" />
-              <line x1="28" y1="20" x2="33" y2="20" />
-            </g>
-            <g stroke="#4de8ff" strokeWidth="1" strokeLinecap="round" opacity="0.55">
-              <line x1="10" y1="10" x2="13" y2="13" />
-              <line x1="30" y1="10" x2="27" y2="13" />
-              <line x1="10" y1="30" x2="13" y2="27" />
-              <line x1="30" y1="30" x2="27" y2="27" />
-            </g>
-          </>
-        ) : (
-          // Back-chip simplified marking: just the central glow + core outline.
-          <>
-            <rect x="8" y="8" width="24" height="24" rx="3" ry="3"
-                  fill={`url(#${coreGlowId})`} opacity="0.6" />
-            <rect x="13" y="13" width="14" height="14" rx="1.5" ry="1.5"
-                  fill="#0d1a28" stroke="rgba(94,207,224,0.5)" strokeWidth="0.8" />
-          </>
-        )}
-      </g>,
-    )
+    if (!isFront) {
+      // Back chips: render ONLY the thickness band peeking below the chip in front.
+      const bandY = chipY + TOP_H + (stack - 1 - i) * STACK_STEP
+      layers.push(
+        <g key={`back-${i}`} opacity={0.92 - (stack - 1 - i) * 0.04}>
+          <rect
+            x={glowPad + 1} y={bandY}
+            width={CHIP_W - 2} height={RIM_H}
+            rx="2.5" ry="2.5"
+            fill={`url(#${rimGradId})`}
+            stroke="rgba(10,20,32,0.9)" strokeWidth="0.6"
+          />
+        </g>,
+      )
+    } else {
+      // Front chip — full slab with motif.
+      layers.push(
+        <g key="front" transform={`translate(${glowPad} ${chipY})`}>
+          {/* Thickness band (sits below the top face, gives chip its depth). */}
+          <rect
+            x="1" y={TOP_H - 2}
+            width={CHIP_W - 2} height={RIM_H + 2}
+            rx="3" ry="3"
+            fill={`url(#${rimGradId})`}
+            stroke="rgba(10,20,32,0.95)" strokeWidth="0.8"
+          />
+          {/* Right-edge bevel inside the rim — the specular highlight of
+              the chip's right wall when the light hits from upper-left. */}
+          <rect
+            x={CHIP_W - 5} y={TOP_H - 1}
+            width="3" height={RIM_H}
+            rx="1" ry="1"
+            fill={`url(#${rightBevelId})`}
+            opacity="0.55"
+          />
+
+          {/* Top face */}
+          <rect
+            x="0" y="0"
+            width={CHIP_W} height={TOP_H}
+            rx="4" ry="4"
+            fill={`url(#${topGradId})`}
+            stroke="rgba(90,180,225,0.55)" strokeWidth="1.1"
+          />
+          {/* Top bevel highlight (upper-left quadrant, simulated light) */}
+          <rect
+            x="0" y="0"
+            width={CHIP_W} height={TOP_H}
+            rx="4" ry="4"
+            fill={`url(#${topBevelId})`}
+            pointerEvents="none"
+          />
+
+          {/* Circuit motif centered on the top face.
+              Layout: soft cyan halo, core square, pin dots at corners,
+              radiating pin segments (N/E/S/W + 4 diagonals). */}
+          {(() => {
+            const cx = CHIP_W / 2
+            const cy = TOP_H / 2
+            const coreSize = Math.min(TOP_H, CHIP_W) * 0.46
+            const coreX = cx - coreSize / 2
+            const coreY = cy - coreSize / 2
+            return (
+              <>
+                {/* Inner cyan halo */}
+                <rect
+                  x={coreX - 3} y={coreY - 3}
+                  width={coreSize + 6} height={coreSize + 6}
+                  rx="3" ry="3"
+                  fill={`url(#${coreGlowId})`}
+                />
+                {/* Core square */}
+                <rect
+                  x={coreX} y={coreY}
+                  width={coreSize} height={coreSize}
+                  rx="1.5" ry="1.5"
+                  fill="#0d1a28"
+                  stroke="#5ecfe0" strokeWidth="0.9"
+                />
+                {/* Inner 4 dots */}
+                <circle cx={cx} cy={cy} r="1.2" fill="#5ecfe0" />
+                <circle cx={cx - 3.5} cy={cy - 3.5} r="0.6" fill="#5ecfe0" opacity="0.7" />
+                <circle cx={cx + 3.5} cy={cy - 3.5} r="0.6" fill="#5ecfe0" opacity="0.7" />
+                <circle cx={cx - 3.5} cy={cy + 3.5} r="0.6" fill="#5ecfe0" opacity="0.7" />
+                <circle cx={cx + 3.5} cy={cy + 3.5} r="0.6" fill="#5ecfe0" opacity="0.7" />
+                {/* Radiating pins */}
+                <g stroke="#5ecfe0" strokeWidth="1.3" strokeLinecap="round" opacity="0.9">
+                  <line x1={cx} y1={coreY - 1} x2={cx} y2={coreY - 4} />
+                  <line x1={cx} y1={coreY + coreSize + 1} x2={cx} y2={coreY + coreSize + 4} />
+                  <line x1={coreX - 1} y1={cy} x2={coreX - 4} y2={cy} />
+                  <line x1={coreX + coreSize + 1} y1={cy} x2={coreX + coreSize + 4} y2={cy} />
+                </g>
+                <g stroke="#4de8ff" strokeWidth="0.9" strokeLinecap="round" opacity="0.55">
+                  <line x1={coreX - 1} y1={coreY - 1} x2={coreX - 3} y2={coreY - 3} />
+                  <line x1={coreX + coreSize + 1} y1={coreY - 1} x2={coreX + coreSize + 3} y2={coreY - 3} />
+                  <line x1={coreX - 1} y1={coreY + coreSize + 1} x2={coreX - 3} y2={coreY + coreSize + 3} />
+                  <line x1={coreX + coreSize + 1} y1={coreY + coreSize + 1} x2={coreX + coreSize + 3} y2={coreY + coreSize + 3} />
+                </g>
+              </>
+            )
+          })()}
+        </g>,
+      )
+    }
   }
 
   return (
@@ -124,44 +180,54 @@ export function TokenChip({ size = 24, count = 1, glow = false, className }: Pro
       style={{ display: 'inline-block', verticalAlign: 'middle', overflow: 'visible' }}
     >
       <defs>
-        <linearGradient id={bodyGradId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stopColor="#2a4260" />
-          <stop offset="45%"  stopColor="#1c2a3e" />
-          <stop offset="100%" stopColor="#0a1320" />
+        {/* Top face gradient — bright on top edge (catches the light),
+            dark toward the bottom of the top face. */}
+        <linearGradient id={topGradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stopColor="#2f486a" />
+          <stop offset="45%"  stopColor="#1a2a42" />
+          <stop offset="100%" stopColor="#0b172a" />
         </linearGradient>
-        <radialGradient id={bevelGradId} cx="0.3" cy="0.2" r="0.8">
-          <stop offset="0%"  stopColor="rgba(255,255,255,0.25)" />
-          <stop offset="55%" stopColor="rgba(255,255,255,0)" />
+        {/* Rim / thickness gradient — darker, reads as the physical
+            "side" of the chip. Catches a tiny highlight at the top edge. */}
+        <linearGradient id={rimGradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stopColor="#1a2738" />
+          <stop offset="25%"  stopColor="#0c1626" />
+          <stop offset="100%" stopColor="#050a12" />
+        </linearGradient>
+        {/* Right-edge bevel strip — subtle blue rim light. */}
+        <linearGradient id={rightBevelId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"  stopColor="rgba(120,200,240,0.55)" />
+          <stop offset="100%" stopColor="rgba(80,140,180,0)" />
+        </linearGradient>
+        {/* Top-face highlight — soft upper-left light spill. */}
+        <radialGradient id={topBevelId} cx="0.28" cy="0.2" r="0.85">
+          <stop offset="0%"  stopColor="rgba(255,255,255,0.28)" />
+          <stop offset="60%" stopColor="rgba(255,255,255,0)" />
         </radialGradient>
-        <radialGradient id={shadowGradId} cx="0.5" cy="1" r="0.75">
-          <stop offset="0%"  stopColor="rgba(0,0,0,0.45)" />
-          <stop offset="60%" stopColor="rgba(0,0,0,0.1)" />
-          <stop offset="100%" stopColor="rgba(0,0,0,0)" />
-        </radialGradient>
-        <radialGradient id={coreGlowId} cx="0.5" cy="0.5" r="0.6">
-          <stop offset="0%"  stopColor="rgba(77,232,255,0.75)" />
-          <stop offset="60%" stopColor="rgba(77,232,255,0.15)" />
+        {/* Center circuit halo. */}
+        <radialGradient id={coreGlowId} cx="0.5" cy="0.5" r="0.7">
+          <stop offset="0%"  stopColor="rgba(77,232,255,0.8)" />
+          <stop offset="55%" stopColor="rgba(77,232,255,0.18)" />
           <stop offset="100%" stopColor="rgba(77,232,255,0)" />
         </radialGradient>
         {glow && (
           <>
-            <radialGradient id={auraId} cx="0.5" cy="0.5" r="0.55">
+            <radialGradient id={auraId} cx="0.5" cy="0.5" r="0.6">
               <stop offset="0%"  stopColor="rgba(77,232,255,0.55)" />
               <stop offset="70%" stopColor="rgba(77,232,255,0)" />
             </radialGradient>
             <filter id={dropShadowId} x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="1.2" />
+              <feGaussianBlur stdDeviation="1" />
             </filter>
           </>
         )}
       </defs>
 
-      {/* Outer aura when glow=true. Sits under everything. */}
       {glow && (
         <rect x="0" y="0" width={vbW} height={vbH} fill={`url(#${auraId})`} />
       )}
 
-      {glow ? <g filter={`url(#${dropShadowId})`}>{chips}</g> : chips}
+      {glow ? <g filter={`url(#${dropShadowId})`}>{layers}</g> : layers}
     </svg>
   )
 }
