@@ -98,7 +98,7 @@ export function StoreSheet() {
             >
               <span className="store-featured-ribbon">BEST VALUE</span>
               <div className="store-featured-chips">
-                <TokenChip size={60} count={featuredPack.stackCount} glow />
+                <TokenChip size={86} count={featuredPack.stackCount} glow />
               </div>
               <div className="store-featured-info">
                 <div className="store-featured-amount">{featuredPack.tokens.toLocaleString()}</div>
@@ -122,7 +122,7 @@ export function StoreSheet() {
                 <span className="store-tile-tier-stripe" />
                 {pack.id === 'charge' && <span className="store-tile-popular">POPULAR</span>}
                 <div className="store-tile-chips">
-                  <TokenChip size={pack.stackCount >= 5 ? 42 : 52} count={pack.stackCount} />
+                  <TokenChip size={pack.stackCount >= 5 ? 60 : 72} count={pack.stackCount} />
                 </div>
                 <div className="store-tile-amount">{pack.tokens.toLocaleString()}</div>
                 <div className="store-tile-label">TOKENS</div>

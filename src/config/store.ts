@@ -27,7 +27,7 @@ export const TOKEN_PACKS: TokenPack[] = [
   { id: 'charge',   name: 'Charge',    tokens: 300,  price: '$2.99',  description: 'Skip two days of grinding', tier: 'rare',      stackCount: 2 },
   { id: 'surge',    name: 'Surge',     tokens: 600,  price: '$4.99',  description: 'Train a full soldier',      tier: 'epic',      stackCount: 3 },
   { id: 'arsenal',  name: 'Arsenal',   tokens: 1500, price: '$9.99',  description: 'Arm your entire squad',     tier: 'legendary', stackCount: 5, featured: true },
-  { id: 'warchest', name: 'War Chest', tokens: 5000, price: '$24.99', description: 'Train your entire army',    tier: 'mythic',    stackCount: 8 },
+  { id: 'warchest', name: 'War Chest', tokens: 5000, price: '$24.99', description: 'Train your entire army',    tier: 'mythic',    stackCount: 4 },
 ]
 
 // ── Daily grant (v14 — flat, no streak) ──

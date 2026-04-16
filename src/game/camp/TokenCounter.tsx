@@ -121,7 +121,7 @@ export function TokenCounter({ hasUnclaimedDaily }: TokenCounterProps) {
         onClick={handleTap}
       >
         <div className="token-hero-icon-wrap">
-          <TokenChip size={32} glow />
+          <TokenChip size={44} glow />
         </div>
         <div className="token-hero-body">
           <div className="token-hero-value">{displayValue.toLocaleString()}</div>
