@@ -45,6 +45,7 @@ export interface BattleUnit {
   isTrained: boolean
   brainWeights?: number[]  // NN weights if trained
   actionVerb?: ActionVerb  // pre-battle tactical order
+  elevated?: boolean       // on a tower — lands at Y=1.5
 
   // Enemy-only
   enemyType?: 'infantry' | 'jeep' | 'tank'
@@ -83,6 +84,7 @@ export interface PlacedSoldier {
   weapon: WeaponType
   position: [number, number, number]
   actionVerb: ActionVerb
+  elevated?: boolean  // on a tower — Y=1.5, range bonus
 }
 
 // ── Placed defense (during placement phase) ──

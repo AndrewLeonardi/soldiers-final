@@ -98,6 +98,7 @@ function createPlayerUnit(
   brainWeights?: number[],
   soldierXP?: number,
   actionVerb?: string,
+  elevated?: boolean,
 ): BattleUnit {
   const stats = WEAPON_STATS[weapon]
   const rank = getRank(soldierXP ?? 0)
@@ -116,7 +117,7 @@ function createPlayerUnit(
     status: 'idle',
     lastFireTime: -999,
     fireRate: stats.fireRate,
-    range: stats.range,
+    range: elevated ? stats.range * 1.3 : stats.range,
     damage: stats.damage,
     speed: stats.speed,
     facingAngle: 0,
@@ -127,6 +128,7 @@ function createPlayerUnit(
     isTrained: !!(brainWeights && brainWeights.length > 0),
     brainWeights,
     actionVerb: (actionVerb as any) ?? 'advance',
+    elevated: elevated ?? false,
   }
 }
 
@@ -258,7 +260,7 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
       const xp = solRecord?.xp ?? 0
       playerUnits.push(createPlayerUnit(
         placed.soldierId, placed.name, placed.weapon as WeaponType,
-        placed.position, brainWeights, xp, placed.actionVerb,
+        placed.position, brainWeights, xp, placed.actionVerb, placed.elevated,
       ))
     }
 
@@ -345,11 +347,12 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
       }
 
       // In-air drop
-      if (unit.position[1] > 0) {
+      const groundY = unit.elevated ? 1.5 : 0
+      if (unit.position[1] > groundY) {
         unit.velocity[1] += DROP_GRAVITY * dt
         unit.position[1] += unit.velocity[1] * dt
-        if (unit.position[1] <= 0 && isOverTable(unit.position[0], unit.position[2])) {
-          unit.position[1] = 0
+        if (unit.position[1] <= groundY && isOverTable(unit.position[0], unit.position[2])) {
+          unit.position[1] = groundY
           unit.velocity[1] = 0
           sfx.bulletImpact()
         }
@@ -375,10 +378,19 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
         continue
       }
 
-      // Firing hold — stay in firing pose briefly
+      // Firing hold — stay in firing pose, keep facing target
       if (player.status === 'firing' && player.stateAge < 0.3) {
         player.velocity[0] = 0
         player.velocity[2] = 0
+        // Update facing toward nearest enemy during hold
+        for (const e of enemies) {
+          if (e.status === 'dead') continue
+          const fdx = e.position[0] - player.position[0]
+          const fdz = e.position[2] - player.position[2]
+          player.facingAngle = Math.atan2(fdx, fdz)
+          player.rotation = player.facingAngle
+          break // face nearest (first alive)
+        }
         continue
       }
 
@@ -505,7 +517,7 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
       }
 
       // ── MOVEMENT (verb-driven + flow field) ──
-      const wantsToFire = shouldFire && nearestEnemy && nearestDist <= player.range
+      const wantsToFire = shouldFire && nearestEnemy
 
       if (verb === 'hold') {
         // HOLD: no movement, stay at placed position
@@ -553,24 +565,37 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
         newX = Math.max(-BASE_HALF_W + 0.5, Math.min(BASE_HALF_W - 0.5, newX))
         newZ = Math.max(-BASE_HALF_D + 0.5, Math.min(BASE_HALF_D - 0.5, newZ))
 
+        // Wall sliding — try full move, then axis-separated sliding
+        let moved = false
         if (!isInsideWall(newX, newZ)) {
           player.position[0] = newX
           player.position[2] = newZ
+          moved = true
+        } else if (!isInsideWall(newX, player.position[2])) {
+          player.position[0] = newX  // slide along X
+          moved = true
+        } else if (!isInsideWall(player.position[0], newZ)) {
+          player.position[2] = newZ  // slide along Z
+          moved = true
         }
 
-        player.velocity[0] = vx
-        player.velocity[2] = vz
+        if (moved) {
+          player.velocity[0] = vx
+          player.velocity[2] = vz
+        } else {
+          player.velocity[0] = 0
+          player.velocity[2] = 0
+        }
 
-        if (speed > 0.1) {
+        if (moved && speed > 0.1) {
           player.status = 'walking'
-          // Face movement direction while walking
           player.facingAngle = Math.atan2(vx, vz)
           player.rotation = player.facingAngle
         }
       }
 
-      // ── Skip firing if no target or out of range ──
-      if (!selectedTarget || nearestDist > player.range) {
+      // ── Skip firing if no target ──
+      if (!selectedTarget) {
         if (player.status !== 'walking') player.status = 'idle'
         continue
       }
@@ -701,8 +726,8 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
         if (dist < nearestDist) { nearestDist = dist; nearestPlayer = player }
       }
 
-      // ── Fire if in range ──
-      if (nearestPlayer && nearestDist <= enemy.range) {
+      // ── Fire if target visible ──
+      if (nearestPlayer) {
         const dx = nearestPlayer.position[0] - enemy.position[0]
         const dz = nearestPlayer.position[2] - enemy.position[2]
         const angle = Math.atan2(dx, dz)
@@ -845,12 +870,24 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
           newX = Math.max(-BASE_HALF_W + 0.5, Math.min(BASE_HALF_W - 0.5, newX))
           newZ = Math.max(-BASE_HALF_D + 0.5, Math.min(BASE_HALF_D - 0.5, newZ))
 
+          let eMoved = false
           if (!isInsideWall(newX, newZ)) {
             enemy.position[0] = newX
             enemy.position[2] = newZ
-            enemy.status = 'walking'
+            eMoved = true
+          } else if (!isInsideWall(newX, enemy.position[2])) {
+            enemy.position[0] = newX
+            eMoved = true
+          } else if (!isInsideWall(enemy.position[0], newZ)) {
+            enemy.position[2] = newZ
+            eMoved = true
           }
-          enemy.velocity = [moveX / dt, 0, moveZ / dt]
+          if (eMoved) {
+            enemy.status = 'walking'
+            enemy.velocity = [moveX / dt, 0, moveZ / dt]
+          } else {
+            enemy.velocity = [0, 0, 0]
+          }
         } else {
           enemy.velocity = [0, 0, 0]
         }
@@ -868,6 +905,10 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
             newZ = Math.max(-BASE_HALF_D + 0.5, Math.min(BASE_HALF_D - 0.5, newZ))
             if (!isInsideWall(newX, newZ)) {
               enemy.position[0] = newX
+              enemy.position[2] = newZ
+            } else if (!isInsideWall(newX, enemy.position[2])) {
+              enemy.position[0] = newX
+            } else if (!isInsideWall(enemy.position[0], newZ)) {
               enemy.position[2] = newZ
             }
             enemy.facingAngle = Math.atan2(dxS, dzS)

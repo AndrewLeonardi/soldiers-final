@@ -264,36 +264,38 @@ if (typeof window !== 'undefined') {
   })
 }
 
-/** Ghost preview mesh — shows translucent defense shape at cursor position. */
+const soldierGhostGeo = new THREE.CylinderGeometry(0.25, 0.25, 1.2, 8)
+const soldierGhostMat = new THREE.MeshBasicMaterial({
+  color: 0x4CAF50,
+  transparent: true,
+  opacity: 0.4,
+  depthWrite: false,
+})
+
+/** Ghost preview mesh — shows translucent shapes at cursor for defense or soldier. */
 function PlacementGhost() {
-  const meshRef = useRef<THREE.Mesh>(null!)
+  const defMeshRef = useRef<THREE.Mesh>(null!)
+  const solMeshRef = useRef<THREE.Mesh>(null!)
   const { camera } = useThree()
   const selectedDefenseType = useCampBattleStore((s) => s.selectedDefenseType)
+  const selectedPlacementId = useCampBattleStore((s) => s.selectedPlacementId)
   const defenseRotation = useCampBattleStore((s) => s.defenseRotation)
   const battleConfig = useCampBattleStore((s) => s.battleConfig)
 
   useFrame(() => {
-    if (!meshRef.current) return
-    if (!selectedDefenseType) {
-      meshRef.current.visible = false
-      return
-    }
+    const showDefense = !!selectedDefenseType
+    const showSoldier = !!selectedPlacementId && !selectedDefenseType
 
-    const config = DEFENSE_GHOST[selectedDefenseType]
-    if (!config) {
-      meshRef.current.visible = false
-      return
-    }
+    // Hide both by default
+    if (defMeshRef.current) defMeshRef.current.visible = false
+    if (solMeshRef.current) solMeshRef.current.visible = false
+
+    if (!showDefense && !showSoldier) return
 
     _raycaster.setFromCamera(_mouse, camera)
     _raycaster.ray.intersectPlane(_groundPlane, _intersect)
+    if (!_intersect) return
 
-    if (!_intersect) {
-      meshRef.current.visible = false
-      return
-    }
-
-    // Constrain ghost to player spawn zone
     const zone = battleConfig?.playerSpawnZone
     const x = zone
       ? Math.max(zone.minX, Math.min(zone.maxX, _intersect.x))
@@ -302,14 +304,29 @@ function PlacementGhost() {
       ? Math.max(zone.minZ, Math.min(zone.maxZ, _intersect.z))
       : Math.max(-8, Math.min(8, _intersect.z))
 
-    meshRef.current.visible = true
-    meshRef.current.geometry = config.geo
-    meshRef.current.material = ghostMat
-    meshRef.current.position.set(x, config.yOffset, z)
-    meshRef.current.rotation.y = defenseRotation
+    if (showDefense && defMeshRef.current) {
+      const config = DEFENSE_GHOST[selectedDefenseType!]
+      if (config) {
+        defMeshRef.current.visible = true
+        defMeshRef.current.geometry = config.geo
+        defMeshRef.current.material = ghostMat
+        defMeshRef.current.position.set(x, config.yOffset, z)
+        defMeshRef.current.rotation.y = defenseRotation
+      }
+    }
+
+    if (showSoldier && solMeshRef.current) {
+      solMeshRef.current.visible = true
+      solMeshRef.current.position.set(x, 0.6, z)
+    }
   })
 
-  return <mesh ref={meshRef} />
+  return (
+    <>
+      <mesh ref={defMeshRef} />
+      <mesh ref={solMeshRef} geometry={soldierGhostGeo} material={soldierGhostMat} />
+    </>
+  )
 }
 
 export function PlacementGroundHandler() {
@@ -323,6 +340,7 @@ export function PlacementGroundHandler() {
   const selectDefenseType = useCampBattleStore((s) => s.selectDefenseType)
   const soldiers = useCampStore((s) => s.soldiers)
   const battleConfig = useCampBattleStore((s) => s.battleConfig)
+  const placedDefensesForTower = useCampBattleStore((s) => s.placedDefenses)
 
   const handleGroundClick = useCallback((e: any) => {
     if (battlePhase !== 'placing') return
@@ -370,18 +388,26 @@ export function PlacementGroundHandler() {
       ? trainedWeapons[trainedWeapons.length - 1]!
       : 'rifle'
 
+    // Check if placing on a tower → elevated
+    const onTower = placedDefensesForTower.some(d =>
+      d.type === 'tower' &&
+      Math.abs(d.position[0] - x) < 0.6 &&
+      Math.abs(d.position[2] - z) < 0.6
+    )
+
     const placed: PlacedSoldier = {
       soldierId: sol.id,
       name: sol.name,
       weapon: deployWeapon as any,
       position: [x, 0, z],
-      actionVerb: 'advance',
+      actionVerb: onTower ? 'hold' : 'advance',
+      elevated: onTower,
     }
 
     placeSoldier(placed)
     selectForPlacement(null)
     sfx.buttonTap()
-  }, [battlePhase, selectedPlacementId, selectedDefenseType, defenseRotation, soldiers, battleConfig, placeSoldier, placeDefense, selectForPlacement, selectDefenseType])
+  }, [battlePhase, selectedPlacementId, selectedDefenseType, defenseRotation, soldiers, battleConfig, placeSoldier, placeDefense, selectForPlacement, selectDefenseType, placedDefensesForTower])
 
   if (battlePhase !== 'placing') return null
 
