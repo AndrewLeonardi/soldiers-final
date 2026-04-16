@@ -1,14 +1,13 @@
 /**
  * TrainingCampBuilding — the 3D training camp structure.
  *
- * Sprint 2, Phase B1. Replaces TrainingCampFootprint from Sprint 1.
  * Procedural toy aesthetic: wooden platform + tent canopy + flag.
- * Tappable — opens training sheet when idle.
- * Shows "+TRAIN" floating label when no training is active.
+ * Tappable hitbox: opens RosterSheet when idle, re-enters observation
+ * when a slot is currently training. The "+TRAIN" floating label was
+ * replaced by the dedicated TRAINING tab in the bottom nav.
  */
-import { useRef, useCallback, useState } from 'react'
+import { useRef, useCallback } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { CAMP_FOOTPRINT } from './campConstants'
 import { useCampTrainingStore } from '@stores/campTrainingStore'
@@ -32,16 +31,8 @@ export function TrainingCampBuilding() {
   const trainingPhase = useCampTrainingStore((s) => s.trainingPhase)
   const setRosterSheetOpen = useSceneStore((s) => s.setRosterSheetOpen)
   const setObservingSlotIndex = useSceneStore((s) => s.setObservingSlotIndex)
-  const battlePhase = useSceneStore((s) => s.battlePhase)
-  const tutorialActive = useSceneStore((s) => s.tutorialActive)
-  const anySheetOpen = useSceneStore((s) =>
-    s.storeSheetOpen || s.rosterSheetOpen ||
-    s.soldierSheetId !== null || s.medicalSheetOpen || s.dailyRewardOpen ||
-    s.recruitSheetOpen || s.armorySheetOpen || s.tokenModalOpen
-  )
   const pointerDownPos = useRef<{ x: number; y: number } | null>(null)
   const flagRef = useRef<THREE.Mesh>(null!)
-  const [hovered, setHovered] = useState(false)
 
   // Flag wave animation
   useFrame((state) => {
@@ -160,47 +151,16 @@ export function TrainingCampBuilding() {
         <meshStandardMaterial color={WOOD_LIGHT} roughness={0.7} />
       </mesh>
 
-      {/* Invisible click hitbox — bigger than visual for easy taps */}
+      {/* Invisible click hitbox — taps re-enter observation if training is running */}
       <mesh
         visible={false}
         position={[0, 0.8, 0]}
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
-        onPointerEnter={() => setHovered(true)}
-        onPointerLeave={() => setHovered(false)}
       >
         <boxGeometry args={[halfW * 2.2, 2.0, halfD * 2.2]} />
         <meshBasicMaterial />
       </mesh>
-
-      {/* "+TRAIN" floating label when idle — hidden during battle & tutorial */}
-      {isIdle && battlePhase === 'idle' && !anySheetOpen && !tutorialActive && (
-        <Html
-          position={[0, 2.2, 0]}
-          center
-          zIndexRange={[5, 0]}
-          style={{ pointerEvents: 'none' }}
-        >
-          <div style={{
-            background: hovered
-              ? 'linear-gradient(180deg, #5a7a4a, #4a6a3a)'
-              : 'linear-gradient(180deg, #3a4a3a, #2a3a2a)',
-            color: hovered ? '#e0ecd0' : '#a0b090',
-            padding: '4px 12px',
-            borderRadius: 6,
-            fontSize: 11,
-            fontFamily: "'Black Ops One', monospace",
-            letterSpacing: 2,
-            textTransform: 'uppercase',
-            borderBottom: '3px solid rgba(0,0,0,0.3)',
-            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15), 0 2px 8px rgba(0,0,0,0.4)',
-            whiteSpace: 'nowrap',
-            transition: 'all 0.15s ease',
-          }}>
-            + TRAIN
-          </div>
-        </Html>
-      )}
 
       {/* Progress ring — visible during training */}
       <ProgressRing />

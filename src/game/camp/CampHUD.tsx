@@ -1,63 +1,22 @@
 /**
  * CampHUD — the persistent heads-up display overlay.
  *
- * Sprint 3-4 + Redesign. Layout:
- *   - Top center: token counter (cyan)
+ * Layout (post-redesign):
+ *   - Top center: token hero counter
+ *   - Top right: settings gear
  *   - PVP teaser banner (above bottom nav)
- *   - Bottom nav: 5 colorful Clash Royale-style tabs with big icons
+ *   - Bottom nav: 5 colorful tabs — SOLDIERS, TRAINING, ATTACK, STORE, ARMORY
  *
  * Hidden during fighting/result battle phases.
  */
-import { useCallback, useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { TokenCounter } from './TokenCounter'
-import { ShieldIcon, CrossedSwordsNavIcon, ChestIcon, WeaponRackIcon, GearCogIcon } from './icons/NavIcons'
+import { ShieldIcon, CrossedSwordsNavIcon, ChestIcon, WeaponRackIcon, GearCogIcon, TargetIcon } from './icons/NavIcons'
 import { PVPTeaser } from './PVPTeaser'
 import { useSceneStore } from '@stores/sceneStore'
 import { useCampStore } from '@stores/campStore'
-import { CAMP_BATTLES } from '@config/campBattles'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
-
-// ── Progression breadcrumb logic ──
-interface NextUnlock {
-  id: string
-  name: string
-  requirement: string
-  rarity: 'common' | 'uncommon' | 'rare' | 'epic'
-}
-
-const RARITY_COLORS: Record<string, string> = {
-  common: '#aaaaaa',
-  uncommon: '#4CAF50',
-  rare: '#2196F3',
-  epic: '#9C27B0',
-}
-
-function computeNextUnlock(
-  unlockedWeapons: string[],
-  battlesCompleted: Record<string, { stars: number }>,
-): NextUnlock | null {
-  // Check battle rewards in order
-  const battleChain: { battleId: string; weapon: string; name: string; rarity: 'common' | 'uncommon' | 'rare' | 'epic'; label: string }[] = [
-    { battleId: 'camp-1', weapon: 'machineGun', name: 'MACHINE GUN', rarity: 'rare', label: 'Win Battle 1' },
-    { battleId: 'camp-2', weapon: 'rocketLauncher', name: 'ROCKET LAUNCHER', rarity: 'uncommon', label: 'Win Battle 2' },
-    { battleId: 'camp-3', weapon: 'grenade', name: 'GRENADES', rarity: 'uncommon', label: 'Win Battle 3' },
-  ]
-
-  for (const b of battleChain) {
-    if (!unlockedWeapons.includes(b.weapon)) {
-      return { id: b.weapon, name: b.name, requirement: b.label, rarity: b.rarity }
-    }
-  }
-
-  // Tank at level 5
-  const playerLevel = Object.keys(battlesCompleted).length + 1
-  if (!unlockedWeapons.includes('tank') && playerLevel < 5) {
-    return { id: 'tank', name: 'TANK', requirement: `Reach Level ${5}`, rarity: 'epic' }
-  }
-
-  return null // All unlocked!
-}
 
 // ── Tab config ──
 interface NavTab {
@@ -68,19 +27,19 @@ interface NavTab {
 
 const NAV_TABS: NavTab[] = [
   { id: 'soldiers', label: 'SOLDIERS', colorClass: 'soldiers' },
+  { id: 'training', label: 'TRAINING', colorClass: 'training' },
   { id: 'attack', label: 'ATTACK', colorClass: 'attack' },
   { id: 'store', label: 'STORE', colorClass: 'store' },
   { id: 'armory', label: 'ARMORY', colorClass: 'armory' },
-  { id: 'settings', label: 'SETTINGS', colorClass: 'settings' },
 ]
 
 function NavTabIcon({ id, active, size }: { id: string; active: boolean; size: number }) {
   switch (id) {
     case 'soldiers': return <ShieldIcon size={size} active={active} />
+    case 'training': return <TargetIcon size={size} active={active} />
     case 'attack': return <CrossedSwordsNavIcon size={size} active={active} />
     case 'store': return <ChestIcon size={size} active={active} />
     case 'armory': return <WeaponRackIcon size={size} active={active} />
-    case 'settings': return <GearCogIcon size={size} active={active} />
     default: return null
   }
 }
@@ -107,64 +66,55 @@ export function CampHUD() {
   const rosterSheetOpen = useSceneStore((s) => s.rosterSheetOpen)
   const settingsOpen = useSceneStore((s) => s.settingsOpen)
   const armorySheetOpen = useSceneStore((s) => s.armorySheetOpen)
-  const setArmoryScrollToItem = useSceneStore((s) => s.setArmoryScrollToItem)
 
-  const unlockedWeapons = useCampStore((s) => s.unlockedWeapons)
-  const battlesCompleted = useCampStore((s) => s.battlesCompleted)
-  const nextUnlock = useMemo(
-    () => computeNextUnlock(unlockedWeapons, battlesCompleted),
-    [unlockedWeapons, battlesCompleted],
-  )
+  // Track which tab opened the roster sheet (for nav highlight)
+  const [lastRosterOpener, setLastRosterOpener] = useState<'soldiers' | 'training' | null>(null)
 
-  const handleBreadcrumbTap = useCallback(() => {
-    if (!nextUnlock) return
-    sfx.buttonTap()
-    setArmoryScrollToItem(nextUnlock.id)
-    setArmorySheetOpen(true)
-  }, [nextUnlock, setArmoryScrollToItem, setArmorySheetOpen])
+  useEffect(() => {
+    if (!rosterSheetOpen) setLastRosterOpener(null)
+  }, [rosterSheetOpen])
 
   // Tab handlers
   const tabHandlers: Record<string, () => void> = useMemo(() => ({
-    soldiers: () => { sfx.buttonTap(); setRosterSheetOpen(true) },
+    soldiers: () => { sfx.buttonTap(); setLastRosterOpener('soldiers'); setRosterSheetOpen(true) },
+    training: () => { sfx.buttonTap(); setLastRosterOpener('training'); setRosterSheetOpen(true) },
     attack: () => { sfx.buttonTap(); setBattlePhase('picking') },
     store: () => { sfx.buttonTap(); setStoreSheetOpen(true) },
     armory: () => { sfx.buttonTap(); setArmorySheetOpen(true) },
-    settings: () => { sfx.buttonTap(); setSettingsOpen(true) },
-  }), [setBattlePhase, setStoreSheetOpen, setRosterSheetOpen, setArmorySheetOpen, setSettingsOpen])
+  }), [setBattlePhase, setStoreSheetOpen, setRosterSheetOpen, setArmorySheetOpen])
+
+  const handleSettingsTap = useCallback(() => {
+    sfx.buttonTap()
+    setSettingsOpen(true)
+  }, [setSettingsOpen])
 
   // Active states
   const activeTab = useMemo(() => {
-    if (rosterSheetOpen) return 'soldiers'
+    if (rosterSheetOpen) return lastRosterOpener ?? 'soldiers'
     if (battlePhase === 'picking') return 'attack'
     if (storeSheetOpen) return 'store'
     if (armorySheetOpen) return 'armory'
-    if (settingsOpen) return 'settings'
     return null
-  }, [rosterSheetOpen, battlePhase, storeSheetOpen, armorySheetOpen, settingsOpen])
+  }, [rosterSheetOpen, lastRosterOpener, battlePhase, storeSheetOpen, armorySheetOpen])
 
   // Hide HUD during active battle phases
   if (battlePhase === 'fighting' || battlePhase === 'result') return null
 
   return (
     <>
-      {/* Top center — token counter */}
+      {/* Top center — token hero */}
       <div className="camp-top-bar">
         <TokenCounter hasUnclaimedDaily={hasUnclaimedDaily} />
       </div>
 
-      {/* Progression breadcrumb — teases next unlock */}
-      {nextUnlock && (
-        <div
-          className="progression-breadcrumb"
-          style={{ borderLeftColor: RARITY_COLORS[nextUnlock.rarity] ?? '#aaa' }}
-          onClick={handleBreadcrumbTap}
-        >
-          <span className="breadcrumb-label">NEXT</span>
-          <span className="breadcrumb-name">{nextUnlock.name}</span>
-          <span className="breadcrumb-sep">—</span>
-          <span className="breadcrumb-req">{nextUnlock.requirement}</span>
-        </div>
-      )}
+      {/* Top right — settings gear */}
+      <button
+        className={`camp-settings-gear${settingsOpen ? ' camp-settings-gear--active' : ''}`}
+        onClick={handleSettingsTap}
+        aria-label="Settings"
+      >
+        <GearCogIcon size={22} active={settingsOpen} />
+      </button>
 
       {/* PVP teaser — aspirational locked banner */}
       <PVPTeaser />

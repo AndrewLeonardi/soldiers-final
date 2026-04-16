@@ -220,6 +220,51 @@ export function WeaponRackIcon({ size = 40, active = false }: NavIconProps) {
   )
 }
 
+// ── TargetIcon — TRAINING tab ──────────────────────────
+export function TargetIcon({ size = 40, active = false }: NavIconProps) {
+  const id = 'navTarget'
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" fill="none" style={{ display: 'block' }}>
+      <defs>
+        <linearGradient id={`${id}Plate`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={active ? '#ffb04a' : '#cc8a3a'} />
+          <stop offset="50%" stopColor={active ? '#ee8a2a' : '#aa6a20'} />
+          <stop offset="100%" stopColor={active ? '#cc6a14' : '#995010'} />
+        </linearGradient>
+        <linearGradient id={`${id}Ring`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={active ? '#fff2cc' : '#e0d0a0'} />
+          <stop offset="100%" stopColor={active ? '#ffd966' : '#b89740'} />
+        </linearGradient>
+        <radialGradient id={`${id}Center`} cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0%" stopColor="#ffd966" />
+          <stop offset="60%" stopColor="#cc6a14" />
+          <stop offset="100%" stopColor="#6a3a08" />
+        </radialGradient>
+        <filter id={`${id}Shadow`} x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" floodColor="rgba(0,0,0,0.5)" />
+        </filter>
+      </defs>
+      <g filter={`url(#${id}Shadow)`}>
+        {/* Background plate */}
+        <rect x="7" y="7" width="26" height="26" rx="5" fill={`url(#${id}Plate)`} stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+        {/* Outer ring */}
+        <circle cx="20" cy="20" r="11" fill="none" stroke={`url(#${id}Ring)`} strokeWidth="2" opacity={active ? 0.95 : 0.75} />
+        {/* Inner ring */}
+        <circle cx="20" cy="20" r="6.5" fill="none" stroke={`url(#${id}Ring)`} strokeWidth="1.5" opacity={active ? 0.9 : 0.7} />
+        {/* Crosshair ticks */}
+        <line x1="20" y1="6" x2="20" y2="10" stroke="#e8e8e8" strokeWidth="1.6" strokeLinecap="round" />
+        <line x1="20" y1="30" x2="20" y2="34" stroke="#e8e8e8" strokeWidth="1.6" strokeLinecap="round" />
+        <line x1="6" y1="20" x2="10" y2="20" stroke="#e8e8e8" strokeWidth="1.6" strokeLinecap="round" />
+        <line x1="30" y1="20" x2="34" y2="20" stroke="#e8e8e8" strokeWidth="1.6" strokeLinecap="round" />
+        {/* Center dot */}
+        <circle cx="20" cy="20" r="2.6" fill={`url(#${id}Center)`} stroke="rgba(255,255,255,0.4)" strokeWidth="0.6" />
+        {/* Highlight */}
+        <circle cx="19" cy="19" r="0.9" fill="#fff" opacity={active ? 0.9 : 0.5} />
+      </g>
+    </svg>
+  )
+}
+
 // ── GearCogIcon — SETTINGS tab ─────────────────────────
 export function GearCogIcon({ size = 40, active = false }: NavIconProps) {
   const id = 'navGear'
