@@ -25,6 +25,7 @@ import { useSceneStore } from '@stores/sceneStore'
 import { useCampBattleStore } from '@stores/campBattleStore'
 import type { BattleUnit, BattleProjectile, BattleExplosion } from '@stores/campBattleStore'
 import { useCampStore } from '@stores/campStore'
+import { track } from '@analytics/events'
 import { NeuralNet } from '@engine/ml/neuralNet'
 import { getWeaponShape } from '@game/training/weaponShapes'
 import { WEAPON_STATS, ENEMY_STATS } from '@config/units'
@@ -1145,6 +1146,7 @@ export function CampBattleLoop({ wallBlocksRef }: CampBattleLoopProps) {
         battleStore.setResult('victory', stars)
         if (config.weaponReward) battleStore.setWeaponUnlocked(config.weaponReward)
         useCampStore.getState().completeBattle(config.id, stars, config.reward, config.weaponReward)
+        track('battle_complete', { battleId: config.id, stars, reward: config.reward })
 
         const kills = battleStore.soldierKills
         const xpData: Record<string, { xp: number; newRankName: string | null }> = {}

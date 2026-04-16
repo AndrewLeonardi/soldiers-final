@@ -1,14 +1,16 @@
 /**
- * TokenCounter — token currency hero with daily strip and wallet popup.
+ * TokenCounter — token currency hero with flat-daily strip and wallet popup.
  *
- * Sprint B+ redesign: hero treatment with prominent label, large value,
- * golden cyan icon ring, and pulsing daily strip below.
+ * v14 (Production Sprint 2): streak retired. The daily strip shows a fixed
+ * +N reward (DAILY_GRANT) and a Nh Nm countdown. Wallet popup shows balance
+ * and next-daily info only.
  */
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useCampStore } from '@stores/campStore'
 import { useSceneStore } from '@stores/sceneStore'
+import { useCampTrainingStore } from '@stores/campTrainingStore'
 import { TokenIcon } from './TokenIcon'
-import { DAILY_STREAK_REWARDS } from '@config/store'
+import { DAILY_GRANT } from '@config/store'
 import * as sfx from '@audio/sfx'
 
 interface TokenCounterProps {
@@ -17,19 +19,30 @@ interface TokenCounterProps {
 
 export function TokenCounter({ hasUnclaimedDaily }: TokenCounterProps) {
   const tokens = useCampStore((s) => s.tokens)
-  const dailyStreak = useCampStore((s) => s.dailyStreak)
-  const lastDailyClaimDate = useCampStore((s) => s.lastDailyClaimDate)
+  const lastDailyClaimMs = useCampStore((s) => s.lastDailyClaimMs)
+  const msUntilNextDaily = useCampStore((s) => s.msUntilNextDaily)
   const setStoreSheetOpen = useSceneStore((s) => s.setStoreSheetOpen)
   const setDailyRewardOpen = useSceneStore((s) => s.setDailyRewardOpen)
 
+  // Visual honesty (Sprint 2.5): during active training runs, the counter
+  // displays the actual balance PLUS the unburned portion of committed
+  // tokens — so it ticks down 1/sec in sync with the training timer.
+  // The real balance dropped at commit time; this overlay is cosmetic proof
+  // of the 1 token = 1 second rate. See production-plan.md Subsystem 2.5.
+  const slots = useCampTrainingStore((s) => s.slots)
+  let visualBurnPending = 0
+  for (const slot of slots) {
+    if (slot.trainingPhase === 'running' || slot.trainingPhase === 'ceremony-start') {
+      visualBurnPending += Math.max(0, slot.tokenTotal - slot.tokenBurned)
+    }
+  }
+  const displayTokens = tokens + Math.round(visualBurnPending)
+  const isBurning = visualBurnPending > 0.01
+
   const [walletOpen, setWalletOpen] = useState(false)
   const [countdown, setCountdown] = useState('')
-  const [displayValue, setDisplayValue] = useState(tokens)
+  const [displayValue, setDisplayValue] = useState(displayTokens)
   const wrapperRef = useRef<HTMLDivElement>(null)
-
-  // Next daily reward amount (cycles 1→7)
-  const nextDay = (dailyStreak % 7) + 1
-  const nextReward = DAILY_STREAK_REWARDS[nextDay - 1]?.tokens ?? 30
 
   const handleTap = useCallback(() => {
     sfx.buttonTap()
@@ -58,11 +71,17 @@ export function TokenCounter({ hasUnclaimedDaily }: TokenCounterProps) {
     return () => document.removeEventListener('pointerdown', handler)
   }, [walletOpen])
 
-  // Tween token value when it changes
+  // Tween token value when it changes. When training is burning tokens
+  // visually, we skip the easing and follow the displayTokens directly
+  // (the taxi-meter drop should feel immediate and linear, not easy-out).
   useEffect(() => {
-    if (displayValue === tokens) return
+    if (isBurning) {
+      setDisplayValue(displayTokens)
+      return
+    }
+    if (displayValue === displayTokens) return
     const start = displayValue
-    const delta = tokens - start
+    const delta = displayTokens - start
     const duration = 400
     const startTime = performance.now()
     let raf = 0
@@ -75,19 +94,12 @@ export function TokenCounter({ hasUnclaimedDaily }: TokenCounterProps) {
     raf = requestAnimationFrame(step)
     return () => cancelAnimationFrame(raf)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tokens])
+  }, [displayTokens, isBurning])
 
-  // Countdown timer (always running)
+  // Countdown timer (polls msUntilNextDaily every minute)
   useEffect(() => {
     const update = () => {
-      if (!lastDailyClaimDate) {
-        setCountdown('NOW')
-        return
-      }
-      const claimDate = new Date(lastDailyClaimDate)
-      const nextClaim = new Date(claimDate)
-      nextClaim.setDate(nextClaim.getDate() + 1)
-      const remaining = nextClaim.getTime() - Date.now()
+      const remaining = msUntilNextDaily()
       if (remaining <= 0) {
         setCountdown('NOW')
         return
@@ -99,12 +111,12 @@ export function TokenCounter({ hasUnclaimedDaily }: TokenCounterProps) {
     update()
     const interval = setInterval(update, 60000)
     return () => clearInterval(interval)
-  }, [lastDailyClaimDate])
+  }, [lastDailyClaimMs, msUntilNextDaily])
 
   return (
     <div className="token-counter-wrapper token-counter-wrapper--hero" ref={wrapperRef}>
       <div
-        className={`token-hero${hasUnclaimedDaily ? ' token-hero--unclaimed' : ''}`}
+        className={`token-hero${hasUnclaimedDaily ? ' token-hero--unclaimed' : ''}${isBurning ? ' token-hero--burning' : ''}`}
         onClick={handleTap}
       >
         <div className="token-hero-icon-wrap">
@@ -112,7 +124,7 @@ export function TokenCounter({ hasUnclaimedDaily }: TokenCounterProps) {
         </div>
         <div className="token-hero-body">
           <div className="token-hero-value">{displayValue}</div>
-          <div className="token-hero-label">TOKENS</div>
+          <div className="token-hero-label">{isBurning ? 'TRAINING' : 'TOKENS'}</div>
         </div>
         <button
           className="token-hero-plus"
@@ -123,14 +135,14 @@ export function TokenCounter({ hasUnclaimedDaily }: TokenCounterProps) {
         </button>
       </div>
 
-      {/* Daily strip below hero */}
+      {/* Daily strip below hero — flat grant, no streak */}
       <div
         className={`token-daily-strip${hasUnclaimedDaily ? ' token-daily-strip--unclaimed' : ''}`}
         onClick={handleDailyTap}
       >
         <span className="token-daily-strip-label">DAILY</span>
         <span className="token-daily-strip-value">
-          {hasUnclaimedDaily ? `CLAIM +${nextReward}` : `+${nextReward} in ${countdown}`}
+          {hasUnclaimedDaily ? `CLAIM +${DAILY_GRANT}` : `+${DAILY_GRANT} in ${countdown}`}
         </span>
       </div>
 
@@ -142,11 +154,11 @@ export function TokenCounter({ hasUnclaimedDaily }: TokenCounterProps) {
           </div>
           <div className="token-wallet-row">
             <span className="token-wallet-label">NEXT DAILY</span>
-            <span className="token-wallet-value">+{nextReward} in {countdown}</span>
+            <span className="token-wallet-value">+{DAILY_GRANT} in {countdown}</span>
           </div>
           <div className="token-wallet-row">
-            <span className="token-wallet-label">STREAK</span>
-            <span className="token-wallet-value">DAY {dailyStreak} / 7</span>
+            <span className="token-wallet-label">RATE</span>
+            <span className="token-wallet-value">1 TOKEN = 1 SECOND</span>
           </div>
           <button className="game-btn token-wallet-buy" onClick={handlePlus}>
             GET MORE

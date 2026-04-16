@@ -19,6 +19,7 @@ import { useCampTrainingStore } from '@stores/campTrainingStore'
 import { TUTORIAL_STEPS } from '@config/tutorialSteps'
 import type { TutorialStepDef } from '@config/tutorialSteps'
 import { StarIcon } from './icons/StarIcon'
+import { track } from '@analytics/events'
 import { TokenIcon } from './TokenIcon'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
@@ -238,7 +239,7 @@ export function TutorialGuide() {
   const setTutorialStep = useSceneStore((s) => s.setTutorialStep)
   const endTutorial = useSceneStore((s) => s.endTutorial)
   const completeTutorial = useCampStore((s) => s.completeTutorial)
-  const claimDailyReward = useCampStore((s) => s.claimDailyReward)
+  const claimDaily = useCampStore((s) => s.claimDaily)
 
   const setRecruitSheetOpen = useSceneStore((s) => s.setRecruitSheetOpen)
   const setRosterSheetOpen = useSceneStore((s) => s.setRosterSheetOpen)
@@ -258,7 +259,7 @@ export function TutorialGuide() {
     // Side effects based on which step we're leaving
     if (currentStep?.id === 'claim-tokens') {
       // Claim daily reward so player sees their token balance grow
-      claimDailyReward()
+      claimDaily()
     }
 
     if (currentStep?.id === 'recruit') {
@@ -281,13 +282,14 @@ export function TutorialGuide() {
 
     if (nextIdx >= TUTORIAL_STEPS.length) {
       // Completion reward
-      useCampStore.getState().addTokens(100)
+      useCampStore.getState().addTokens(100, { reason: 'tutorial-complete' })
       completeTutorial()
       endTutorial()
+      track('tutorial_complete', {})
     } else {
       setTutorialStep(nextIdx)
     }
-  }, [tutorialStep, setTutorialStep, completeTutorial, endTutorial, setRecruitSheetOpen, setRosterSheetOpen, claimDailyReward, commitToTrain, setObservingSlotIndex])
+  }, [tutorialStep, setTutorialStep, completeTutorial, endTutorial, setRecruitSheetOpen, setRosterSheetOpen, claimDaily, commitToTrain, setObservingSlotIndex])
 
   // Close recruit/roster sheets when moving to training step
   useEffect(() => {

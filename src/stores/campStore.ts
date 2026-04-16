@@ -1,19 +1,23 @@
 /**
  * campStore — the persisted game state for the base camp.
  *
- * Sprint 1→3. Zustand store with versioned migration shim.
- * Split by lifetime: this store is persisted (localStorage), while
- * useSceneStore (ephemeral) handles transient scene state.
+ * Zustand store with versioned migration shim. Split by lifetime: this
+ * store is persisted (localStorage + Sprint 3 Supabase write-through),
+ * while useSceneStore (ephemeral) handles transient scene state.
  *
- * Version 12 adds:
- *   - Rename compute → tokens
- *   - Remove gold currency entirely
- *   - Soldier slots system (derived from level)
+ * v14 (Production Sprint 2 — Economy Lock):
+ *   - Retire daily streak: drop dailyStreak, lastDailyClaimDate,
+ *     lastDailyClaimTime. Replace with single lastDailyClaimMs.
+ *   - Add SoldierRecord.weaponManualsPurchased for per-soldier rare-weapon
+ *     one-time fee tracking. Existing soldiers are grandfathered: any weapon
+ *     they already have trainedBrains for counts as manual-paid.
+ *   - Starter balance 500 → 200 for brand-new profiles (existing balances
+ *     preserved in migration).
  */
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { WEAPON_UNLOCK_COST } from '@config/roster'
-import { DAILY_DRIP_AMOUNT, DAILY_DRIP_INTERVAL_MS, DAILY_DRIP_MAX_DAYS, DAILY_STREAK_REWARDS, DAILY_STREAK_FORGIVENESS } from '@config/store'
+import { DAILY_GRANT, DAILY_COOLDOWN_MS } from '@config/store'
 import type { WeaponType } from '@config/types'
 import { queueSync } from '@api/sync'
 
@@ -44,6 +48,13 @@ export interface SoldierRecord {
   injuredUntil?: number
   /** Cumulative experience points — rank derived from this at render time */
   xp?: number
+  /**
+   * Weapons this soldier has paid the one-time training manual for.
+   * Added in v14. See `WEAPON_MANUAL_COST` in `@config/roster`.
+   * Existing soldiers are grandfathered: any weapon in `trainedBrains`
+   * counts as manual-paid (no retroactive charge).
+   */
+  weaponManualsPurchased?: WeaponType[]
 
   // Legacy field — kept for v2→v3 migration, not used in new code
   weights?: number[]
@@ -75,14 +86,10 @@ interface CampState {
   unlockedWeapons: string[]
   unlockedSlots: number   // 1 = free slot only, 2 = slot 2 unlocked, 3 = all (training slots)
 
-  // Daily drip (legacy)
-  lastDailyClaimTime: number  // Unix ms, 0 = never claimed
+  // Daily (v14: flat grant every 24h, no streak)
+  lastDailyClaimMs: number  // Unix ms, 0 = never claimed
 
-  // Daily streak (Sprint Economy)
-  dailyStreak: number            // 0-7, current streak day (0 = never claimed)
-  lastDailyClaimDate: string     // ISO date "2026-04-13", '' = never
-
-  // Store flags
+  // Store flags (local-only UI memory, not server-synced)
   starterPackShown: boolean
 
   // Roster
@@ -109,12 +116,10 @@ interface CampState {
   unlockWeapon: (weapon: WeaponType) => boolean
   unlockSlot: () => boolean
 
-  // Actions — daily drip (legacy)
-  claimDailyTokens: () => { claimed: number; backfillDays: number } | null
-
-  // Actions — daily streak (Sprint Economy)
-  claimDailyReward: () => { tokens: number; streakDay: number } | null
+  // Actions — daily (v14: single flat grant action)
+  claimDaily: () => { tokens: number } | null
   canClaimDaily: () => boolean
+  msUntilNextDaily: () => number
 
   // Actions — recruitment
   recruitSoldier: (name: string) => boolean
@@ -124,6 +129,8 @@ interface CampState {
   updateSoldier: (id: string, updates: Partial<SoldierRecord>) => void
   updateSoldierBrain: (id: string, weapon: string, weights: number[], fitness: number, generations: number) => void
   awardSoldierXP: (id: string, amount: number) => void
+  /** Pay the one-time per-soldier weapon manual fee. v14. */
+  grantWeaponManual: (soldierId: string, weapon: WeaponType) => void
 
   // Actions — slot unlock acknowledgment
   acknowledgeSlotUnlock: (level: number) => void
@@ -154,19 +161,17 @@ export const TRAINING_SLOT_UNLOCK_COSTS: readonly [number, number, number] = [0,
 export const useCampStore = create<CampState>()(
   persist(
     (set, get) => ({
-      // Economy
-      tokens: 500,
+      // Economy — v14 starter: 200 tokens = 3.3 min of training. Combined
+      // with tutorial reward (+100) and day-1 daily (+150), new players
+      // land at ~435 tokens on their first real session.
+      tokens: 200,
 
       // Global unlocks
       unlockedWeapons: ['rifle'],
       unlockedSlots: 1,
 
-      // Daily drip (legacy)
-      lastDailyClaimTime: 0,
-
-      // Daily streak
-      dailyStreak: 0,
-      lastDailyClaimDate: '',
+      // Daily (v14: single lastDailyClaimMs, 24h flat cooldown)
+      lastDailyClaimMs: 0,
 
       // Store flags
       starterPackShown: false,
@@ -235,83 +240,26 @@ export const useCampStore = create<CampState>()(
         return true
       },
 
-      // ── Daily drip (legacy) ──
-      claimDailyTokens: () => {
+      // ── Daily (v14: flat grant, 24h cooldown, no streak) ──
+      claimDaily: () => {
         const state = get()
         const now = Date.now()
-        const last = state.lastDailyClaimTime
+        if (now - state.lastDailyClaimMs < DAILY_COOLDOWN_MS) return null
 
-        // First ever claim
-        if (last === 0) {
-          const nextTokens = state.tokens + DAILY_DRIP_AMOUNT
-          set({ tokens: nextTokens, lastDailyClaimTime: now })
-          queueSync('tokens', nextTokens, { reason: 'daily-drip' })
-          queueSync('dailyClaim', now, { reason: 'daily-drip' })
-          return { claimed: DAILY_DRIP_AMOUNT, backfillDays: 0 }
-        }
-
-        // Not enough time passed
-        const elapsed = now - last
-        if (elapsed < DAILY_DRIP_INTERVAL_MS) return null
-
-        // Backfill: up to DAILY_DRIP_MAX_DAYS
-        const daysMissed = Math.min(
-          Math.floor(elapsed / DAILY_DRIP_INTERVAL_MS),
-          DAILY_DRIP_MAX_DAYS,
-        )
-        const totalClaim = DAILY_DRIP_AMOUNT * daysMissed
-        const nextTokens = state.tokens + totalClaim
-        set({ tokens: nextTokens, lastDailyClaimTime: now })
-        queueSync('tokens', nextTokens, { reason: 'daily-drip' })
-        queueSync('dailyClaim', now, { reason: 'daily-drip' })
-        return { claimed: totalClaim, backfillDays: daysMissed - 1 }
-      },
-
-      // ── Daily streak (Sprint Economy) ──
-      claimDailyReward: () => {
-        const state = get()
-        const today = new Date().toISOString().split('T')[0]!
-
-        // Already claimed today
-        if (state.lastDailyClaimDate === today) return null
-
-        // Calculate streak
-        let newStreak: number
-        if (state.lastDailyClaimDate) {
-          const lastDate = new Date(state.lastDailyClaimDate)
-          const todayDate = new Date(today)
-          const daysDiff = Math.floor((todayDate.getTime() - lastDate.getTime()) / (24 * 60 * 60 * 1000))
-
-          if (daysDiff <= DAILY_STREAK_FORGIVENESS) {
-            // Continue streak (wrap 7 -> 1)
-            newStreak = (state.dailyStreak % 7) + 1
-          } else {
-            // Streak broken
-            newStreak = 1
-          }
-        } else {
-          // First ever claim
-          newStreak = 1
-        }
-
-        const reward = DAILY_STREAK_REWARDS[newStreak - 1]
-        if (!reward) return null
-
-        const nextTokens = state.tokens + reward.tokens
-        set({
-          tokens: nextTokens,
-          dailyStreak: newStreak,
-          lastDailyClaimDate: today,
-        })
-        queueSync('tokens', nextTokens, { reason: 'daily-streak' })
-        queueSync('dailyClaim', today, { reason: 'daily-streak' })
-
-        return { tokens: reward.tokens, streakDay: newStreak }
+        const nextTokens = state.tokens + DAILY_GRANT
+        set({ tokens: nextTokens, lastDailyClaimMs: now })
+        queueSync('tokens', nextTokens, { reason: 'daily-claim' })
+        queueSync('dailyClaim', now, { reason: 'daily-claim' })
+        return { tokens: DAILY_GRANT }
       },
 
       canClaimDaily: () => {
-        const today = new Date().toISOString().split('T')[0]!
-        return get().lastDailyClaimDate !== today
+        return Date.now() - get().lastDailyClaimMs >= DAILY_COOLDOWN_MS
+      },
+
+      msUntilNextDaily: () => {
+        const remaining = DAILY_COOLDOWN_MS - (Date.now() - get().lastDailyClaimMs)
+        return Math.max(0, remaining)
       },
 
       // ── Recruitment (slot-gated, free) ──
@@ -325,6 +273,7 @@ export const useCampStore = create<CampState>()(
           weapon: 'rifle',
           trained: false,
           xp: 0,
+          weaponManualsPurchased: [],
         }
         const nextSoldiers = [...state.soldiers, newSoldier]
         set({ soldiers: nextSoldiers })
@@ -371,6 +320,23 @@ export const useCampStore = create<CampState>()(
         )
         set({ soldiers: nextSoldiers })
         queueSync('soldiers', nextSoldiers, { reason: 'xp-award' })
+      },
+
+      /**
+       * Mark a weapon manual as purchased for a soldier. Idempotent — if the
+       * soldier already has this weapon in their manuals list, this is a
+       * no-op. Callers should charge the fee separately via spendTokens; this
+       * action only records the entitlement.
+       */
+      grantWeaponManual: (soldierId, weapon) => {
+        const nextSoldiers = get().soldiers.map(sol => {
+          if (sol.id !== soldierId) return sol
+          const current = sol.weaponManualsPurchased ?? []
+          if (current.includes(weapon)) return sol
+          return { ...sol, weaponManualsPurchased: [...current, weapon] }
+        })
+        set({ soldiers: nextSoldiers })
+        queueSync('soldiers', nextSoldiers, { reason: 'weapon-manual' })
       },
 
       // ── Slot unlock acknowledgments ──
@@ -450,7 +416,7 @@ export const useCampStore = create<CampState>()(
     }),
     {
       name: 'toy-soldiers-camp',
-      version: 13,
+      version: 14,
       migrate: (persistedState: any, version: number) => {
         if (version < 2) {
           const state = persistedState as any
@@ -559,12 +525,36 @@ export const useCampStore = create<CampState>()(
           state.acknowledgedSlotUnlocks = []
         }
         if (version < 13) {
-          // v12 → v13: No schema change. This is the Sprint 1 safety landing pad
-          // so Sprint 2's economy reshape (drop streak fields, add weapon manuals,
-          // lower starter balance) has a clean migration boundary. See
-          // production-plan.md, Subsystem 1.3.
+          // v12 → v13: No schema change. Sprint 1 safety landing pad.
           const state = persistedState as any
           state.acknowledgedSlotUnlocks = state.acknowledgedSlotUnlocks ?? []
+        }
+        if (version < 14) {
+          // v13 → v14 (Production Sprint 2 — Economy Lock):
+          //   - Retire streak state: drop dailyStreak + lastDailyClaimDate;
+          //     converge onto lastDailyClaimMs (carry lastDailyClaimTime if
+          //     present — it used the same epoch-ms semantics).
+          //   - Grandfather per-soldier weapon manuals: any weapon the soldier
+          //     has trained (has trainedBrains entry for) counts as manual-paid.
+          //     This prevents retroactive charges on existing rosters.
+          //   - Existing token balance is preserved (no retroactive drop to 200).
+          const state = persistedState as any
+          state.lastDailyClaimMs = state.lastDailyClaimMs ?? state.lastDailyClaimTime ?? 0
+          delete state.lastDailyClaimTime
+          delete state.lastDailyClaimDate
+          delete state.dailyStreak
+          if (Array.isArray(state.soldiers)) {
+            state.soldiers = state.soldiers.map((s: any) => {
+              const manuals: WeaponType[] = Array.isArray(s.weaponManualsPurchased)
+                ? s.weaponManualsPurchased
+                : []
+              const trained = s.trainedBrains && typeof s.trainedBrains === 'object'
+                ? Object.keys(s.trainedBrains) as WeaponType[]
+                : []
+              const merged = Array.from(new Set([...manuals, ...trained]))
+              return { ...s, weaponManualsPurchased: merged }
+            })
+          }
         }
         return persistedState as CampState
       },

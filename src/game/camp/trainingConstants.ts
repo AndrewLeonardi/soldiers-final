@@ -1,31 +1,33 @@
 /**
  * trainingConstants — frozen config for camp training system.
  *
- * Sprint Economy. Time-based token pricing + sim speed options.
- * Tokens buy training SECONDS. Sim speed is visual only (free).
+ * Production Sprint 2 — Economy Lock.
+ *
+ * THE RULE: 1 token = 1 second of training. No exceptions.
+ * Every TIME_PACKAGE is strictly 1:1. Sim speed is visual-only (free).
+ * Rare-weapon cost is a separate one-time per-soldier manual fee (see
+ * `WEAPON_MANUAL_COST` in `@config/roster`), never added to per-second cost.
+ *
+ * The HUD token counter ticks down 1/sec during training runs so the player
+ * literally watches the honesty. See `CurrencyPill.tsx` / `TokenCounter.tsx`.
  */
 
-// ── Time packages: tokens buy seconds of training time ──
+// ── Time packages: tokens buy seconds of training time (1:1) ──
 
 export interface TimePackage {
   id: string
   label: string
-  tokens: number       // cost in tokens
+  tokens: number       // cost in tokens — ALWAYS equals `seconds` (1:1 rule)
   seconds: number      // training duration in real seconds
   description: string
 }
 
 export const TIME_PACKAGES: readonly TimePackage[] = Object.freeze([
-  { id: 'quick',    label: '10s',   tokens: 50,  seconds: 10,  description: 'Quick drill' },
-  { id: 'standard', label: '25s',   tokens: 100, seconds: 25,  description: 'Standard session' },
-  { id: 'extended', label: '60s',   tokens: 200, seconds: 60,  description: 'Deep training' },
-  { id: 'marathon', label: '3 MIN', tokens: 500, seconds: 180, description: 'Marathon session' },
+  { id: 'quick',    label: '15s',   tokens: 15,  seconds: 15,  description: 'Quick drill' },
+  { id: 'standard', label: '30s',   tokens: 30,  seconds: 30,  description: 'Standard session' },
+  { id: 'extended', label: '60s',   tokens: 60,  seconds: 60,  description: 'Deep training' },
+  { id: 'marathon', label: '3 MIN', tokens: 180, seconds: 180, description: 'Marathon session' },
 ])
-
-/** Tutorial-only training package: short + cheap for onboarding */
-export const TUTORIAL_TIME_PACKAGE: TimePackage = Object.freeze({
-  id: 'tutorial', label: '15s', tokens: 30, seconds: 15, description: 'Tutorial training',
-})
 
 // ── Sim speed options — visual only, doesn't affect cost ──
 
@@ -37,34 +39,10 @@ export interface SimSpeedOption {
 }
 
 export const SIM_SPEED_OPTIONS: readonly SimSpeedOption[] = Object.freeze([
-  { multiplier: 1,  label: '1x',  color: '#00e5ff', particleIntensity: 0.3 },
-  { multiplier: 2,  label: '2x',  color: '#4488ff', particleIntensity: 0.5 },
-  { multiplier: 4,  label: '4x',  color: '#aa44ff', particleIntensity: 0.8 },
+  { multiplier: 1, label: '1x', color: '#00e5ff', particleIntensity: 0.3 },
+  { multiplier: 2, label: '2x', color: '#4488ff', particleIntensity: 0.5 },
+  { multiplier: 4, label: '4x', color: '#aa44ff', particleIntensity: 0.8 },
 ])
-
-/** @deprecated — use TIME_PACKAGES instead. Kept for legacy compat. */
-export interface ComputeTier {
-  tier: number
-  label: string
-  multiplier: number
-  color: string
-  costMultiplier: number
-  particleIntensity: number
-}
-
-/** @deprecated — use TIME_PACKAGES + SIM_SPEED_OPTIONS instead */
-export const COMPUTE_TIERS: readonly ComputeTier[] = Object.freeze([
-  { tier: 1, label: 'STANDARD',  multiplier: 1,  color: '#00e5ff', costMultiplier: 1,  particleIntensity: 0.3 },
-  { tier: 2, label: 'BOOSTED',   multiplier: 4,  color: '#4488ff', costMultiplier: 2,  particleIntensity: 0.5 },
-  { tier: 3, label: 'OVERCLOCKED', multiplier: 16, color: '#aa44ff', costMultiplier: 4,  particleIntensity: 0.8 },
-  { tier: 4, label: 'WHITE HOT', multiplier: 64, color: '#ffffff', costMultiplier: 8,  particleIntensity: 1.0 },
-])
-
-/** @deprecated — use TIME_PACKAGES[].tokens instead */
-export const TRAINING_BASE_COST = 50
-
-/** @deprecated — use TIME_PACKAGES[].seconds instead */
-export const TRAINING_BASE_DURATION = 30
 
 /** Population size for the GA during training */
 export const TRAINING_POP_SIZE = 25

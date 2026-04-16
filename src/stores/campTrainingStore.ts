@@ -20,14 +20,16 @@ import type { SimState, SimConfig } from '@engine/ml/simulationRunner'
 import { useCampStore } from './campStore'
 import { XP_REWARDS } from '@config/ranks'
 import {
-  TIME_PACKAGES, TUTORIAL_TIME_PACKAGE,
+  TIME_PACKAGES,
   SIM_SPEED_OPTIONS,
   TRAINING_POP_SIZE,
   TRAINING_ELITE_COUNT,
   TRAINING_SIM_DURATION,
   BREAKTHROUGH_THRESHOLD,
-  TRAINING_BASE_DURATION,
 } from '@game/camp/trainingConstants'
+import { WEAPON_MANUAL_COST } from '@config/roster'
+import type { WeaponType } from '@config/types'
+import { track } from '@analytics/events'
 import { getWeaponShape } from '@game/training/weaponShapes'
 
 const MAX_SLOTS = 3
@@ -113,7 +115,7 @@ function createEmptySlot(): TrainingSlot {
     bestFitness: 0,
     bestWeights: [],
     fitnessHistory: [],
-    timerTotal: TRAINING_BASE_DURATION,
+    timerTotal: 0,
     timerElapsed: 0,
     milestones: [],
     totalHits: 0,
@@ -243,7 +245,7 @@ export const useCampTrainingStore = create<CampTrainingState>()((set, get) => {
     bestFitness: 0,
     bestWeights: [],
     fitnessHistory: [],
-    timerTotal: TRAINING_BASE_DURATION,
+    timerTotal: 0,
     timerElapsed: 0,
     milestones: [],
     totalHits: 0,
@@ -273,14 +275,42 @@ export const useCampTrainingStore = create<CampTrainingState>()((set, get) => {
         return false
       }
 
+      // Tutorial flow falls through to Quick (same 15s/15 tokens under 1:1).
       const pkg = timePackageId === 'tutorial'
-        ? TUTORIAL_TIME_PACKAGE
+        ? TIME_PACKAGES[0]!
         : TIME_PACKAGES.find(p => p.id === timePackageId)
       if (!pkg) return false
 
-      const cost = pkg.tokens
-      const spent = useCampStore.getState().spendTokens(cost)
+      // Rare-weapon manual: one-time per-soldier fee charged BEFORE training.
+      // Preserves the 1:1 rule for per-second cost — the manual is "buy the
+      // training book," not "pay extra per second."
+      const existingSoldierRec = useCampStore.getState().soldiers.find(s => s.id === soldierId)
+      const alreadyHasManual = existingSoldierRec?.weaponManualsPurchased?.includes(weapon as WeaponType) ?? false
+      const manualFee = alreadyHasManual ? 0 : (WEAPON_MANUAL_COST[weapon as WeaponType] ?? 0)
+      const trainingCost = pkg.tokens
+      const totalCost = manualFee + trainingCost
+
+      if (useCampStore.getState().tokens < totalCost) return false
+
+      // Charge manual fee first (if any), then training cost. Both go through
+      // the sync seam with distinct reasons so telemetry can attribute.
+      if (manualFee > 0) {
+        useCampStore.getState().spendTokens(manualFee, { reason: 'weapon-manual' })
+        useCampStore.getState().grantWeaponManual(soldierId, weapon as WeaponType)
+        track('weapon_manual_purchase', { weapon, cost: manualFee, soldierId })
+      }
+      const spent = useCampStore.getState().spendTokens(trainingCost, { reason: 'training-commit' })
       if (!spent) return false
+
+      track('training_start', {
+        weapon,
+        packageId: timePackageId,
+        durationSec: pkg.seconds,
+        trainingCost,
+        manualFee,
+        totalCost,
+        soldierId,
+      })
 
       // Use per-weapon NN shape
       const shape = getWeaponShape(weapon)
@@ -317,7 +347,7 @@ export const useCampTrainingStore = create<CampTrainingState>()((set, get) => {
         slotWeapon: weapon,
         timePackageId,
         simSpeed,
-        tokenTotal: cost,
+        tokenTotal: trainingCost,
         tokenBurned: 0,
         generation: 0,
         bestFitness: 0,
@@ -533,7 +563,7 @@ export const useCampTrainingStore = create<CampTrainingState>()((set, get) => {
     graduate: (slotIndex) => {
       const slot = get().slots[slotIndex]
       if (!slot) return
-      const { slotSoldierId, slotWeapon, bestWeights, bestFitness, generation } = slot
+      const { slotSoldierId, slotWeapon, bestWeights, bestFitness, generation, timerTotal } = slot
       if (!slotSoldierId || !slotWeapon || bestWeights.length === 0) return
 
       const campStore = useCampStore.getState()
@@ -545,6 +575,14 @@ export const useCampTrainingStore = create<CampTrainingState>()((set, get) => {
         generation,
       )
       campStore.awardSoldierXP(slotSoldierId, XP_REWARDS.TRAINING_COMPLETE)
+
+      track('training_complete', {
+        weapon: slotWeapon,
+        durationSec: timerTotal,
+        fitness: bestFitness,
+        generations: generation,
+        soldierId: slotSoldierId,
+      })
 
       updateSlot(slotIndex, { trainingPhase: 'ceremony-end' })
     },

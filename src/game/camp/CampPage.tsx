@@ -56,12 +56,11 @@ export default function CampPage() {
   const isFiringRange = useSceneStore((s) => s.firingRangeSoldierId) !== null
   const tutorialCompleted = useCampStore((s) => s.tutorialCompleted)
   const tutorialActive = useSceneStore((s) => s.tutorialActive)
-  const lastDailyClaimDate = useCampStore((s) => s.lastDailyClaimDate)
+  const canClaimDaily = useCampStore((s) => s.canClaimDaily)
   const dailyRewardOpen = useSceneStore((s) => s.dailyRewardOpen)
   const setDailyRewardOpen = useSceneStore((s) => s.setDailyRewardOpen)
 
-  const today = new Date().toISOString().split('T')[0]!
-  const autoShowDaily = booted && lastDailyClaimDate !== today && !dailyPopupDismissed && !isObserving && !isFiringRange && tutorialCompleted && !tutorialActive
+  const autoShowDaily = booted && canClaimDaily() && !dailyPopupDismissed && !isObserving && !isFiringRange && tutorialCompleted && !tutorialActive
   const showDailyPopup = autoShowDaily || dailyRewardOpen
 
   const handleBootDone = useCallback(() => setBooted(true), [])

@@ -20,21 +20,30 @@ export interface UserIdentity {
 /**
  * Get-or-mint a local user id. Sprint 1 uses a localStorage-backed UUID.
  * Always resolves immediately (the Promise is a shape contract for Sprint 3,
- * where this may briefly await Supabase).
+ * where this may briefly await Supabase). Also initializes telemetry once
+ * the user id is known — Sprint 2.6.
  */
 export async function initUser(): Promise<UserIdentity> {
   const existing = typeof localStorage !== 'undefined'
     ? localStorage.getItem(USER_ID_STORAGE_KEY)
     : null
 
+  let userId: string
   if (existing) {
-    return { userId: existing, isAnonymous: true }
+    userId = existing
+  } else {
+    userId = `local-${mintUuid()}`
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(USER_ID_STORAGE_KEY, userId)
+    }
   }
 
-  const userId = `local-${mintUuid()}`
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem(USER_ID_STORAGE_KEY, userId)
-  }
+  // Lazy import to avoid circular deps during test runs.
+  const { initTelemetry } = await import('@analytics/telemetry')
+  initTelemetry(userId)
+  const { track } = await import('@analytics/events')
+  track('boot', { userId })
+
   return { userId, isAnonymous: true }
 }
 

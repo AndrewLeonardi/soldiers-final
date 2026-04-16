@@ -46,9 +46,8 @@ function NavTabIcon({ id, active, size }: { id: string; active: boolean; size: n
 
 export function CampHUD() {
   const tickHealing = useCampStore((s) => s.tickHealing)
-  const lastDailyClaimDate = useCampStore((s) => s.lastDailyClaimDate)
-  const today = new Date().toISOString().split('T')[0]!
-  const hasUnclaimedDaily = lastDailyClaimDate !== today
+  const canClaimDaily = useCampStore((s) => s.canClaimDaily)
+  const hasUnclaimedDaily = canClaimDaily()
 
   // Auto-heal soldiers whose timer has expired (check every 5s)
   useEffect(() => {

@@ -1,3 +1,13 @@
+/**
+ * store — token pack catalog + daily economy constants.
+ *
+ * Production Sprint 2: daily simplified to one flat grant per 24h.
+ * No streak, no escalation, no forgiveness math. One tap, one reward.
+ *
+ * Pack prices/values are intentionally unchanged in Sprint 2. Any pack
+ * tuning waits for real Sprint-2 telemetry data and happens in Sprint 3.
+ */
+
 export type TokenPackTier = 'common' | 'rare' | 'epic' | 'legendary' | 'mythic'
 
 export interface TokenPack {
@@ -19,28 +29,10 @@ export const TOKEN_PACKS: TokenPack[] = [
   { id: 'warchest', name: 'War Chest', tokens: 5000, price: '$24.99', description: 'Train your entire army',    tier: 'mythic',    chipCount: 9 },
 ]
 
-export const DAILY_DRIP_AMOUNT = 50
-export const DAILY_DRIP_MAX_DAYS = 3
-export const DAILY_DRIP_INTERVAL_MS = 24 * 60 * 60 * 1000
+// ── Daily grant (v14 — flat, no streak) ──
 
-// ── Daily streak rewards (Sprint Economy) ──
+/** Tokens granted per daily claim. 150 = 2.5 minutes of training. */
+export const DAILY_GRANT = 150
 
-export interface DailyStreakReward {
-  day: number
-  tokens: number
-  label: string
-  isJackpot?: boolean
-}
-
-export const DAILY_STREAK_REWARDS: readonly DailyStreakReward[] = Object.freeze([
-  { day: 1, tokens: 30,  label: '30' },
-  { day: 2, tokens: 40,  label: '40' },
-  { day: 3, tokens: 50,  label: '50' },
-  { day: 4, tokens: 75,  label: '75' },
-  { day: 5, tokens: 100, label: '100' },
-  { day: 6, tokens: 150, label: '150' },
-  { day: 7, tokens: 250, label: '250', isJackpot: true },
-])
-
-/** Miss tolerance: streak resets after this many consecutive missed days */
-export const DAILY_STREAK_FORGIVENESS = 2
+/** Cooldown between claims. 24h. */
+export const DAILY_COOLDOWN_MS = 24 * 60 * 60 * 1000

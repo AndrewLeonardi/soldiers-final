@@ -9,6 +9,28 @@ export const WEAPON_UNLOCK_COST: Record<WeaponType, number> = {
   tank: 0,
 }
 
+/**
+ * WEAPON_MANUAL_COST — per-soldier one-time fee to "buy the training manual"
+ * for a rare weapon. Charged ONCE per soldier the first time they train on
+ * that weapon. After that, future training runs on the same weapon for the
+ * same soldier are strict 1:1 token-per-second.
+ *
+ * This is the only place rare weapons cost more than rifle — we preserve
+ * the 1:1 per-second rule by putting the premium on a one-time unlock fee
+ * rather than a per-second multiplier. See production-plan.md Subsystem 2.2.
+ *
+ * Battle-victory unlocks the weapon AT THE ACCOUNT LEVEL (so it shows up in
+ * the carousel). The manual fee is per-soldier — each new soldier learning
+ * grenade pays 80 tokens, not free-after-first.
+ */
+export const WEAPON_MANUAL_COST: Record<WeaponType, number> = {
+  rifle: 0,            // starter — no manual needed
+  grenade: 80,
+  rocketLauncher: 150,
+  machineGun: 150,
+  tank: 300,
+}
+
 export const WEAPON_DISPLAY: Record<WeaponType, { name: string; desc: string }> = {
   rifle: {
     name: 'Rifle',
@@ -30,17 +52,6 @@ export const WEAPON_DISPLAY: Record<WeaponType, { name: string; desc: string }> 
     name: 'Tank',
     desc: 'Armored vehicle. Cannon + treads. Drive & destroy.',
   },
-}
-
-export const WEAPON_TRAINING: Partial<Record<WeaponType, {
-  fitnessThreshold: number
-  simDuration: number
-  tokenCost: number
-}>> = {
-  rocketLauncher: { fitnessThreshold: 0.6, simDuration: 6, tokenCost: 100 },
-  grenade: { fitnessThreshold: 0.55, simDuration: 5, tokenCost: 100 },
-  machineGun: { fitnessThreshold: 0.65, simDuration: 5, tokenCost: 200 },
-  tank: { fitnessThreshold: 0.4, simDuration: 8, tokenCost: 300 },
 }
 
 const SOLDIER_NAMES = [

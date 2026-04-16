@@ -23,6 +23,7 @@
       "@audio/*": ["./src/audio/*"],
       "@assets/*": ["./src/assets/*"],
       "@api/*": ["./src/api/*"],
+      "@analytics/*": ["./src/analytics/*"],
       "@pages/*": ["./src/pages/*"],
       "@styles/*": ["./src/styles/*"],
       "@game/*": ["./src/game/*"]

@@ -13,6 +13,7 @@ export default defineConfig({
       '@audio': path.resolve(__dirname, './src/audio'),
       '@assets': path.resolve(__dirname, './src/assets'),
       '@api': path.resolve(__dirname, './src/api'),
+      '@analytics': path.resolve(__dirname, './src/analytics'),
       '@pages': path.resolve(__dirname, './src/pages'),
       '@styles': path.resolve(__dirname, './src/styles'),
       '@game': path.resolve(__dirname, './src/game'),

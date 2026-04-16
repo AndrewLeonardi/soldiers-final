@@ -11,6 +11,7 @@ import { useCampTrainingStore } from '@stores/campTrainingStore'
 import { WeaponCarousel } from './WeaponCarousel'
 import { TIME_PACKAGES, SIM_SPEED_OPTIONS } from './trainingConstants'
 import type { WeaponType } from '@config/types'
+import { WEAPON_MANUAL_COST, WEAPON_DISPLAY } from '@config/roster'
 import { TokenIcon } from './TokenIcon'
 import { LockIcon } from './icons/LockIcon'
 import { RefreshIcon } from './icons/RefreshIcon'
@@ -69,10 +70,16 @@ export function TrainingSheet() {
   const slotIsEmpty = autoSlotIndex >= 0
 
   const selectedPackage = TIME_PACKAGES.find(p => p.id === selectedPackageId) ?? TIME_PACKAGES[0]!
-  const cost = selectedPackage.tokens
+  const trainingCost = selectedPackage.tokens
   const duration = selectedPackage.seconds
-  const canAfford = tokens >= cost
   const selectedSoldier = soldiers.find(s => s.id === selectedSoldierId)
+
+  // Per-soldier one-time weapon manual fee. 1:1 training stays honest — the
+  // manual is "buy the training book," not a per-second multiplier.
+  const hasManual = selectedSoldier?.weaponManualsPurchased?.includes(selectedWeapon) ?? false
+  const manualFee = hasManual ? 0 : (WEAPON_MANUAL_COST[selectedWeapon] ?? 0)
+  const totalCost = trainingCost + manualFee
+  const canAfford = tokens >= totalCost
   const soldierBusy = selectedSoldierId ? isSoldierInTraining(selectedSoldierId) : false
   const canStart = selectedSoldierId !== null && canAfford && slotIsEmpty && !soldierBusy
 
@@ -171,6 +178,19 @@ export function TrainingSheet() {
             </div>
           )}
 
+          {manualFee > 0 && selectedSoldier && (
+            <div className="training-manual-notice">
+              <span className="training-manual-badge">FIRST TIME</span>
+              <span className="training-manual-text">
+                {selectedSoldier.name.split(' ').slice(1).join(' ') || selectedSoldier.name}
+                {' '}must learn {WEAPON_DISPLAY[selectedWeapon].name}
+              </span>
+              <span className="training-manual-fee">
+                +{manualFee} <TokenIcon size={12} />
+              </span>
+            </div>
+          )}
+
           {/* Time package picker */}
           <div className="training-section-label">TRAINING TIME</div>
           <div className="training-tier-row">
@@ -208,12 +228,12 @@ export function TrainingSheet() {
             ))}
           </div>
 
-          {/* Cost + duration display */}
+          {/* Cost + duration display — 1:1 honesty: cost matches time exactly */}
           <div className="training-cost-row">
             <div className="training-cost-item">
-              <span className="training-cost-label">COST</span>
+              <span className="training-cost-label">{manualFee > 0 ? 'TOTAL' : 'COST'}</span>
               <span className={`training-cost-value ${!canAfford ? 'insufficient' : ''}`}>
-                {cost} <TokenIcon size={12} />
+                {totalCost} <TokenIcon size={12} />
               </span>
             </div>
             <div className="training-cost-item">
@@ -223,6 +243,11 @@ export function TrainingSheet() {
               </span>
             </div>
           </div>
+          {manualFee > 0 && (
+            <div className="training-cost-breakdown">
+              {manualFee} manual + {trainingCost} training ({trainingCost} sec)
+            </div>
+          )}
 
           {/* Slot indicator */}
           <div className="training-slot-indicator">
@@ -237,7 +262,7 @@ export function TrainingSheet() {
             )}
           </div>
 
-          {/* Start button */}
+          {/* Start button — honest: N tokens = N seconds */}
           <button
             className={`game-btn training-start-btn ${!canStart ? 'disabled' : ''}`}
             onClick={handleStart}
@@ -247,7 +272,9 @@ export function TrainingSheet() {
              !selectedSoldierId ? 'SELECT A SOLDIER' :
              !slotIsEmpty ? 'ALL SLOTS BUSY' :
              !canAfford ? 'NOT ENOUGH TOKENS' :
-             'START TRAINING'}
+             manualFee > 0
+               ? `LEARN + START — ${totalCost} TOKENS`
+               : `START — ${trainingCost} TOKENS / ${duration}s`}
           </button>
         </div>
       </div>

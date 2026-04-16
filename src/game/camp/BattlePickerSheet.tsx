@@ -17,6 +17,7 @@ import { TokenIcon } from './TokenIcon'
 import { LockIcon } from './icons/LockIcon'
 import type { WeaponType } from '@config/types'
 import * as sfx from '@audio/sfx'
+import { track } from '@analytics/events'
 import '@styles/camp-ui.css'
 
 const WEAPON_LABELS: Record<string, string> = {
@@ -76,6 +77,7 @@ export function BattlePickerSheet() {
     sfx.deployHorn()
     initBattle(selectedConfig)
     setBattlePhase('placing')
+    track('battle_start', { battleId: selectedConfig.id })
   }, [selectedConfig, selectedLevel, maxLevel, initBattle, setBattlePhase])
 
   const handleClose = useCallback(() => {

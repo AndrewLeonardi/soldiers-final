@@ -16,6 +16,7 @@ import { createFlexSoldier, animateFlexSoldier } from '@three/models/flexSoldier
 import { createDisplayWeapon } from '@three/models/weaponMeshes'
 import { WeaponCarousel } from './WeaponCarousel'
 import { TIME_PACKAGES, SIM_SPEED_OPTIONS } from './trainingConstants'
+import { WEAPON_MANUAL_COST, WEAPON_DISPLAY } from '@config/roster'
 import type { WeaponType } from '@config/types'
 import { MedicIcon } from './icons/MedicIcon'
 import { TokenIcon } from './TokenIcon'
@@ -127,9 +128,13 @@ export function SoldierSheet() {
 
   const slotIsEmpty = autoSlotIndex >= 0
   const selectedPackage = TIME_PACKAGES.find(p => p.id === selectedPackageId) ?? TIME_PACKAGES[0]!
-  const cost = selectedPackage.tokens
+  const trainingCost = selectedPackage.tokens
   const duration = selectedPackage.seconds
-  const canAfford = tokens >= cost
+  // Per-soldier one-time weapon manual fee (1:1 rule preserved).
+  const hasManual = soldier?.weaponManualsPurchased?.includes(selectedWeapon) ?? false
+  const manualFee = hasManual ? 0 : (WEAPON_MANUAL_COST[selectedWeapon] ?? 0)
+  const totalCost = trainingCost + manualFee
+  const canAfford = tokens >= totalCost
   const soldierBusy = soldierSheetId ? isSoldierInTraining(soldierSheetId) : false
   const canStart = soldierSheetId !== null && canAfford && slotIsEmpty && !soldierBusy
 
@@ -344,6 +349,18 @@ export function SoldierSheet() {
               </div>
             )}
 
+            {manualFee > 0 && (
+              <div className="training-manual-notice">
+                <span className="training-manual-badge">FIRST TIME</span>
+                <span className="training-manual-text">
+                  Must learn {WEAPON_DISPLAY[selectedWeapon].name}
+                </span>
+                <span className="training-manual-fee">
+                  +{manualFee} <TokenIcon size={12} />
+                </span>
+              </div>
+            )}
+
             {/* Time + Speed in one compact row */}
             <div className="training-section-label">DURATION</div>
             <div className="training-tier-row">
@@ -395,7 +412,9 @@ export function SoldierSheet() {
                 {soldierBusy ? 'IN TRAINING' :
                  !slotIsEmpty ? 'ALL SLOTS BUSY' :
                  !canAfford ? 'NOT ENOUGH TOKENS' :
-                 <>START — {cost} <TokenIcon size={14} /></>}
+                 manualFee > 0
+                   ? <>LEARN + START — {totalCost} <TokenIcon size={14} /></>
+                   : <>START — {trainingCost} <TokenIcon size={14} /> / {duration}s</>}
               </button>
             )}
           </div>

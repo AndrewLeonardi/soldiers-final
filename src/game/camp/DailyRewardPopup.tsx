@@ -1,13 +1,17 @@
 /**
- * DailyRewardPopup — full-screen 7-day streak reward popup.
+ * DailyRewardPopup — flat daily grant, one tap, one reward.
  *
- * Sprint Economy. Appears on camp load when daily reward is unclaimed.
- * Game-feel: particles, sound, bouncy animations, streak calendar.
+ * v14 (Production Sprint 2): streak retired. Shows a single card with
+ * the flat DAILY_GRANT amount and a COLLECT button. No 7-day strip, no
+ * streak badge, no escalation. Players who come back every day get the
+ * same amount; players who skip a day lose nothing beyond the missed
+ * grant itself.
  */
 import { useState, useCallback } from 'react'
 import { useCampStore } from '@stores/campStore'
-import { DAILY_STREAK_REWARDS } from '@config/store'
+import { DAILY_GRANT } from '@config/store'
 import { TokenIcon } from './TokenIcon'
+import { track } from '@analytics/events'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
 
@@ -16,82 +20,45 @@ interface DailyRewardPopupProps {
 }
 
 export function DailyRewardPopup({ onClose }: DailyRewardPopupProps) {
-  const claimDailyReward = useCampStore((s) => s.claimDailyReward)
-  const dailyStreak = useCampStore((s) => s.dailyStreak)
-
+  const claimDaily = useCampStore((s) => s.claimDaily)
   const [claimed, setClaimed] = useState(false)
-  const [claimedReward, setClaimedReward] = useState<{ tokens: number; streakDay: number } | null>(null)
-
-  // Next streak day (what will be claimed)
-  const nextDay = (dailyStreak % 7) + 1
+  const [claimedAmount, setClaimedAmount] = useState<number | null>(null)
 
   const handleClaim = useCallback(() => {
-    const result = claimDailyReward()
+    const result = claimDaily()
     if (!result) return
-
     setClaimed(true)
-    setClaimedReward(result)
-
-    // Sound: fanfare for jackpot, chime for normal
-    if (result.streakDay === 7) {
-      sfx.graduationFanfare()
-    } else {
-      sfx.recruitChime()
-    }
-
-    // Auto-dismiss after animation
-    setTimeout(onClose, 2000)
-  }, [claimDailyReward, onClose])
+    setClaimedAmount(result.tokens)
+    sfx.recruitChime()
+    track('daily_claimed', { tokens: result.tokens })
+    setTimeout(onClose, 1500)
+  }, [claimDaily, onClose])
 
   return (
     <div className="daily-reward-backdrop">
       <div className="daily-reward-card">
         <h2 className="daily-reward-title">DAILY REWARD</h2>
-        <p className="daily-reward-streak">DAY {nextDay} OF 7</p>
+        <p className="daily-reward-streak">A FULL DAY OF TRAINING ON THE HOUSE</p>
 
-        {/* 7-day grid */}
-        <div className="daily-reward-grid">
-          {DAILY_STREAK_REWARDS.map((reward) => {
-            const isPast = reward.day < nextDay
-            const isCurrent = reward.day === nextDay
-            const isFuture = reward.day > nextDay
-            const justClaimed = claimed && isCurrent
-
-            return (
-              <div
-                key={reward.day}
-                className={[
-                  'daily-reward-day',
-                  isPast ? 'claimed' : '',
-                  isCurrent ? 'current' : '',
-                  isFuture ? 'future' : '',
-                  justClaimed ? 'just-claimed' : '',
-                  reward.isJackpot ? 'jackpot' : '',
-                ].filter(Boolean).join(' ')}
-              >
-                <span className="daily-reward-day-num">
-                  {isPast ? '\u2713' : `D${reward.day}`}
-                </span>
-                <span className="daily-reward-day-amount">
-                  <TokenIcon size={12} /> {reward.tokens}
-                </span>
-                {reward.isJackpot && (
-                  <span className="daily-reward-jackpot-label">JACKPOT</span>
-                )}
-              </div>
-            )
-          })}
+        {/* Single hero tile */}
+        <div className="daily-reward-hero">
+          <div className={`daily-reward-day current${claimed ? ' just-claimed' : ''}`}>
+            <span className="daily-reward-day-amount daily-reward-day-amount--hero">
+              <TokenIcon size={28} /> {DAILY_GRANT}
+            </span>
+            <span className="daily-reward-day-sub">= {DAILY_GRANT} SECONDS</span>
+          </div>
         </div>
 
         {/* Claim button or claimed state */}
         {!claimed ? (
           <button className="game-btn daily-reward-claim-btn" onClick={handleClaim}>
-            COLLECT DAY {nextDay}
+            COLLECT {DAILY_GRANT} TOKENS
           </button>
         ) : (
           <div className="daily-reward-collected">
             <span className="daily-reward-collected-amount">
-              +{claimedReward?.tokens} <TokenIcon size={16} />
+              +{claimedAmount} <TokenIcon size={16} />
             </span>
             {/* Particle burst */}
             <div className="daily-reward-particles">

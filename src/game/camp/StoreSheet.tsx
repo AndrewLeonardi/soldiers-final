@@ -6,13 +6,14 @@
  * a tier-colored accent stripe, the token amount, "TOKENS" label, pack
  * name, and a green pill price button.
  */
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 import { useCampStore } from '@stores/campStore'
 import { useSceneStore } from '@stores/sceneStore'
 import { TOKEN_PACKS } from '@config/store'
 import type { TokenPack } from '@config/store'
 import { TokenIcon } from './TokenIcon'
 import { purchasePack, grantStarterPack } from '@api/purchase'
+import { track } from '@analytics/events'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
 
@@ -61,6 +62,15 @@ export function StoreSheet() {
   const soldiers = useCampStore((s) => s.soldiers)
   const starterPackShown = useCampStore((s) => s.starterPackShown)
 
+  // Fire store_opened once per open. When isOpen flips true, log it.
+  useEffect(() => {
+    if (!isOpen) return
+    track('store_opened', {})
+    for (const pack of TOKEN_PACKS) {
+      track('pack_viewed', { packId: pack.id })
+    }
+  }, [isOpen])
+
   const handleClose = useCallback(() => {
     setStoreSheetOpen(false)
   }, [setStoreSheetOpen])
@@ -69,6 +79,10 @@ export function StoreSheet() {
   // Sprint 3: opens Stripe Checkout. Callsites don't change.
   const handleBuyPack = useCallback((packId: string) => {
     sfx.recruitChime()
+    const pack = TOKEN_PACKS.find(p => p.id === packId)
+    if (pack) {
+      track('pack_clicked', { packId: pack.id, price: pack.price, tokens: pack.tokens })
+    }
     void purchasePack(packId)
   }, [])
 
