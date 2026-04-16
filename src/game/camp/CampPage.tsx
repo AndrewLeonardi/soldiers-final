@@ -38,11 +38,18 @@ import { FiringRangeHUD } from './FiringRangeHUD'
 import { TutorialGuide } from './TutorialGuide'
 import { DailyRewardPopup } from './DailyRewardPopup'
 import { ArmorySheet } from './ArmorySheet'
+import { UpgradeNudge } from './UpgradeNudge'
+import { AgeGateModal } from './AgeGate'
+import { CookieBanner } from './CookieBanner'
 import { AudioBed } from '@audio/AudioBed'
 import { resumeOnInteraction, ensureContext } from '@audio/context'
 import { useSceneStore } from '@stores/sceneStore'
 import { useCampStore } from '@stores/campStore'
 import { initUser } from '@api/user'
+import { hydrateFromServer } from '@api/sync'
+import { pollPurchaseStatus } from '@api/purchase'
+import { track } from '@analytics/events'
+import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
 
 export default function CampPage() {
@@ -68,16 +75,51 @@ export default function CampPage() {
   const setRosterSheetOpen = useSceneStore((s) => s.setRosterSheetOpen)
   const setMedicalSheetOpen = useSceneStore((s) => s.setMedicalSheetOpen)
 
-  // Initialize user identity (Sprint 1: local UUID; Sprint 3: Supabase anon auth).
+  // Initialize user identity + hydrate from server (Sprint 3).
   // Runs in parallel with the BootScreen animation so any latency is invisible.
   useEffect(() => {
     let cancelled = false
-    void initUser().then(() => {
+    void (async () => {
+      await initUser()
+      // Hydrate server state if authenticated. Collision handling is
+      // Subsystem 3.4 — flagged via the return value; we can surface a
+      // modal in Sprint 3.6 if it fires in real use.
+      try { await hydrateFromServer() } catch { /* never block boot */ }
       if (!cancelled) setUserReady(true)
-    })
+    })()
     return () => {
       cancelled = true
     }
+  }, [])
+
+  // Return-from-Stripe: when URL has ?purchase=success&session_id=..., poll
+  // the webhook-finalized row and play the token-arrival ceremony when the
+  // credit lands. Also re-hydrates to pull the authoritative new balance.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const outcome = params.get('purchase')
+    const sessionId = params.get('session_id')
+    if (!outcome) return
+
+    // Clear the query params immediately so refresh doesn't re-trigger.
+    const cleanUrl = window.location.pathname + window.location.hash
+    window.history.replaceState({}, '', cleanUrl)
+
+    if (outcome !== 'success' || !sessionId) return
+
+    void (async () => {
+      const result = await pollPurchaseStatus(sessionId)
+      if (result.status === 'completed') {
+        try { await hydrateFromServer() } catch { /* surface via store reload */ }
+        sfx.recruitChime()
+        track('pack_clicked', {
+          packId: result.packId ?? 'unknown',
+          price: '',  // server doesn't echo — filled in by the original click
+          tokens: result.tokensGranted ?? 0,
+        })
+      }
+    })()
   }, [])
 
   // Initialize audio context + resume on first interaction
@@ -153,6 +195,13 @@ export default function CampPage() {
       {!isObserving && !isFiringRange && <RecruitSheet />}
       {!isObserving && !isFiringRange && <TokenModal />}
       {!isObserving && !isFiringRange && <ArmorySheet />}
+      {!isObserving && !isFiringRange && <UpgradeNudge />}
+
+      {/* Age gate — fires only when a Stripe purchase is about to start */}
+      <AgeGateModal />
+
+      {/* Cookie banner — bottom, dismissible, hidden when Supabase unset */}
+      <CookieBanner />
 
       {/* Tutorial overlay */}
       {tutorialActive && <TutorialGuide />}

@@ -13,6 +13,8 @@ import { TOKEN_PACKS } from '@config/store'
 import type { TokenPack } from '@config/store'
 import { TokenIcon } from './TokenIcon'
 import { purchasePack, grantStarterPack } from '@api/purchase'
+import { ensureAgeConfirmed } from './AgeGate'
+import { isSupabaseEnabled } from '@api/user'
 import { track } from '@analytics/events'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
@@ -76,10 +78,18 @@ export function StoreSheet() {
   }, [setStoreSheetOpen])
 
   // Route through the purchase seam. Sprint 1: grants tokens locally.
-  // Sprint 3: opens Stripe Checkout. Callsites don't change.
-  const handleBuyPack = useCallback((packId: string) => {
+  // Sprint 3: opens Stripe Checkout (after age gate).
+  const handleBuyPack = useCallback(async (packId: string) => {
     sfx.recruitChime()
     const pack = TOKEN_PACKS.find(p => p.id === packId)
+
+    // Age gate fires only when Stripe is actually going to run (prod mode).
+    // Offline dev mode skips it so development isn't interrupted.
+    if (isSupabaseEnabled()) {
+      const ok = await ensureAgeConfirmed()
+      if (!ok) return
+    }
+
     if (pack) {
       track('pack_clicked', { packId: pack.id, price: pack.price, tokens: pack.tokens })
     }

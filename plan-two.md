@@ -531,3 +531,53 @@ The central metaphor is now rigorously honest: **1 token = 1 second of training*
 **Route table and persisted stores unchanged.** `/camp` is still the sole live game. `campStore` is still the sole persisted truth. The sync seam from Sprint 1 now carries the new `weapon-manual`, `daily-claim`, and `tutorial-complete` reason tags alongside the Sprint 1 set.
 
 **Next:** Sprint 3 (Supabase anonymous auth + Stripe Edge Functions + legal/privacy pass) per `production-plan.md`.
+
+## 2026-04-16 — Production Plan Sprint 3 landed (Accounts + Stripe + Legal)
+
+The shipping sprint. The app is now end-to-end production-ready: anonymous Supabase auth at boot (zero wall), write-through cloud sync, Google SSO / email magic-link account upgrade, Stripe Checkout via Edge Functions with idempotent webhook, and a full legal surface (privacy / terms / refund / age gate / cookie banner).
+
+**Infra flipping on Sprint 3 is a single `.env.local`** — offline mode remains fully functional when env vars are unset, so dev work isn't blocked on credentials.
+
+**Delivered:**
+
+*Client (browser):*
+- `src/api/supabase.ts` — singleton client with `isSupabaseEnabled()` / `isOnline()` guards. Session persistence enabled, URL-based session detection, custom storage key `soldiers-supabase-auth`.
+- `src/api/user.ts` — rewritten: real anonymous Supabase auth via `signInAnonymously()` on first boot, session restore on return, `upgradeWithGoogle()` + `upgradeWithEmail()` preserving `user_id` via `linkIdentity` / `updateUser`. Merge-conflict detection surfaces as `UpgradeResult.collision`. `onIdentityChange()` lets UI subscribe to anon→authenticated transitions. Telemetry still kicks off here.
+- `src/api/sync.ts` — rewritten as real write-through: 400ms debounced field-level UPDATEs to `profiles`; soldiers upserted as a batch. `hydrateFromServer()` merges server state on boot with server-authoritative tokens and timestamp-win on other fields. First-login path uploads local state to a fresh server profile. Cross-device collision returns a flag (UI modal in future iteration).
+- `src/api/purchase.ts` — rewritten to invoke the `checkout-create` Edge Function and redirect to Stripe; falls back to the Sprint 1 local-grant path when Supabase isn't configured. `pollPurchaseStatus()` polls `purchase-status` until the webhook finalizes, then triggers the token-arrival ceremony. Unknown-pack error surfaced.
+
+*Server (Supabase):*
+- `supabase/migrations/001_initial_schema.sql` — `profiles`, `soldiers`, `purchases` tables with owner-only RLS. Auto-profile trigger on `auth.users` insert (fires for anonymous signups too). JSONB `trained_brains` on soldier rows (~24KB/user for v1 nets). `purchases` table has unique constraints on both `stripe_session_id` AND `stripe_event_id` for two-layer idempotency.
+- `supabase/migrations/002_rpc_grants.sql` — `grant_tokens()` / `revoke_tokens()` RPCs, security-definer, service-role-only. Atomic: lock-and-status-check guards against double-crediting on webhook retries. Refund path clamps tokens at 0 (we never go negative even if the player already spent).
+- `supabase/functions/checkout-create/index.ts` — creates Stripe Checkout sessions with `client_reference_id` + metadata; inserts `pending` purchases row. Server-side pack catalog (`_shared/packs.ts`) is the source of truth for prices — client prices are for display only.
+- `supabase/functions/stripe-webhook/index.ts` — verifies signature, handles `checkout.session.completed` (grant path) and `charge.refunded` (revoke path). Idempotent: pre-checks purchase status before RPC, RPC itself is idempotent as backstop.
+- `supabase/functions/purchase-status/index.ts` — polled by client post-redirect; RLS-scoped to the caller.
+
+*UI:*
+- `SettingsSheet` rewritten with a gold "SAVE YOUR PROGRESS — GOOGLE" primary CTA for guests, email magic-link fallback, email + sign-out for authenticated users. Legal links row always present. Account block hidden entirely when Supabase isn't wired.
+- `UpgradeNudge` — non-blocking bottom-sheet modal that fires exactly once after first trained soldier or first battle win. Permanent dismissal via localStorage. Never interrupts play.
+- `AgeGate` — "Are you 13 or older?" confirmation that fires only when a Stripe purchase is about to start (offline/dev bypasses). Promise-based, awaits user confirmation in `StoreSheet.handleBuyPack` before entering the checkout flow. COPPA-safe: "No" disables the Store for the session.
+- `CookieBanner` — minimum-viable dismissable notice, hidden when Supabase isn't wired.
+- `CampPage` bootstrap now awaits `initUser()` + `hydrateFromServer()` behind the BootScreen crossfade. Return-from-Stripe flow watches for `?purchase=success&session_id=...`, polls status, plays ceremony, clears URL params.
+
+*Legal:*
+- `src/pages/LegalPage.tsx` — single component rendering three kinds (`privacy` / `terms` / `refund`). Plain-language templates with placeholder company / contact / jurisdiction fields flagged for a pre-launch lawyer review. Routes mounted at `/privacy`, `/terms`, `/refund`.
+
+*Documentation:*
+- `docs/SUPABASE_SETUP.md` — step-by-step provisioning runbook: project creation, migrations, anon auth toggle, Google OAuth setup, Stripe products + webhook, Edge Function deployment, verification checklist. Emphasizes the offline-mode fallback as load-bearing.
+
+**Verified end-to-end (offline mode):** typecheck clean, 44/44 tests green, production build clean. Preview: `/camp` boots identically to Sprint 2 (6895 tokens from v14-migrated state, canvas mounts, HUD renders, no console errors). Cookie banner hidden (`isSupabaseEnabled() === false`). Settings sheet shows legal links row but no account block. Legal routes `/privacy` / `/terms` / `/refund` render as plain Markdown-ish HTML pages.
+
+**Online mode (when env vars are populated) will require:**
+- Supabase project with migrations applied and anonymous sign-ins enabled
+- Google OAuth client configured in Supabase Auth Providers
+- Stripe products created, prices wired to `STRIPE_PRICE_*` function secrets
+- Three Edge Functions deployed (checkout-create, stripe-webhook, purchase-status)
+- Stripe webhook registered with `checkout.session.completed` + `charge.refunded` events
+- All verified per `docs/SUPABASE_SETUP.md` checklist
+
+**Pack values unchanged.** Real telemetry from the first 2-4 weeks post-launch will drive the first pack-price tuning pass.
+
+**Architectural invariant preserved:** No wall, ever. A visitor who lands on `/camp` with zero env vars set plays identically to one landing with the full stack wired — the only difference is where progress is saved.
+
+**Next:** Launch operations — provision Supabase + Stripe per the setup doc, deploy, watch telemetry funnel, tune pack prices based on observed Day-10 wall behavior.

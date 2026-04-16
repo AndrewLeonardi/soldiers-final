@@ -4,6 +4,7 @@ import { lazy, Suspense } from 'react'
 const HomePage = lazy(() => import('./pages/HomePage'))
 const PhysicsTest = lazy(() => import('./pages/PhysicsTest'))
 const CampPage = lazy(() => import('./game/camp/CampPage'))
+const LegalPage = lazy(() => import('./pages/LegalPage').then(m => ({ default: m.LegalPage })))
 
 function LoadingFallback() {
   return (
@@ -33,6 +34,9 @@ export function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/physics-test" element={<PhysicsTest />} />
         <Route path="/camp" element={<CampPage />} />
+        <Route path="/privacy" element={<LegalPage kind="privacy" />} />
+        <Route path="/terms" element={<LegalPage kind="terms" />} />
+        <Route path="/refund" element={<LegalPage kind="refund" />} />
       </Routes>
     </Suspense>
   )
