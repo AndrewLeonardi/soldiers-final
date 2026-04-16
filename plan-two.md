@@ -482,3 +482,29 @@ Sprint 2 polish (Phases D-F):
 - [ ] Phase E: Start ceremony (<2s, camera push toward camp, soldier walks to footprint, light flash + SFX) and graduation ceremony (<2s, ghosts fade, champion victory pose, gold particle burst, "TRAINED!" banner, stats display)
 - [ ] Phase F: Compute spend effect — cyan particle burst from counter → camp building (2D canvas overlay), GPU-whoosh SFX (synthComputeWhoosh)
 - [ ] Camp neural net viz — small SVG node/edge diagram showing live weights of best brain during training
+
+## 2026-04-16 — Production Plan Sprint 1 landed (Cleanup & Seam)
+
+Separate from the game-design four-sprint arc. See `production-plan.md` for the three-sprint production roadmap (Cleanup & Seam → Economy Lock + Telemetry → Accounts + Stripe + Legal). Sprint 1 of that plan shipped in this session.
+
+**Delivered:**
+- Deleted `/play` + `/game-concept` routes and all their components/stores (`src/scenes/*`, `src/ui/*`, `src/game/{base,buildings,stores,ui,soldiers,analytics}/*`, `src/three/{camera,worlds}/*`, legacy `src/game/training/{BaseTrainingZone,GraduationCutscene,TargetCan,TraineeSoldier,nullBrain,getEffectiveBrain}`, and stores `gameStore`/`rosterStore`/`trainingStore`/`tutorialStore`). ~29+ files/dirs removed in one pass.
+- Rescued `StarIcon` and `LockIcon` from the doomed `src/ui/ToyIcons.tsx` into `src/game/camp/icons/`, retargeted the 2 live camp imports (`TutorialGuide`, `RosterSheet`).
+- Retired now-empty path aliases `@scenes` and `@ui` from `vite.config.ts` and `tsconfig.json`.
+- Consolidated `SLOT_COSTS` (was duplicated in `SoldierSheet.tsx`, `TrainingSheet.tsx`, `campStore.ts`) into a single exported `TRAINING_SLOT_UNLOCK_COSTS` in `campStore`.
+- Bumped `campStore` to version 13 as a safety landing pad — no schema change, just the migration plumbing so Sprint 2 can reshape the economy (drop streak fields, add per-soldier weapon manuals, lower starter balance) without a multi-version cascade.
+- Created `src/api/{user,sync,purchase}.ts` as the Sprint 3 seams:
+  - `initUser()` / `getUserId()` — returns a local UUID today, Supabase anon session in Sprint 3.
+  - `queueSync(key, payload, ctx)` — no-op dev-logger today, debounced server write in Sprint 3.
+  - `purchasePack(packId)` / `grantStarterPack()` — grants tokens locally today, Stripe Checkout in Sprint 3.
+- Wrapped every token-affecting action in `campStore` (setTokens / addTokens / spendTokens / unlockWeapon / unlockSlot / claimDailyTokens / claimDailyReward / completeBattle / updateSoldier* / injureSoldier / healSoldier / tickHealing / setMuted / completeTutorial) so they funnel through the sync seam with a `reason` tag. Public callsites use the wrappers directly; Sprint 3 just swaps `queueSync` implementation.
+- Routed `StoreSheet.tsx` pack buttons through `purchasePack(packId)` instead of `addTokens` directly. Sprint 3 changes one file (`src/api/purchase.ts`), not the UI.
+- Made `CampPage.tsx` bootstrap awaitable: `initUser()` resolves before the `<Canvas>` mounts, in parallel with the `BootScreen` crossfade. Resolves ~instantly today (no loading state visible); Sprint 3 can insert a Supabase call behind the same BootScreen mask.
+
+**Verified:** `npm run typecheck` clean. `npm run build` clean. All 44 vitest tests green. `/camp` route structure intact — identical behavior to pre-sprint (boot → tutorial → training → battles → daily claim all expected to work; manual verification next).
+
+**Route table post-Sprint 1:** `/`, `/camp`, `/physics-test`. Live persisted store: one (`campStore`). Ephemeral camp stores: three (`sceneStore`, `campBattleStore`, `campTrainingStore`).
+
+**Deferred polish triage (from 2026-04-10 checklist above):** Items have not been rigorously audited as shipped-or-not in this sprint. The base sizing item (`BASE_HALF_W = 12`, `BASE_HALF_D = 9`) is partially done (8/6 → 12/9, not 16/12). Token counter is SVG-based (`TokenIcon`) per recent redesign commits. The rifle weapon-feel items are largely shipped based on `Archive.md` notes and the battle-HUD redesign commit. Leaving the old checklist as historical record per the append-only rule; Sprint 2 will revisit with a fresh economy-focused audit.
+
+**Next:** Sprint 2 (Economy Lock + Minimum Telemetry) per `production-plan.md`.

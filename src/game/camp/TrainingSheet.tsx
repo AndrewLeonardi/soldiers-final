@@ -5,7 +5,7 @@
  * Flow: soldier chips → weapon carousel → time package → sim speed → START.
  */
 import { useState, useCallback, useMemo, useEffect } from 'react'
-import { useCampStore } from '@stores/campStore'
+import { useCampStore, TRAINING_SLOT_UNLOCK_COSTS } from '@stores/campStore'
 import { useSceneStore } from '@stores/sceneStore'
 import { useCampTrainingStore } from '@stores/campTrainingStore'
 import { WeaponCarousel } from './WeaponCarousel'
@@ -16,9 +16,6 @@ import { LockIcon } from './icons/LockIcon'
 import { RefreshIcon } from './icons/RefreshIcon'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
-
-// Slot unlock costs (matches campStore)
-const SLOT_COSTS = [0, 200, 500]
 
 export function TrainingSheet() {
   const trainingSheetOpen = useSceneStore((s) => s.trainingSheetOpen)
@@ -93,7 +90,7 @@ export function TrainingSheet() {
   [slots, unlockedSlots])
 
   // Next locked slot cost
-  const nextLockedSlotCost = unlockedSlots < 3 ? SLOT_COSTS[unlockedSlots] : null
+  const nextLockedSlotCost = unlockedSlots < 3 ? TRAINING_SLOT_UNLOCK_COSTS[unlockedSlots] : null
 
   const handleUnlockSlot = useCallback(() => {
     sfx.buttonTap()

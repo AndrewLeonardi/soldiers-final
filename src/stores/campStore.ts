@@ -15,6 +15,16 @@ import { persist } from 'zustand/middleware'
 import { WEAPON_UNLOCK_COST } from '@config/roster'
 import { DAILY_DRIP_AMOUNT, DAILY_DRIP_INTERVAL_MS, DAILY_DRIP_MAX_DAYS, DAILY_STREAK_REWARDS, DAILY_STREAK_FORGIVENESS } from '@config/store'
 import type { WeaponType } from '@config/types'
+import { queueSync } from '@api/sync'
+
+/**
+ * Opts bag for token-affecting mutations. The `reason` tag flows into the
+ * sync seam (and later telemetry / server writes). Optional to keep existing
+ * callsites working; new callsites should pass a reason.
+ */
+export interface MutationOpts {
+  reason?: string
+}
 
 // ── Soldier record (persisted) ──
 export interface SoldierRecord {
@@ -90,10 +100,10 @@ interface CampState {
   // Tutorial
   tutorialCompleted: boolean
 
-  // Actions — economy
-  setTokens: (value: number) => void
-  addTokens: (delta: number) => void
-  spendTokens: (amount: number) => boolean
+  // Actions — economy (opts.reason tags the sync payload)
+  setTokens: (value: number, opts?: MutationOpts) => void
+  addTokens: (delta: number, opts?: MutationOpts) => void
+  spendTokens: (amount: number, opts?: MutationOpts) => boolean
 
   // Actions — unlocks
   unlockWeapon: (weapon: WeaponType) => boolean
@@ -136,8 +146,10 @@ interface CampState {
   completeTutorial: () => void
 }
 
-// Training slot unlock costs (these are training-parallelism slots, not roster slots)
-const TRAINING_SLOT_UNLOCK_COSTS: Record<number, number> = { 2: 200, 3: 500 }
+// Training slot unlock costs (these are training-parallelism slots, not roster slots).
+// Index is the slot number being unlocked (1 = free starter, 2 and 3 cost tokens).
+// Exported so UI (TrainingSheet, SoldierSheet) can show the next cost without duplicating.
+export const TRAINING_SLOT_UNLOCK_COSTS: readonly [number, number, number] = [0, 200, 500]
 
 export const useCampStore = create<CampState>()(
   persist(
@@ -175,12 +187,24 @@ export const useCampStore = create<CampState>()(
       tutorialCompleted: false,
 
       // ── Economy actions ──
-      setTokens: (value) => set({ tokens: value }),
-      addTokens: (delta) => set((s) => ({ tokens: s.tokens + delta })),
-      spendTokens: (amount) => {
+      // All three route through the sync seam so Sprint 3 can swap in a real
+      // server write without touching callsites. `reason` defaults here are
+      // fallbacks; callers should pass a specific reason when known.
+      setTokens: (value, opts) => {
+        set({ tokens: value })
+        queueSync('tokens', value, { reason: opts?.reason ?? 'set' })
+      },
+      addTokens: (delta, opts) => {
+        const next = get().tokens + delta
+        set({ tokens: next })
+        queueSync('tokens', next, { reason: opts?.reason ?? (delta >= 0 ? 'add' : 'spend') })
+      },
+      spendTokens: (amount, opts) => {
         const state = get()
         if (state.tokens < amount) return false
-        set({ tokens: state.tokens - amount })
+        const next = state.tokens - amount
+        set({ tokens: next })
+        queueSync('tokens', next, { reason: opts?.reason ?? 'spend' })
         return true
       },
 
@@ -190,23 +214,24 @@ export const useCampStore = create<CampState>()(
         if (state.unlockedWeapons.includes(weapon)) return true // already unlocked
         const cost = WEAPON_UNLOCK_COST[weapon]
         if (state.tokens < cost) return false
-        set({
-          tokens: state.tokens - cost,
-          unlockedWeapons: [...state.unlockedWeapons, weapon],
-        })
+        const nextTokens = state.tokens - cost
+        const nextWeapons = [...state.unlockedWeapons, weapon]
+        set({ tokens: nextTokens, unlockedWeapons: nextWeapons })
+        queueSync('tokens', nextTokens, { reason: 'weapon-unlock' })
+        queueSync('unlockedWeapons', nextWeapons, { reason: 'weapon-unlock' })
         return true
       },
 
       unlockSlot: () => {
         const state = get()
         const nextSlot = state.unlockedSlots + 1
-        const cost = TRAINING_SLOT_UNLOCK_COSTS[nextSlot]
+        const cost = TRAINING_SLOT_UNLOCK_COSTS[nextSlot] ?? 0
         if (!cost) return false // already at max (3)
         if (state.tokens < cost) return false
-        set({
-          tokens: state.tokens - cost,
-          unlockedSlots: nextSlot,
-        })
+        const nextTokens = state.tokens - cost
+        set({ tokens: nextTokens, unlockedSlots: nextSlot })
+        queueSync('tokens', nextTokens, { reason: 'slot-unlock' })
+        queueSync('unlockedSlots', nextSlot, { reason: 'slot-unlock' })
         return true
       },
 
@@ -218,10 +243,10 @@ export const useCampStore = create<CampState>()(
 
         // First ever claim
         if (last === 0) {
-          set({
-            tokens: state.tokens + DAILY_DRIP_AMOUNT,
-            lastDailyClaimTime: now,
-          })
+          const nextTokens = state.tokens + DAILY_DRIP_AMOUNT
+          set({ tokens: nextTokens, lastDailyClaimTime: now })
+          queueSync('tokens', nextTokens, { reason: 'daily-drip' })
+          queueSync('dailyClaim', now, { reason: 'daily-drip' })
           return { claimed: DAILY_DRIP_AMOUNT, backfillDays: 0 }
         }
 
@@ -235,10 +260,10 @@ export const useCampStore = create<CampState>()(
           DAILY_DRIP_MAX_DAYS,
         )
         const totalClaim = DAILY_DRIP_AMOUNT * daysMissed
-        set({
-          tokens: state.tokens + totalClaim,
-          lastDailyClaimTime: now,
-        })
+        const nextTokens = state.tokens + totalClaim
+        set({ tokens: nextTokens, lastDailyClaimTime: now })
+        queueSync('tokens', nextTokens, { reason: 'daily-drip' })
+        queueSync('dailyClaim', now, { reason: 'daily-drip' })
         return { claimed: totalClaim, backfillDays: daysMissed - 1 }
       },
 
@@ -272,11 +297,14 @@ export const useCampStore = create<CampState>()(
         const reward = DAILY_STREAK_REWARDS[newStreak - 1]
         if (!reward) return null
 
+        const nextTokens = state.tokens + reward.tokens
         set({
-          tokens: state.tokens + reward.tokens,
+          tokens: nextTokens,
           dailyStreak: newStreak,
           lastDailyClaimDate: today,
         })
+        queueSync('tokens', nextTokens, { reason: 'daily-streak' })
+        queueSync('dailyClaim', today, { reason: 'daily-streak' })
 
         return { tokens: reward.tokens, streakDay: newStreak }
       },
@@ -298,24 +326,30 @@ export const useCampStore = create<CampState>()(
           trained: false,
           xp: 0,
         }
-        set({
-          soldiers: [...state.soldiers, newSoldier],
-        })
+        const nextSoldiers = [...state.soldiers, newSoldier]
+        set({ soldiers: nextSoldiers })
+        queueSync('soldiers', nextSoldiers, { reason: 'recruit' })
         return true
       },
 
       // ── Roster actions ──
-      addSoldier: (soldier) => set((s) => ({ soldiers: [...s.soldiers, soldier] })),
+      addSoldier: (soldier) => {
+        const nextSoldiers = [...get().soldiers, soldier]
+        set({ soldiers: nextSoldiers })
+        queueSync('soldiers', nextSoldiers, { reason: 'add-soldier' })
+      },
 
-      updateSoldier: (id, updates) => set((s) => ({
-        soldiers: s.soldiers.map(sol =>
+      updateSoldier: (id, updates) => {
+        const nextSoldiers = get().soldiers.map(sol =>
           sol.id === id ? { ...sol, ...updates } : sol,
-        ),
-      })),
+        )
+        set({ soldiers: nextSoldiers })
+        queueSync('soldiers', nextSoldiers, { reason: 'update-soldier' })
+      },
 
       /** Write trained brain weights for a specific weapon. Also sets equipped weapon. */
-      updateSoldierBrain: (id, weapon, weights, fitness, generations) => set((s) => ({
-        soldiers: s.soldiers.map(sol => {
+      updateSoldierBrain: (id, weapon, weights, fitness, generations) => {
+        const nextSoldiers = get().soldiers.map(sol => {
           if (sol.id !== id) return sol
           const existingBrains = sol.trainedBrains ?? {}
           return {
@@ -326,14 +360,18 @@ export const useCampStore = create<CampState>()(
             fitnessScore: Math.max(fitness, sol.fitnessScore ?? 0),
             generationsTrained: (sol.generationsTrained ?? 0) + generations,
           }
-        }),
-      })),
+        })
+        set({ soldiers: nextSoldiers })
+        queueSync('soldiers', nextSoldiers, { reason: 'training-graduate' })
+      },
 
-      awardSoldierXP: (id, amount) => set((s) => ({
-        soldiers: s.soldiers.map(sol =>
+      awardSoldierXP: (id, amount) => {
+        const nextSoldiers = get().soldiers.map(sol =>
           sol.id === id ? { ...sol, xp: Math.min(99999, (sol.xp ?? 0) + amount) } : sol,
-        ),
-      })),
+        )
+        set({ soldiers: nextSoldiers })
+        queueSync('soldiers', nextSoldiers, { reason: 'xp-award' })
+      },
 
       // ── Slot unlock acknowledgments ──
       acknowledgeSlotUnlock: (level) => set((s) => ({
@@ -350,52 +388,69 @@ export const useCampStore = create<CampState>()(
         const weapons = weaponReward && !state.unlockedWeapons.includes(weaponReward)
           ? [...state.unlockedWeapons, weaponReward]
           : state.unlockedWeapons
+        const nextBattles = { ...state.battlesCompleted, [battleId]: { stars: bestStars } }
+        const nextTokens = state.tokens + tokenReward
         set({
-          battlesCompleted: { ...state.battlesCompleted, [battleId]: { stars: bestStars } },
-          tokens: state.tokens + tokenReward,
+          battlesCompleted: nextBattles,
+          tokens: nextTokens,
           unlockedWeapons: weapons,
         })
+        queueSync('tokens', nextTokens, { reason: 'battle-reward' })
+        queueSync('battlesCompleted', nextBattles, { reason: 'battle-complete' })
+        if (weapons !== state.unlockedWeapons) {
+          queueSync('unlockedWeapons', weapons, { reason: 'battle-weapon-unlock' })
+        }
       },
 
       // ── Injury / healing ──
-      injureSoldier: (id) => set((s) => ({
-        soldiers: s.soldiers.map(sol =>
+      injureSoldier: (id) => {
+        const nextSoldiers = get().soldiers.map(sol =>
           sol.id === id ? { ...sol, injuredUntil: Date.now() + HEAL_DURATION_MS } : sol,
-        ),
-      })),
+        )
+        set({ soldiers: nextSoldiers })
+        queueSync('soldiers', nextSoldiers, { reason: 'injure' })
+      },
 
-      healSoldier: (id) => set((s) => ({
-        soldiers: s.soldiers.map(sol =>
+      healSoldier: (id) => {
+        const nextSoldiers = get().soldiers.map(sol =>
           sol.id === id ? { ...sol, injuredUntil: undefined } : sol,
-        ),
-      })),
+        )
+        set({ soldiers: nextSoldiers })
+        queueSync('soldiers', nextSoldiers, { reason: 'heal' })
+      },
 
       tickHealing: () => {
         const now = Date.now()
         const state = get()
         const needsHeal = state.soldiers.some(s => s.injuredUntil && s.injuredUntil <= now)
         if (!needsHeal) return
-        set({
-          soldiers: state.soldiers.map(sol =>
-            sol.injuredUntil && sol.injuredUntil <= now
-              ? { ...sol, injuredUntil: undefined }
-              : sol,
-          ),
-        })
+        const nextSoldiers = state.soldiers.map(sol =>
+          sol.injuredUntil && sol.injuredUntil <= now
+            ? { ...sol, injuredUntil: undefined }
+            : sol,
+        )
+        set({ soldiers: nextSoldiers })
+        queueSync('soldiers', nextSoldiers, { reason: 'heal-tick' })
       },
 
       // ── Settings ──
-      setMuted: (muted) => set({ muted }),
+      setMuted: (muted) => {
+        set({ muted })
+        queueSync('muted', muted, { reason: 'settings' })
+      },
 
-      // ── Store flags ──
+      // ── Store flags (not server-synced — local-only UI memory) ──
       setStarterPackShown: () => set({ starterPackShown: true }),
 
       // ── Tutorial ──
-      completeTutorial: () => set({ tutorialCompleted: true }),
+      completeTutorial: () => {
+        set({ tutorialCompleted: true })
+        queueSync('tutorialCompleted', true, { reason: 'tutorial-complete' })
+      },
     }),
     {
       name: 'toy-soldiers-camp',
-      version: 12,
+      version: 13,
       migrate: (persistedState: any, version: number) => {
         if (version < 2) {
           const state = persistedState as any
@@ -502,6 +557,14 @@ export const useCampStore = create<CampState>()(
           delete state.gold
           delete state.lastDailyGoldClaimTime
           state.acknowledgedSlotUnlocks = []
+        }
+        if (version < 13) {
+          // v12 → v13: No schema change. This is the Sprint 1 safety landing pad
+          // so Sprint 2's economy reshape (drop streak fields, add weapon manuals,
+          // lower starter balance) has a clean migration boundary. See
+          // production-plan.md, Subsystem 1.3.
+          const state = persistedState as any
+          state.acknowledgedSlotUnlocks = state.acknowledgedSlotUnlocks ?? []
         }
         return persistedState as CampState
       },

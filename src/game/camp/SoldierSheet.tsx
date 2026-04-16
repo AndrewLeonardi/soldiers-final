@@ -8,7 +8,7 @@ import { useState, useCallback, useMemo, useRef } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useSceneStore } from '@stores/sceneStore'
-import { useCampStore } from '@stores/campStore'
+import { useCampStore, TRAINING_SLOT_UNLOCK_COSTS } from '@stores/campStore'
 import { useCampTrainingStore } from '@stores/campTrainingStore'
 import { RankBadge } from './RankBadge'
 import { getRank, getNextRank, RANKS } from '@config/ranks'
@@ -30,9 +30,6 @@ const WEAPON_LABELS: Record<string, string> = {
   machineGun: 'Machine Gun',
   tank: 'Tank',
 }
-
-// Slot unlock costs (matches campStore)
-const SLOT_COSTS = [0, 200, 500]
 
 /** Hero 3D soldier that slowly rotates */
 function HeroSoldierModel({ isInjured }: { isInjured: boolean }) {
@@ -137,7 +134,7 @@ export function SoldierSheet() {
   const canStart = soldierSheetId !== null && canAfford && slotIsEmpty && !soldierBusy
 
   // Next locked slot cost
-  const nextLockedSlotCost = unlockedSlots < 3 ? SLOT_COSTS[unlockedSlots] : null
+  const nextLockedSlotCost = unlockedSlots < 3 ? TRAINING_SLOT_UNLOCK_COSTS[unlockedSlots] : null
 
   const handleUnlockSlot = useCallback(() => {
     sfx.buttonTap()

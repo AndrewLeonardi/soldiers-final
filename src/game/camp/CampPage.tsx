@@ -42,10 +42,15 @@ import { AudioBed } from '@audio/AudioBed'
 import { resumeOnInteraction, ensureContext } from '@audio/context'
 import { useSceneStore } from '@stores/sceneStore'
 import { useCampStore } from '@stores/campStore'
+import { initUser } from '@api/user'
 import '@styles/camp-ui.css'
 
 export default function CampPage() {
   const [booted, setBooted] = useState(false)
+  // userReady gates the Canvas. Sprint 1: initUser resolves ~instantly from
+  // localStorage. Sprint 3: awaits Supabase anonymous auth. The BootScreen
+  // masks any latency so the player never sees a loading state.
+  const [userReady, setUserReady] = useState(false)
   const [dailyPopupDismissed, setDailyPopupDismissed] = useState(false)
   const isObserving = useSceneStore((s) => s.observingSlotIndex) !== null
   const isFiringRange = useSceneStore((s) => s.firingRangeSoldierId) !== null
@@ -63,6 +68,18 @@ export default function CampPage() {
   const setStoreSheetOpen = useSceneStore((s) => s.setStoreSheetOpen)
   const setRosterSheetOpen = useSceneStore((s) => s.setRosterSheetOpen)
   const setMedicalSheetOpen = useSceneStore((s) => s.setMedicalSheetOpen)
+
+  // Initialize user identity (Sprint 1: local UUID; Sprint 3: Supabase anon auth).
+  // Runs in parallel with the BootScreen animation so any latency is invisible.
+  useEffect(() => {
+    let cancelled = false
+    void initUser().then(() => {
+      if (!cancelled) setUserReady(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // Initialize audio context + resume on first interaction
   useEffect(() => {
@@ -91,21 +108,25 @@ export default function CampPage() {
 
   return (
     <div style={{ width: '100%', height: '100svh', position: 'relative', background: '#111' }}>
-      {/* Boot screen — 1s hold + crossfade */}
-      {!booted && <BootScreen onDone={handleBootDone} />}
+      {/* Boot screen — 1s hold + crossfade. Holds until BOTH the timer
+          and the user-init have resolved; initUser is instant in Sprint 1
+          and briefly awaits Supabase in Sprint 3. */}
+      {!(booted && userReady) && <BootScreen onDone={handleBootDone} />}
 
-      {/* 3D Canvas */}
-      <Canvas
-        shadows
-        camera={{ position: [18, 14, 18], fov: 50 }}
-        gl={{ antialias: true }}
-      >
-        <Suspense fallback={null}>
-          <Physics gravity={[0, -15, 0]}>
-            <CampScene />
-          </Physics>
-        </Suspense>
-      </Canvas>
+      {/* 3D Canvas — only mounts once user identity is ready. */}
+      {userReady && (
+        <Canvas
+          shadows
+          camera={{ position: [18, 14, 18], fov: 50 }}
+          gl={{ antialias: true }}
+        >
+          <Suspense fallback={null}>
+            <Physics gravity={[0, -15, 0]}>
+              <CampScene />
+            </Physics>
+          </Suspense>
+        </Canvas>
+      )}
 
       {/* Daily reward popup — auto-shows after boot or manually from token counter */}
       {showDailyPopup && <DailyRewardPopup onClose={() => { setDailyPopupDismissed(true); setDailyRewardOpen(false) }} />}

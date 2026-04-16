@@ -18,8 +18,6 @@
     "paths": {
       "@engine/*": ["./src/engine/*"],
       "@three/*": ["./src/three/*"],
-      "@scenes/*": ["./src/scenes/*"],
-      "@ui/*": ["./src/ui/*"],
       "@stores/*": ["./src/stores/*"],
       "@config/*": ["./src/config/*"],
       "@audio/*": ["./src/audio/*"],

@@ -12,6 +12,7 @@ import { useSceneStore } from '@stores/sceneStore'
 import { TOKEN_PACKS } from '@config/store'
 import type { TokenPack } from '@config/store'
 import { TokenIcon } from './TokenIcon'
+import { purchasePack, grantStarterPack } from '@api/purchase'
 import * as sfx from '@audio/sfx'
 import '@styles/camp-ui.css'
 
@@ -57,25 +58,24 @@ export function StoreSheet() {
   const isOpen = useSceneStore((s) => s.storeSheetOpen)
   const setStoreSheetOpen = useSceneStore((s) => s.setStoreSheetOpen)
   const tokens = useCampStore((s) => s.tokens)
-  const addTokens = useCampStore((s) => s.addTokens)
   const soldiers = useCampStore((s) => s.soldiers)
   const starterPackShown = useCampStore((s) => s.starterPackShown)
-  const setStarterPackShown = useCampStore((s) => s.setStarterPackShown)
 
   const handleClose = useCallback(() => {
     setStoreSheetOpen(false)
   }, [setStoreSheetOpen])
 
-  const handleBuyTokens = useCallback((amount: number) => {
+  // Route through the purchase seam. Sprint 1: grants tokens locally.
+  // Sprint 3: opens Stripe Checkout. Callsites don't change.
+  const handleBuyPack = useCallback((packId: string) => {
     sfx.recruitChime()
-    addTokens(amount)
-  }, [addTokens])
+    void purchasePack(packId)
+  }, [])
 
   const handleStarterPack = useCallback(() => {
     sfx.recruitChime()
-    addTokens(500)
-    setStarterPackShown()
-  }, [addTokens, setStarterPackShown])
+    grantStarterPack()
+  }, [])
 
   const trainedCount = soldiers.filter(s => s.trained).length
   const showStarterOffer = trainedCount >= 3 && !starterPackShown
@@ -115,7 +115,7 @@ export function StoreSheet() {
           {featuredPack && (
             <button
               className={`store-featured-card store-featured-card--${featuredPack.tier}`}
-              onClick={() => handleBuyTokens(featuredPack.tokens)}
+              onClick={() => handleBuyPack(featuredPack.id)}
             >
               <span className="store-featured-ribbon">BEST VALUE</span>
               <div className="store-featured-chips">
@@ -137,7 +137,7 @@ export function StoreSheet() {
               <button
                 key={pack.id}
                 className={`store-grid-tile store-grid-tile--${pack.tier}`}
-                onClick={() => handleBuyTokens(pack.tokens)}
+                onClick={() => handleBuyPack(pack.id)}
                 style={{ animationDelay: `${i * 0.06}s` }}
               >
                 <span className="store-tile-tier-stripe" />

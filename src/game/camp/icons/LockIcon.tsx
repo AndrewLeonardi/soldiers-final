@@ -1,8 +1,8 @@
-interface Props { size?: number; className?: string }
+interface Props { size?: number; className?: string; color?: string }
 
-export function LockIcon({ size = 16, className }: Props) {
+export function LockIcon({ size = 16, className, color = 'currentColor' }: Props) {
   return (
-    <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none" style={{ display: 'inline-block', verticalAlign: 'middle' }}>
+    <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none" style={{ display: 'inline-block', verticalAlign: 'middle', color }}>
       {/* Body */}
       <rect x="3.5" y="7" width="9" height="7.5" rx="1.5" fill="currentColor" opacity="0.2" stroke="currentColor" strokeWidth="1.2" />
       {/* Shackle */}
